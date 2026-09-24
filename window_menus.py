@@ -30,7 +30,7 @@ import tesseract_ui
 from signer_backend import TSA_PRESETS
 
 SETTINGS = ("aventyapdf", "config")
-APP_VERSION = "2.0.3"
+APP_VERSION = "2.0.4"
 # (r71) Titular y repositorio público (AGPL-3.0, libre distribución).
 APP_OWNER = "Aventya Asesoría Integral SL"
 APP_REPO = "https://github.com/Aventya/AventyaPDF"

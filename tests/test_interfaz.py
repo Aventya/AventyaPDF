@@ -2126,6 +2126,46 @@ class TestVentanaPrincipal(unittest.TestCase):
                 s.remove(pr.KEY_SHOW)
             s.sync()
 
+    def test_opciones_de_herramienta_arriba_del_panel_lateral(self):
+        """(r72) Las opciones de cualquier herramienta salen en la parte de
+        arriba del panel lateral, también con el panel cerrado (antes el
+        layout las centraba en vertical), y caben enteras en su ancho."""
+        import main
+        anterior = self.app.styleSheet()
+        self.app.setStyleSheet(main.STYLESHEET)
+        try:
+            w = self.w
+            self.assertTrue(w.open_path(self._crear_pdf(2)))
+            col = w.sidebar.column
+            paneles = {"TEXT": w._txt_panel, "NOTE": w._note_panel,
+                       "MARKUP": w._markup_panel, "RECT": w._rect_panel,
+                       "EMOJI": w._emoji_panel, "EDIT": w._edit_panel}
+            for abierto in (False, True):
+                for modo, panel in paneles.items():
+                    if abierto:
+                        w.sidebar.show_panel("thumbs")
+                    else:
+                        w.sidebar.collapse()
+                    w._toggle_tool(modo)
+                    self.app.processEvents()
+                    tools = w.sidebar.tools
+                    self.assertEqual(tools.mapTo(col, tools.rect().topLeft()).y(), 0,
+                                     f"{modo}: opciones fuera de la parte superior")
+                    self.assertGreater(col.height(), tools.height() + 100)
+                    self.assertLessEqual(panel.sizeHint().width(), col.width(),
+                                         f"{modo}: el panel no cabe en la columna")
+                    if abierto:
+                        self.assertEqual(w.sidebar.stack.geometry().top(),
+                                         tools.geometry().bottom() + 1)
+                    w._toggle_tool(modo)
+            # El combo de fuentes no se sale por la derecha (r69 lo ensanchó).
+            w._toggle_tool("TEXT")
+            self.app.processEvents()
+            cb = w._cb_font
+            self.assertLessEqual(cb.mapTo(col, cb.rect().topRight()).x(), col.width())
+        finally:
+            self.app.setStyleSheet(anterior)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

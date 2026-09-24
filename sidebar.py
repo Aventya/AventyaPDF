@@ -21,7 +21,7 @@ import doc_tools
 import icons
 _ROLE = Qt.ItemDataRole.UserRole
 
-COLUMN_MIN = 290          # ancho mínimo de la columna del panel lateral
+COLUMN_MIN = 310          # ancho mínimo de la columna del panel lateral (r72: 290 → 310)
 _THUMB_W = 130
 _THUMB_H = int(_THUMB_W * 1.42)
 _LABEL_H = 20
@@ -694,7 +694,8 @@ class SidePanel(QWidget):
         self.column = QWidget()
         self.column.setObjectName("side_column")
         # (r40) Ancho mínimo: el panel de opciones más ancho («Añadir texto»,
-        # 286 px) debe caber sin que se corten sus etiquetas (invariante 46).
+        # 306 px desde r69, por el combo de fuentes de 160 px) debe caber sin
+        # que se corten sus etiquetas ni sus controles (invariante 46).
         self.column.setMinimumWidth(COLUMN_MIN)
         col = QVBoxLayout(self.column)
         col.setContentsMargins(0, 0, 0, 0)
@@ -708,7 +709,9 @@ class SidePanel(QWidget):
         self.tools.hide()
         self.stack = QStackedWidget()
         self.stack.setObjectName("side_stack")
-        col.addWidget(self.tools)
+        # (r72) AlignTop: con el panel cerrado la columna solo tiene las
+        # opciones y, sin anclarlas, el layout las centraba en vertical.
+        col.addWidget(self.tools, 0, Qt.AlignmentFlag.AlignTop)
         col.addWidget(self.stack, 1)
         self.thumbs = ThumbnailsPanel(mw)
         self.bookmarks = BookmarksPanel(mw)
