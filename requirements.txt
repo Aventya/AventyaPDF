@@ -1,0 +1,14 @@
+# Componentes de Python de AventyaPDF. TODOS son obligatorios: run.ps1 y
+# main.py (dependencias.py) instalan a la fuerza lo que falte en cada arranque.
+# Tesseract OCR no es un paquete de Python: lo instala tesseract_setup.py.
+PyQt6>=6.5.0
+PyMuPDF>=1.24.0
+pyHanko>=0.20.0
+pyhanko-certvalidator>=0.20.0
+cryptography>=41.0.0
+keyring>=24.0.0
+# OCR: enderezado de páginas torcidas (pdf_ocr, r60)
+numpy>=1.24
+opencv-python-headless>=4.8
+# Exportar a Word (.docx) — Archivo › Exportar › Documento de Word
+pdf2docx>=0.5.6

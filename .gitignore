@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Registros de la aplicación
+*.log
+
+# Documentos de trabajo y de clientes: NUNCA al repositorio público (r71).
+# Los únicos PDF del proyecto son los recursos que usa la propia aplicación.
+*.pdf
+*.PDF
+!signature_background.pdf
+*.odt
+*.doc
+*.docx
+*.xls
+*.xlsx
+
+# Certificados y claves (el de pruebas se genera con create_test_cert.py)
+*.pfx
+*.p12
+*.key
+
+# Empaquetado: salidas y archivos generados por construir.ps1
+empaquetado/salida/
+empaquetado/version_info.txt
+build/
+dist/
+
+# Editores y sistema
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
