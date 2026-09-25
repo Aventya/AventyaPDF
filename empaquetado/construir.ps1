@@ -56,21 +56,21 @@ $Version = (Select-String -Path (Join-Path $Raiz 'window_menus.py') -Pattern 'AP
 if (-not $Version) { throw 'No se encuentra APP_VERSION en window_menus.py' }
 Paso "PyInstaller — AventyaPDF $Version"
 $v = ($Version.Split('.') + @('0', '0', '0', '0'))[0..3] -join ', '
-@"
+@'
 VSVersionInfo(
-  ffi=FixedFileInfo(filevers=($v), prodvers=($v)),
+  ffi=FixedFileInfo(filevers=({0}), prodvers=({0})),
   kids=[StringFileInfo([StringTable('0C0A04B0', [
     StringStruct('CompanyName', 'Aventya Asesoría Integral SL'),
-    StringStruct('LegalCopyright', 'Aventya Asesoría Integral SL · AGPL-3.0'),
+    StringStruct('LegalCopyright', 'Aventya Asesoría Integral SL - AGPL-3.0'),
     StringStruct('FileDescription', 'AventyaPDF'),
-    StringStruct('FileVersion', '$Version'),
+    StringStruct('FileVersion', '{1}'),
     StringStruct('InternalName', 'AventyaPDF'),
     StringStruct('OriginalFilename', 'AventyaPDF.exe'),
     StringStruct('ProductName', 'AventyaPDF'),
-    StringStruct('ProductVersion', '$Version')])]),
+    StringStruct('ProductVersion', '{1}')])]),
     VarFileInfo([VarStruct('Translation', [0x0C0A, 1200])])]
 )
-"@ | Set-Content -Encoding utf8 (Join-Path $PSScriptRoot 'version_info.txt')
+'@ -f $v, $Version | Set-Content -Encoding utf8 (Join-Path $PSScriptRoot 'version_info.txt')
 $env:AVENTYAPDF_VERSION = $Version
 & $BuildPy -m PyInstaller --noconfirm --clean --log-level WARN `
     --distpath $Dist --workpath $Work (Join-Path $PSScriptRoot 'AventyaPDF.spec')
