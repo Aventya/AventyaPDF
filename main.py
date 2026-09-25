@@ -46,12 +46,6 @@ QFrame#topbar {
     border-bottom: 1px solid #E0E0E0;
 }
 
-/* ── Options row (just below toolbar) ── */
-QFrame#options_row {
-    background-color: #F9F9F9;
-    border-bottom: 1px solid #E8E8E8;
-}
-
 /* ── Botones de icono ──────────────────────────────────────────────────────
    TODOS los iconos de la aplicación son de **Fluent UI System Icons** (fuente
    incluida en vendor/fonts/fluent-icons, licencia MIT). Los glifos se piden por
@@ -224,9 +218,6 @@ QStatusBar {
     padding: 2px 8px; font-size: 12px;
 }
 
-/* ── Inner panels in options row must be transparent ── */
-QFrame#options_row QFrame { background: transparent; }
-
 /* ── Separator line ── */
 QFrame#vline { background: #E0E0E0; max-width: 1px; }
 
@@ -303,13 +294,30 @@ QPushButton#side_icon_btn {
 QPushButton#side_icon_btn:hover   { background: #EBEBEB; border-color: #D2D0CE; }
 QPushButton#side_icon_btn:pressed { background: #D8D8D8; }
 QPushButton#side_icon_btn:disabled { color: #C8C6C4; }
+/* (petición de Ricardo) Selectores circulares (nivel de Comprimir), en vez
+   de un desplegable o de botones de texto */
+QRadioButton#side_radio {
+    background: transparent; font-size: 12px; color: #201F1E; spacing: 6px;
+    padding: 3px 0;
+}
+QRadioButton#side_radio::indicator {
+    width: 15px; height: 15px; border-radius: 8px; border: 1px solid #8A8886;
+    background: #FFFFFF;
+}
+QRadioButton#side_radio::indicator:hover    { border-color: #0078D4; }
+QRadioButton#side_radio::indicator:checked  {
+    border: 5px solid #0078D4; background: #FFFFFF;
+}
 QTreeWidget { background: #FFFFFF; color: #201F1E; border: 1px solid #E0E0E0; }
 QTreeWidget::item { padding: 3px 0; }
 QTreeWidget::item:selected { background: #CCE4F7; color: #201F1E; }
 QSplitter::handle { background: #E0E0E0; width: 1px; }
 
-/* ── Barra de búsqueda ── */
-QFrame#find_bar { background: #FFFFFF; border-bottom: 1px solid #E0E0E0; }
+/* ── Búsqueda (r78: en línea en la barra principal) ── */
+/* (r79, petición de Ricardo) Transparente a propósito: sin esto, la regla
+   general `QWidget { background-color: #F3F3F3 }` de arriba le pintaba un
+   fondo gris que desentonaba con el blanco de `#topbar`. */
+QWidget#find_bar, QWidget#find_bar QLabel { background: transparent; }
 QLabel#find_count { color: #605E5C; font-size: 12px; }
 
 /* ── Aviso de documento (firmas, formularios, protección) ── */

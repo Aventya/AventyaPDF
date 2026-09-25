@@ -69,7 +69,7 @@ graph TD
 
 ### 1. Capa de Presentación (UI)
 * Gestionada por [main_window.py](file:///a:/CARPETA%20IA/RICARDO/AVENTYAPDF/main_window.py).
-* Implementa controles adaptativos para ajustar el nivel de compresión, cambiar colores de anotación de forma dinámica y gestionar la barra secundaria de opciones contextuales (`_opt_row`).
+* Implementa controles adaptativos para ajustar el nivel de compresión, cambiar colores de anotación de forma dinámica y gestionar las opciones contextuales de cada herramienta en el panel lateral (`_build_side_tool_panels`; r74/r75 retiraron la antigua barra secundaria `_opt_row`).
 * Usa coordenadas de pantalla en PyQt6 y las traduce a coordenadas normalizadas del documento PDF a través de fórmulas de escala.
 
 ### 2. Capa de Procesamiento de Documentos (Document Engine)

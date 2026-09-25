@@ -183,6 +183,7 @@ class DocumentMixin:
         self.viewer.content.clear()
         self._finish_action()
         self._find_bar.hide()
+        self._btn_find.show()
         self._clear_find()
         self._sessions[self._active] = self._session(self._active)
 
@@ -323,7 +324,15 @@ class DocumentMixin:
         self._finish_action()
         self.render_page()
         self.sidebar.set_document()
-        if (not self.sidebar.stack.isVisible()
+        # (r77, petición de Ricardo: «este visor de firmas certificadas
+        # siempre se debe mostrar abierto en cuanto se abra un PDF que
+        # traiga una firma certificada en su interior») A diferencia de
+        # «thumbs» (que solo se abre si el panel lateral estaba cerrado),
+        # Firmas Certificadas se abre siempre que el documento esté firmado,
+        # aunque el panel ya mostrara otra cosa.
+        if doc_tools.signed_count(doc):
+            self.sidebar.show_panel("signatures")
+        elif (not self.sidebar.stack.isVisible()
                 and QSettings(*SETTINGS).value("view/sidebar", "true") == "true"):
             self.sidebar.show_panel("thumbs")
         self._update_banner()
@@ -620,12 +629,16 @@ class DocumentMixin:
     def show_find(self):
         if self.doc is None:
             return
+        # (r78, petición de Ricardo) El botón de búsqueda y la herramienta
+        # ocupan el mismo sitio en la barra principal: nunca se ven los dos.
+        self._btn_find.hide()
         self._find_bar.show()
         self._find_edit.setFocus()
         self._find_edit.selectAll()
 
     def hide_find(self):
         self._find_bar.hide()
+        self._btn_find.show()
         self._clear_find()
         self.viewer.update()
         self.viewer.setFocus()
@@ -1014,14 +1027,13 @@ class DocumentMixin:
     # ── aviso superior ─────────────────────────────────────────────────── #
 
     def _update_banner(self):
+        # (petición de Ricardo) El aviso de firma ya no se muestra sobre el
+        # visor: esa información vive solo en el panel lateral de Firmas
+        # Certificadas (rail o menú), que _set_document abre siempre que el
+        # documento está firmado (r77).
         msgs = []
-        self._banner_action = None
         if self.doc is not None:
-            n = doc_tools.signed_count(self.doc)
-            if n:
-                msgs.append(("sig", f"Este documento está firmado digitalmente "
-                                    f"({n} {'firma' if n == 1 else 'firmas'})."))
-            elif self.doc.is_form_pdf:
+            if self.doc.is_form_pdf and not doc_tools.signed_count(self.doc):
                 msgs.append(("form", "Este documento contiene campos de formulario: "
                                      "haz clic en ellos para rellenarlos."))
             if self._orig_encrypted:
@@ -1030,12 +1042,6 @@ class DocumentMixin:
             self._banner.hide()
             return
         self._banner_lbl.setText("   ·   ".join(m for _k, m in msgs))
-        kinds = {k for k, _m in msgs}
-        if "sig" in kinds:
-            self._banner_btn.setText(icons.glyph("panel_signatures"))
-            self._banner_btn.setToolTip("Abrir el panel de firmas")
-            self._banner_action = lambda: self.sidebar.show_panel("signatures")
-        self._banner_btn.setVisible(self._banner_action is not None)
         self._banner.show()
 
     # ── firma digital ──────────────────────────────────────────────────── #

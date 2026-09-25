@@ -134,7 +134,7 @@ class TestVentanaPrincipal(unittest.TestCase):
         self.assertTrue(w.sidebar.stack.isVisible())
         self.assertEqual(w.sidebar.stack.currentWidget(), th)
         self.assertTrue(th.organizing)
-        self.assertTrue(w._opt_row.isHidden())      # salió de Firma
+        self.assertTrue(w._sign_panel.isHidden())    # salió de Firma
         self.assertEqual(w.viewer.mode, "NONE")
         self.assertEqual(th.list.count(), 4)
 
@@ -957,12 +957,14 @@ class TestVentanaPrincipal(unittest.TestCase):
         w._modified = False
 
     def test_comprimir_pdf_desde_la_interfaz(self):
+        """(r76, petición de Ricardo) El nivel se elige con tres botones
+        exclusivos (`_compress_level_btns`), no con un desplegable."""
         import pdf_compression
         w = self.w
-        cb = w._compress_level_cb
-        self.assertEqual([cb.itemData(i) for i in range(cb.count())],
-                         [lvl.key for lvl in pdf_compression.LEVELS])
-        self.assertEqual(cb.currentData(), pdf_compression.DEFAULT_LEVEL)
+        self.assertEqual(set(w._compress_level_btns),
+                         {lvl.key for lvl in pdf_compression.LEVELS})
+        self.assertEqual(w._compress_level_key, pdf_compression.DEFAULT_LEVEL)
+        self.assertTrue(w._compress_level_btns[pdf_compression.DEFAULT_LEVEL].isChecked())
 
         # PDF con una foto grande (ruido: no se comprime sin reducir resolución).
         foto = fitz.Pixmap(fitz.csRGB, 1600, 1067, os.urandom(1600 * 1067 * 3), 0)
@@ -975,7 +977,9 @@ class TestVentanaPrincipal(unittest.TestCase):
         self.assertTrue(w.open_path(entrada))
 
         salida = os.path.join(self.tmp, "fotos_comprimido.pdf")
-        cb.setCurrentIndex(cb.findData("extrema"))
+        w._compress_level_btns["extrema"].click()
+        self.assertEqual(w._compress_level_key, "extrema")
+        self.assertFalse(w._compress_level_btns[pdf_compression.DEFAULT_LEVEL].isChecked())
         with mock.patch("main_window.QFileDialog.getSaveFileName", return_value=(salida, "")):
             w.compress_pdf()
         self.assertTrue(os.path.isfile(salida))
@@ -1720,23 +1724,39 @@ class TestVentanaPrincipal(unittest.TestCase):
 
     def test_boton_de_busqueda_alterna_y_busqueda_dinamica(self):
         """(r50, petición de Ricardo) El botón de la barra principal alterna
-        mostrar/ocultar la barra de búsqueda; escribir busca sin necesidad de
-        pulsar Intro; ya no hay icono de lupa (el contador ocupa su sitio, con
-        ancho fijo para no desplazar el resto de la barra al crecer)."""
+        mostrar/ocultar la herramienta de búsqueda; escribir busca sin
+        necesidad de pulsar Intro; ya no hay icono de lupa (el contador
+        ocupa su sitio, con ancho fijo para no desplazar el resto de la
+        barra al crecer). (r78, petición de Ricardo) Ya no es una barra
+        aparte encima del visor: ocupa el sitio del propio botón, dentro de
+        la barra principal — nunca se ven los dos a la vez."""
         from PyQt6.QtTest import QTest
-        from PyQt6.QtWidgets import QLabel
+        from PyQt6.QtWidgets import QLabel, QPushButton
         w = self.w
         self.assertTrue(w.open_path(self._crear_pdf(3)))  # "Hola mundo pagina N" × 3
 
-        # El botón de la barra principal alterna mostrar/ocultar.
+        # El botón de la barra principal alterna mostrar/ocultar, y él mismo
+        # se oculta mientras la herramienta está visible (mismo sitio).
         self.assertTrue(w._find_bar.isHidden())
+        self.assertFalse(w._btn_find.isHidden())
         w._toggle_find_bar()
         self.assertFalse(w._find_bar.isHidden())
+        self.assertTrue(w._btn_find.isHidden())
         self.assertTrue(w._find_edit.hasFocus())
         w._toggle_find_bar()
         self.assertTrue(w._find_bar.isHidden())
+        self.assertFalse(w._btn_find.isHidden())
         w._toggle_find_bar()
         self.assertFalse(w._find_bar.isHidden())
+        self.assertTrue(w._btn_find.isHidden())
+
+        # La «X» de cerrar también devuelve el botón.
+        close = [b for b in w._find_bar.findChildren(QPushButton)
+                 if b.toolTip().startswith("Cerrar")][0]
+        close.click()
+        self.assertTrue(w._find_bar.isHidden())
+        self.assertFalse(w._btn_find.isHidden())
+        w._toggle_find_bar()
 
         # Sin icono de lupa: el contador tiene ancho fijo y no se mueve nada
         # de la barra al crecer el texto del contador.
@@ -1773,35 +1793,38 @@ class TestVentanaPrincipal(unittest.TestCase):
         superposición de r46) Zoom y herramientas de anotación ponen sus
         opciones arriba del panel lateral, en una línea por fila y sin iconos
         sueltos, y lo empujan hacia abajo (con scroll, lo que ya se veía sigue
-        disponible); Firma y Comprimir usan la barra secundaria, que solo
-        empuja el visor, igual que el aviso superior."""
+        disponible); (r74, petición de Ricardo) Firma y (r75, petición de
+        Ricardo) Comprimir se unieron a este grupo: ya no queda ninguna
+        herramienta en una barra secundaria encima del visor (`_opt_row` se
+        retiró). (r78, petición de Ricardo) La búsqueda tampoco: vive dentro
+        de la barra principal, en el sitio de su propio botón."""
         from PyQt6.QtWidgets import QLabel
         w = self.w
         self.assertTrue(w.open_path(self._crear_pdf(2)))
         w.sidebar.show_panel("thumbs")
         self.app.processEvents()
-        barra = w._opt_row
-        self.assertIs(barra.parentWidget(), w._center.parentWidget())
-        self.assertFalse(w.sidebar.isAncestorOf(barra))
         techo_panel = w.sidebar.stack.mapTo(w, w.sidebar.stack.rect().topLeft()).y()
         for mode, panel in (("TEXT", w._txt_panel), ("NOTE", w._note_panel),
                             ("MARKUP", w._markup_panel),
                             ("RECT", w._rect_panel), ("EMOJI", w._emoji_panel),
-                            ("EDIT", w._edit_panel)):
+                            ("EDIT", w._edit_panel), ("SIGN", w._sign_panel)):
             with self.subTest(mode=mode):
                 w._toggle_tool(mode)
                 self.app.processEvents()
                 self.assertTrue(w.sidebar.tools.isAncestorOf(panel))
                 self.assertTrue(panel.isVisible() and w.sidebar.column.isVisible())
-                self.assertTrue(barra.isHidden())
                 # (r50) Opciones encima del panel: lo empujan hacia abajo, no
                 # lo tapan.
                 self.assertLessEqual(panel.mapTo(w, panel.rect().bottomLeft()).y(),
                                      w.sidebar.stack.mapTo(w, w.sidebar.stack.rect().topLeft()).y())
                 self.assertEqual(panel.findChildren(QLabel, "opt_glyph"), [])
+                # (r76) El nombre de un certificado real puede ser más largo
+                # que los de prueba: `_sign_cert_lbl` ajusta línea a
+                # propósito (ver main_window) y queda fuera de esta
+                # comprobación de «una sola línea» pensada para etiquetas
+                # fijas y cortas.
                 for lbl in panel.findChildren(QLabel):
-                    if lbl.isVisible() and lbl.text():
-                        self.assertFalse(lbl.wordWrap())
+                    if lbl.isVisible() and lbl.text() and not lbl.wordWrap():
                         self.assertGreaterEqual(lbl.width(), lbl.sizeHint().width() - 1,
                                                 f"no cabe en una línea: {lbl.text()!r}")
                 w._toggle_tool(mode)
@@ -1809,19 +1832,21 @@ class TestVentanaPrincipal(unittest.TestCase):
                 self.assertEqual(
                     w.sidebar.stack.mapTo(w, w.sidebar.stack.rect().topLeft()).y(), techo_panel)
         self.assertTrue(w.sidebar.tools.isHidden())
-        # Firma es la única herramienta que sigue usando la barra secundaria
-        # (Redactar y su panel se retiraron de la app).
-        arriba = w.sidebar.mapTo(w, w.sidebar.rect().topLeft()).y()
-        visor = w._center.mapTo(w, w._center.rect().topLeft()).y()
-        w._toggle_tool("SIGN")
+        # (r75, petición de Ricardo) Comprimir usa un botón e interruptor
+        # propios (`_btn_compress`/`_toggle_compress_panel`, no
+        # `_toggle_tool`), pero su panel vive igual en el panel lateral.
+        w._btn_compress.click()
         self.app.processEvents()
-        self.assertFalse(barra.isHidden())
+        self.assertTrue(w.sidebar.tools.isAncestorOf(w._compress_panel))
+        self.assertTrue(w._compress_panel.isVisible() and w.sidebar.column.isVisible())
+        self.assertLessEqual(
+            w._compress_panel.mapTo(w, w._compress_panel.rect().bottomLeft()).y(),
+            w.sidebar.stack.mapTo(w, w.sidebar.stack.rect().topLeft()).y())
+        w._btn_compress.click()
+        self.app.processEvents()
+        self.assertEqual(
+            w.sidebar.stack.mapTo(w, w.sidebar.stack.rect().topLeft()).y(), techo_panel)
         self.assertTrue(w.sidebar.tools.isHidden())
-        self.assertEqual(w.sidebar.mapTo(w, w.sidebar.rect().topLeft()).y(), arriba)
-        self.assertEqual(w._center.mapTo(w, w._center.rect().topLeft()).y(),
-                         visor + barra.height())
-        w._toggle_tool("SIGN")
-        self.app.processEvents()
 
         # (r46) El aviso superior («documento firmado / cifrado / con
         # formulario») va en la columna del visor: solo lo empuja a él.
@@ -1839,22 +1864,27 @@ class TestVentanaPrincipal(unittest.TestCase):
         w._banner.hide()
         self.app.processEvents()
 
-        # (r46, corregido tras aviso de Ricardo: «la barra del buscador sigue
-        # desplazando el panel lateral») La barra de búsqueda va en la misma
-        # columna que el visor: solo lo empuja a él, igual que el aviso.
-        self.assertIs(w._find_bar.parentWidget(), w._center.parentWidget())
+        # (r78, petición de Ricardo: «la barra secundaria debe desaparecer;
+        # en su lugar, al pulsar el botón de búsqueda, este se oculta y en
+        # su sitio aparece toda la herramienta de búsqueda») Ya no es una
+        # barra aparte que empuja el visor (r46): vive dentro de la barra
+        # principal fija, en el sitio del botón, y no desplaza nada.
+        self.assertTrue(w._topbar.isAncestorOf(w._find_bar))
         self.assertFalse(w.sidebar.isAncestorOf(w._find_bar))
+        self.assertFalse(w._center.isAncestorOf(w._find_bar))
         arriba = w.sidebar.mapTo(w, w.sidebar.rect().topLeft()).y()
         visor = w._center.mapTo(w, w._center.rect().topLeft()).y()
         self.assertTrue(w._find_bar.isHidden())
+        self.assertFalse(w._btn_find.isHidden())
         w.show_find()
         self.app.processEvents()
         self.assertFalse(w._find_bar.isHidden())
+        self.assertTrue(w._btn_find.isHidden())
         self.assertEqual(w.sidebar.mapTo(w, w.sidebar.rect().topLeft()).y(), arriba)
-        self.assertEqual(w._center.mapTo(w, w._center.rect().topLeft()).y(),
-                         visor + w._find_bar.height())
+        self.assertEqual(w._center.mapTo(w, w._center.rect().topLeft()).y(), visor)
         w.hide_find()
         self.app.processEvents()
+        self.assertFalse(w._btn_find.isHidden())
 
     def test_tooltips_con_fondo_amarillo_crema(self):
         """Todos los mensajes emergentes salen en crema, también los de los

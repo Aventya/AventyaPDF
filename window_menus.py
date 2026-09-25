@@ -18,7 +18,7 @@ from PyQt6.QtCore import Qt, QSettings
 from PyQt6.QtGui import QAction, QIcon, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication, QFileDialog, QFrame, QHBoxLayout, QInputDialog, QLabel,
-    QLineEdit, QMessageBox, QProgressDialog, QPushButton,
+    QLineEdit, QMessageBox, QProgressDialog, QPushButton, QWidget,
 )
 
 import dialogs
@@ -30,7 +30,7 @@ import tesseract_ui
 from signer_backend import TSA_PRESETS
 
 SETTINGS = ("aventyapdf", "config")
-APP_VERSION = "2.0.4"
+APP_VERSION = "2.0.5"
 # (r71) Titular y repositorio público (AGPL-3.0, libre distribución).
 APP_OWNER = "Aventya Asesoría Integral SL"
 APP_REPO = "https://github.com/Aventya/AventyaPDF"
@@ -93,7 +93,7 @@ class MenusMixin:
         A(m, "Miniaturas de página", lambda: self.sidebar.show_panel("thumbs"), needs_doc=False)
         A(m, "Marcadores", lambda: self.sidebar.show_panel("bookmarks"), needs_doc=False)
         A(m, "Comentarios", lambda: self.sidebar.show_panel("comments"), needs_doc=False)
-        A(m, "Firmas", lambda: self.sidebar.show_panel("signatures"), needs_doc=False)
+        A(m, "Firmas Certificadas", lambda: self.sidebar.show_panel("signatures"), needs_doc=False)
         self._act_highlight_fields = A(m, "Resaltar campos de formulario",
                                        self.toggle_highlight_fields, needs_doc=False)
         self._act_highlight_fields.setCheckable(True)
@@ -173,18 +173,17 @@ class MenusMixin:
         self._esc_shortcut = QShortcut(QKeySequence("Escape"), self)
         self._esc_shortcut.activated.connect(self._on_escape)
 
-    def _build_find_bar(self) -> QFrame:
-        bar = QFrame()
-        bar.setObjectName("find_bar")
-        bar.setFixedHeight(42)
-        bar.hide()
-        lay = QHBoxLayout(bar)
-        lay.setContentsMargins(12, 4, 12, 4)
+    def _build_find_bar(self) -> QWidget:
+        """(r78, petición de Ricardo) Ya no es una barra aparte encima del
+        visor: estos controles ocupan, dentro de la propia barra principal,
+        el sitio del botón de búsqueda (`_btn_find`) mientras están
+        visibles — nunca se ven los dos a la vez (`show_find`/`hide_find`)."""
+        box = QWidget()
+        box.setObjectName("find_bar")
+        box.hide()
+        lay = QHBoxLayout(box)
+        lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(6)
-        # (r48, petición de Ricardo) Los controles quedan centrados en la
-        # barra, no pegados a un lateral: mismo `addStretch()` a los dos lados
-        # que ya usa `_build_options_row()`.
-        lay.addStretch()
         # (r50, petición de Ricardo) La lupa desaparece; en su sitio va el
         # contador, con ancho fijo para que no desplace el resto de la barra
         # al crecer el número de coincidencias («Sin resultados» es lo más
@@ -196,7 +195,7 @@ class MenusMixin:
         lay.addWidget(self._find_count)
         self._find_edit = QLineEdit()
         self._find_edit.setPlaceholderText("Buscar en el documento…")
-        self._find_edit.setFixedWidth(280)
+        self._find_edit.setFixedWidth(220)
         # (r50) Dinámica: cada pulsación relanza la búsqueda (con un pequeño
         # retardo, `_find_live_timer`); Intro ya no hace falta, pero sigue
         # sirviendo para saltar a la siguiente coincidencia.
@@ -218,9 +217,8 @@ class MenusMixin:
         close.setToolTip("Cerrar (Esc)")
         close.clicked.connect(lambda _c=False: self.hide_find())
         lay.addWidget(close)
-        lay.addStretch()
-        self._find_bar = bar
-        return bar
+        self._find_bar = box
+        return box
 
     def _build_banner(self) -> QFrame:
         bar = QFrame()
@@ -231,14 +229,6 @@ class MenusMixin:
         self._banner_lbl = QLabel("")
         lay.addWidget(self._banner_lbl)
         lay.addStretch()
-        # (r31) Solo icono; _update_banner pone el glifo y el tooltip.
-        self._banner_btn = QPushButton(icons.glyph("panel_signatures"))
-        self._banner_btn.setObjectName("opt_btn")
-        # La acción depende del aviso: _update_banner la fija.
-        self._banner_action = None
-        self._banner_btn.clicked.connect(
-            lambda _c=False: self._banner_action() if self._banner_action else None)
-        lay.addWidget(self._banner_btn)
         close = QPushButton(icons.glyph("close"))
         close.setObjectName("opt_btn")
         close.setToolTip("Cerrar el aviso")

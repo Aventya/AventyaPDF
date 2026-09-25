@@ -173,12 +173,30 @@ class _ThumbList(QListWidget):
         en cuanto vuelve —siempre vuelve al soltar el botón—, mueve la
         selección al hueco bajo el cursor **de verdad** (invariante 48)."""
         rect = self.visualItemRect(item)
-        fantasma = QPixmap(rect.size())
-        fantasma.fill(Qt.GlobalColor.transparent)
-        p = QPainter(fantasma)
-        p.setOpacity(0.7)
-        p.drawPixmap(0, 0, self.viewport().grab(rect))
+        # (petición de Ricardo: al arrastrar una miniatura, la parte inferior
+        # de la pantalla se rellenaba de negro; el ajuste de devicePixelRatio
+        # y el paso a QImage con alfa premultiplicado no lo arreglaron del
+        # todo — Ricardo lo sigue viendo en vivo en su pantalla, aunque ni
+        # una captura mía ni una grabación con la Herramienta Recortes lo
+        # recogen, así que es real pero solo en la composición en pantalla,
+        # no en el mapa de bits) El fantasma ya **no lleva canal alfa en
+        # absoluto**: `Format_RGB32` en vez de `Format_ARGB32_Premultiplied`,
+        # opaco del todo. Antes se apoyaba en que Windows (quien compone esta
+        # imagen de arrastre por OLE, no Qt) mezclara bien el alfa; sin alfa
+        # que mezclar no hay semitransparencia que salga mal — a cambio dejó
+        # de verse a través del fantasma, que ahora es un rectángulo opaco.
+        dpr = self.viewport().devicePixelRatioF()
+        img = QImage(QSize(round(rect.width() * dpr), round(rect.height() * dpr)),
+                     QImage.Format.Format_RGB32)
+        img.setDevicePixelRatio(dpr)
+        img.fill(QColor("#EAF3FC"))
+        p = QPainter(img)
+        pen = QColor("#0078D4")
+        p.setPen(pen)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawRect(1, 1, rect.width() - 2, rect.height() - 2)
         p.end()
+        fantasma = QPixmap.fromImage(img)
 
         drag = QDrag(self)
         mime = QMimeData()
@@ -540,7 +558,7 @@ class SignaturesPanel(QWidget):
         self.mw = mw
         lay = QVBoxLayout(self)
         lay.setContentsMargins(6, 6, 6, 6)
-        lay.addWidget(_panel_header("Firmas"))
+        lay.addWidget(_panel_header("Firmas Certificadas"))
         self.list = QListWidget()
         self.list.setWordWrap(True)
         self.list.itemClicked.connect(self._clicked)
@@ -669,7 +687,10 @@ class SidePanel(QWidget):
         ("thumbs",   icons.glyph("panel_thumbs"), "Miniaturas de página"),
         ("bookmarks", icons.glyph("panel_bookmarks"), "Marcadores"),
         ("comments", icons.glyph("panel_comments"), "Comentarios"),
-        ("signatures", icons.glyph("panel_signatures"), "Firmas"),
+        # (r77, petición de Ricardo: «el icono debería ser el del
+        # certificado») Icono del certificado digital, como el botón
+        # «Seleccionar un certificado digital…» del panel Firma.
+        ("signatures", icons.glyph("opt_cert"), "Firmas Certificadas"),
     ]
 
     def __init__(self, mw):

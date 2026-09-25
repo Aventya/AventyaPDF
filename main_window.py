@@ -4,7 +4,7 @@ import fitz
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QScrollArea, QStackedWidget, QFileDialog,
-    QMessageBox, QFrame, QLineEdit, QSplitter,
+    QMessageBox, QFrame, QLineEdit, QSplitter, QButtonGroup, QRadioButton,
     QAbstractSpinBox, QSpinBox, QComboBox, QSlider,
     QGridLayout, QSizePolicy, QStyle, QStyledItemDelegate,
 )
@@ -16,7 +16,7 @@ import icons  # noqa: E402
 _G = {k: icons.glyph(k) for k in icons.ICONS}
 
 from utils import PDFUtils, TOOLTIP_QSS
-from cert_manager import load_saved_cert, forget_cert, CertPickerDialog
+from cert_manager import load_saved_cert, CertPickerDialog
 import doc_tools
 import emoji_font
 import pdf_edit
@@ -122,22 +122,22 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
 
         self.sidebar = SidePanel(self)
         self._build_side_tool_panels()
-        # (r26, ampliado en r46 al aviso y a la barra de búsqueda) Ninguna
-        # barra secundaria, de búsqueda ni de notificación externa a la
-        # columna del panel empuja el panel lateral hacia abajo: la búsqueda,
-        # el aviso y la barra de Firma/Comprimir solo desplazan el visor. Ni
-        # una sola de esas barras queda ya por encima del `QSplitter` que
-        # reparte panel lateral y visor. (r50) Dentro del propio panel, las
-        # opciones de la herramienta activa sí empujan `stack` hacia abajo
-        # (vuelta al comportamiento de r26): así la herramienta y lo que ya se
-        # veía en el panel están disponibles a la vez.
+        # (r26, ampliado en r46 al aviso; r74/r75 retiraron la barra
+        # secundaria `_opt_row` al mudar Firma y Comprimir al panel lateral;
+        # r78 quitó también la barra de búsqueda propia, que ahora vive
+        # dentro de la barra principal — ver `_build_topbar`) Ninguna
+        # notificación externa a la columna del panel empuja el panel
+        # lateral hacia abajo: el aviso solo desplaza el visor, y no queda
+        # ya por encima del `QSplitter` que reparte panel lateral y visor.
+        # (r50) Dentro del propio panel, las opciones de la herramienta
+        # activa sí empujan `stack` hacia abajo (vuelta al comportamiento de
+        # r26): así la herramienta y lo que ya se veía en el panel están
+        # disponibles a la vez.
         right = QWidget()
         right_lay = QVBoxLayout(right)
         right_lay.setContentsMargins(0, 0, 0, 0)
         right_lay.setSpacing(0)
-        right_lay.addWidget(self._build_find_bar())
         right_lay.addWidget(self._build_banner())
-        right_lay.addWidget(self._build_options_row())
         right_lay.addWidget(self._build_viewer(), 1)
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         self._splitter.setChildrenCollapsible(False)
@@ -147,7 +147,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._splitter.setStretchFactor(1, 1)
         root.addWidget(self._splitter, 1)
 
-        self._refresh_opt_row()
+        self._refresh_side_tools()
         self._update_actions()
         self._update_title()
 
@@ -190,7 +190,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             lay.addWidget(b)
 
         self._btn_compress = self._glyph_btn(
-            "compress", "Comprimir PDF  ·  muestra barra de nivel", checkable=True)
+            "compress", "Comprimir PDF: opciones en el panel lateral", checkable=True)
         self._btn_compress.clicked.connect(self._toggle_compress_panel)
         lay.addWidget(self._btn_compress)
 
@@ -269,7 +269,9 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         lay.addWidget(self._vline())
 
         # ── Firma + Operaciones de página ────────────────────────────────
-        b_sign = self._glyph_btn("sign", "Firma digital PAdES", checkable=True)
+        # (petición de Ricardo) Icono intercambiado con el de firma manuscrita
+        # (_btn_handsign, en el panel lateral): "handsign" aquí, "sign" allí.
+        b_sign = self._glyph_btn("handsign", "Firma", checkable=True)
         b_sign.clicked.connect(lambda _c: self._toggle_tool("SIGN"))
         self._tool_btns["SIGN"] = b_sign
         lay.addWidget(b_sign)
@@ -283,9 +285,16 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
 
         lay.addStretch()
 
-        b_find = self._glyph_btn("search", "Buscar  (Ctrl+F)  ·  pulsar de nuevo la cierra")
-        b_find.clicked.connect(lambda _c=False: self._toggle_find_bar())
-        lay.addWidget(b_find)
+        # (r78, petición de Ricardo: «la barra secundaria debe desaparecer;
+        # en su lugar, al pulsar el botón de búsqueda, este se oculta y en
+        # su sitio aparece toda la herramienta de búsqueda; al cerrarla con
+        # la X vuelve el botón») El botón y la herramienta ocupan el mismo
+        # sitio en esta barra y nunca se ven los dos a la vez.
+        self._btn_find = self._glyph_btn(
+            "search", "Buscar  (Ctrl+F)  ·  pulsar de nuevo la cierra")
+        self._btn_find.clicked.connect(lambda _c=False: self._toggle_find_bar())
+        lay.addWidget(self._btn_find)
+        lay.addWidget(self._build_find_bar())
         return bar
 
     def _toggle_find_bar(self) -> None:
@@ -296,83 +305,6 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             self.hide_find()
         else:
             self.show_find()
-
-    def _build_options_row(self) -> QFrame:
-        """Barra secundaria horizontal, solo encima del visor (r26): opciones de
-        Firma y Comprimir. Las del resto de herramientas van en el
-        panel lateral (`_build_side_tool_panels`)."""
-        row = QFrame()
-        row.setObjectName("options_row")
-        row.setFixedHeight(50)
-        row.setVisible(False)
-        self._opt_row = row
-
-        lay = QHBoxLayout(row)
-        lay.setContentsMargins(12, 6, 12, 6)
-        lay.setSpacing(6)
-
-        _TP = "* { background: transparent; }" + TOOLTIP_QSS   # shorthand para todos los panels
-
-        # ── Panel: Firma ─────────────────────────────────────────────────
-        self._sign_panel = QFrame()
-        self._sign_panel.setStyleSheet(_TP)
-        self._sign_panel.setVisible(False)
-        sl = QHBoxLayout(self._sign_panel)
-        sl.setContentsMargins(0, 0, 0, 0); sl.setSpacing(4)
-        sl.addWidget(self._opt_glyph("opt_cert"))
-        self._sign_cert_lbl = QLabel("Sin certificado")
-        self._sign_cert_lbl.setObjectName("opt_lbl")
-        self._sign_cert_lbl.setFixedHeight(28)
-        sl.addWidget(self._sign_cert_lbl)
-        sl.addWidget(self._opt_sep())
-        btn_change_cert = self._opt_icon_btn("cert_change", "Cambiar de certificado digital…")
-        btn_change_cert.clicked.connect(self._change_cert)
-        sl.addWidget(btn_change_cert)
-        btn_forget_cert = self._opt_icon_btn("delete", "Olvidar el certificado recordado")
-        btn_forget_cert.clicked.connect(self._forget_cert)
-        sl.addWidget(btn_forget_cert)
-        # (r68) Firma manuscrita: dibujada con el ratón o desde una imagen.
-        sl.addWidget(self._opt_sep())
-        self._btn_handsign = self._opt_icon_btn(
-            "handsign", "Firma manuscrita: dibújala con el ratón (plumilla de "
-            "estilográfica) o carga la imagen de tu firma, y colócala en la página")
-        self._btn_handsign.setCheckable(True)
-        self._btn_handsign.setStyleSheet(
-            "QPushButton#opt_btn:checked { background:#CCE4F7; border-color:#0078D4; }")
-        self._btn_handsign.clicked.connect(lambda _c=False: self._on_hand_signature())
-        sl.addWidget(self._btn_handsign)
-
-        # ── Panel: Compresión ────────────────────────────────────────────
-        self._compress_panel = QFrame()
-        self._compress_panel.setStyleSheet(_TP)
-        self._compress_panel.setVisible(False)
-        cl = QHBoxLayout(self._compress_panel)
-        cl.setContentsMargins(0, 0, 0, 0); cl.setSpacing(4)
-        cl.addWidget(self._opt_glyph("opt_compress"))
-        cl.addWidget(self._opt_lbl("Nivel:"))
-        # Niveles de iLovePDF con los criterios de imagen de Acrobat (pdf_compression).
-        self._compress_level_cb = QComboBox()
-        for i, lvl in enumerate(pdf_compression.LEVELS):
-            self._compress_level_cb.addItem(lvl.label, lvl.key)
-            self._compress_level_cb.setItemData(i, lvl.description, Qt.ItemDataRole.ToolTipRole)
-        self._compress_level_cb.setCurrentIndex(
-            self._compress_level_cb.findData(pdf_compression.DEFAULT_LEVEL))
-        self._compress_level_cb.currentIndexChanged.connect(self._on_compress_level)
-        cl.addWidget(self._compress_level_cb)
-        self._lbl_compress_lvl = QLabel()
-        self._lbl_compress_lvl.setObjectName("opt_lbl")
-        cl.addWidget(self._lbl_compress_lvl)
-        self._on_compress_level()
-        cl.addWidget(self._opt_sep())
-        btn_do_compress = self._opt_icon_btn("save_copy", "Comprimir y guardar una copia del PDF…")
-        btn_do_compress.clicked.connect(self.compress_pdf)
-        cl.addWidget(btn_do_compress)
-
-        lay.addStretch()
-        lay.addWidget(self._sign_panel)
-        lay.addWidget(self._compress_panel)
-        lay.addStretch()
-        return row
 
     def _side_form(self, title: str) -> tuple[QFrame, QGridLayout]:
         """Panel de opciones para la columna lateral: título y filas de
@@ -569,6 +501,78 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         for wdg in self._edit_panel.findChildren(QWidget):
             wdg.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
+        # ── Panel: Firma (petición de Ricardo: al panel lateral, no encima
+        # del visor) ── Primero el certificado seleccionado; debajo, solo dos
+        # opciones: elegir otro certificado (icono del certificado digital) y
+        # firma manuscrita (icono intercambiado con el del botón de la barra
+        # principal: aquí "sign", allí "handsign").
+        self._sign_panel, g = self._side_form("Firma")
+        self._sign_cert_lbl = QLabel("Sin certificado")
+        self._sign_cert_lbl.setObjectName("opt_lbl")
+        # Con ajuste de línea: el nombre de un certificado real (el del
+        # almacén de Windows) puede ser bastante más largo que los de
+        # prueba y no cabría en una sola línea en la columna lateral.
+        self._sign_cert_lbl.setWordWrap(True)
+        g.addWidget(self._sign_cert_lbl, g.rowCount(), 0, 1, 2)
+        sign_icons = QHBoxLayout()
+        sign_icons.setContentsMargins(0, 0, 0, 0)
+        sign_icons.setSpacing(0)
+        btn_change_cert = self._opt_icon_btn("opt_cert", "Seleccionar un certificado digital…")
+        btn_change_cert.setObjectName("side_icon_btn")
+        btn_change_cert.clicked.connect(self._change_cert)
+        sign_icons.addWidget(btn_change_cert)
+        self._btn_handsign = self._opt_icon_btn(
+            "sign", "Firma manuscrita: dibújala con el ratón (plumilla de "
+            "estilográfica) o carga la imagen de tu firma, y colócala en la página")
+        self._btn_handsign.setObjectName("side_icon_btn")
+        self._btn_handsign.setCheckable(True)
+        self._btn_handsign.setStyleSheet(
+            "QPushButton#side_icon_btn:checked { background:#CCE4F7; border-color:#0078D4; }")
+        self._btn_handsign.clicked.connect(lambda _c=False: self._on_hand_signature())
+        sign_icons.addWidget(self._btn_handsign)
+        sign_icons.addStretch()
+        g.addLayout(sign_icons, g.rowCount(), 0, 1, 2)
+        self._side_hint(g, "Dibuja el área donde irá la firma")
+
+        # ── Panel: Comprimir (petición de Ricardo: al panel lateral, no
+        # encima del visor, igual que Firma; luego, «sigue siendo un caos»:
+        # fuera la palabra «Nivel», selectores circulares en vez de botones,
+        # frases cortas, y la acción como frase + icono de la herramienta,
+        # sin la línea de ayuda final). Nivel de compresión con tres
+        # `QRadioButton` (círculos nativos) y, debajo, «Guardar copia
+        # comprimida» seguido del mismo icono que «Comprimir PDF» en la
+        # barra principal (`_btn_compress`, «compress» → folder_zip).
+        self._compress_panel, g = self._side_form("Comprimir PDF")
+        self._compress_level_key = pdf_compression.DEFAULT_LEVEL
+        self._compress_level_btns: dict[str, QRadioButton] = {}
+        level_group = QButtonGroup(self._compress_panel)
+        level_group.setExclusive(True)
+        # Frase corta por nivel; el ppp es el real de cada uno (color_ppi),
+        # no un número suelto que se pudiera desincronizar de pdf_compression.
+        calidad = {"baja": "Alta calidad", "recomendada": "Buena calidad",
+                   "extrema": "Máxima reducción"}
+        for lvl in pdf_compression.LEVELS:
+            b = QRadioButton(f"{calidad[lvl.key]}, imágenes {lvl.color_ppi}ppp")
+            b.setObjectName("side_radio")
+            b.setToolTip(lvl.description)
+            b.setChecked(lvl.key == self._compress_level_key)
+            b.clicked.connect(lambda _c=False, k=lvl.key: self._on_compress_level(k))
+            level_group.addButton(b)
+            self._compress_level_btns[lvl.key] = b
+            g.addWidget(b, g.rowCount(), 0, 1, 2)
+        compress_row = QHBoxLayout()
+        compress_row.setContentsMargins(0, 0, 0, 0)
+        compress_row.setSpacing(6)
+        lbl_do_compress = QLabel("Guardar copia comprimida")
+        lbl_do_compress.setObjectName("side_lbl")
+        compress_row.addWidget(lbl_do_compress)
+        btn_do_compress = self._opt_icon_btn("compress", "Comprimir y guardar una copia del PDF…")
+        btn_do_compress.setObjectName("side_icon_btn")
+        btn_do_compress.clicked.connect(self.compress_pdf)
+        compress_row.addWidget(btn_do_compress)
+        compress_row.addStretch()
+        g.addLayout(compress_row, g.rowCount(), 0, 1, 2)
+
     def _build_viewer(self) -> QStackedWidget:
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(False)
@@ -593,12 +597,6 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         f.setFixedWidth(1)
         f.setFixedHeight(32)
         return f
-
-    @staticmethod
-    def _opt_lbl(text: str) -> QLabel:
-        lbl = QLabel(text)
-        lbl.setObjectName("opt_lbl")
-        return lbl
 
     @staticmethod
     def _make_spin(lo: int, hi: int, default: int, callback) -> QFrame:
@@ -629,22 +627,6 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         lay.addWidget(sb)
         lay.addWidget(btn_p)
         return container
-
-    @staticmethod
-    def _opt_glyph(glyph_key: str) -> QLabel:
-        lbl = QLabel(_G.get(glyph_key, ""))
-        lbl.setObjectName("opt_glyph")
-        lbl.setFixedSize(20, 28)
-        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        return lbl
-
-    @staticmethod
-    def _opt_sep() -> QFrame:
-        f = QFrame()
-        f.setFrameShape(QFrame.Shape.VLine)
-        f.setFixedSize(1, 20)
-        f.setStyleSheet("background:#D2D0CE;")
-        return f
 
     @staticmethod
     def _opt_icon_btn(glyph_key: str, tip: str) -> QPushButton:
@@ -717,7 +699,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self.sidebar.thumbs.set_organizing(on)
         self._pages_panel.setVisible(on)
         self._update_pages_panel()
-        self._refresh_opt_row()
+        self._refresh_side_tools()
 
     def _on_sidebar_panel(self, key: str) -> None:
         """El panel lateral cambió (otro panel o cerrado): fuera del modo páginas."""
@@ -792,26 +774,13 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._sync_panel_to_annot(annot, mode)
         self._set_pages_mode(False)
 
-        # Remember whether the secondary bar is about to appear, so we can
-        # compensate the resulting layout shift and keep the annotation under
-        # the cursor (it grows the viewer downward by _opt_row.height()).
-        opt_was_visible = self._opt_row.isVisible()
-
         for m, b in self._tool_btns.items():
             b.setChecked(m == mode)
         self._show_only_tool_panel(mode)
         self._compress_panel.setVisible(False)
         self._btn_compress.setChecked(False)
-        self._refresh_opt_row()
-        # If the secondary bar just appeared, the viewer is pushed down by its
-        # height. Defer until Qt processes the layout, then scroll the content
-        # by the same amount so the selected annotation keeps its screen
-        # position (no visual displacement). Fall back to ensureVisible.
-        if not opt_was_visible and self._opt_row.isVisible():
-            shift = self._opt_row.height()
-            QTimer.singleShot(0, lambda: self._compensate_opt_shift(shift))
-        else:
-            QTimer.singleShot(0, self._scroll_to_selection)
+        self._refresh_side_tools()
+        QTimer.singleShot(0, self._scroll_to_selection)
 
     def _hide_annot_opts(self) -> None:
         """Hide the annotation options panel when nothing is selected (mode stays NONE)."""
@@ -820,7 +789,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         for b in self._tool_btns.values():
             b.setChecked(False)
         self._show_only_tool_panel(None)
-        self._refresh_opt_row()
+        self._refresh_side_tools()
 
     def _toggle_compress_panel(self) -> None:
         showing = self._btn_compress.isChecked()
@@ -835,11 +804,10 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             self.viewer._sel = None
             self.viewer.update()
         self._compress_panel.setVisible(showing)
-        self._refresh_opt_row()
+        self._refresh_side_tools()
 
-    def _on_compress_level(self, _index: int = 0) -> None:
-        lvl = pdf_compression.LEVELS_BY_KEY[self._compress_level_cb.currentData()]
-        self._lbl_compress_lvl.setText(lvl.description)
+    def _on_compress_level(self, key: str) -> None:
+        self._compress_level_key = key
 
     # ── Tool selection ─────────────────────────────────────────────────── #
 
@@ -877,7 +845,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             self._zoom_btns["100"].setChecked(False)
             self._zoom_panel.setVisible(False)
 
-        self._refresh_opt_row()
+        self._refresh_side_tools()
         if mode == "SIGN":
             self._refresh_cert_label()
 
@@ -1260,13 +1228,6 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         except Exception:
             pass
 
-    def _compensate_opt_shift(self, shift: int) -> None:
-        """Scroll the viewer down by `shift` px to cancel the downward layout
-        displacement caused by the secondary options bar appearing, so the
-        selected annotation stays exactly where the user clicked it."""
-        bar = self._scroll.verticalScrollBar()
-        bar.setValue(bar.value() + shift)
-
     def _scroll_to_selection(self) -> None:
         """After layout settles, scroll so the selected annotation stays visible."""
         if not self.viewer._sel:
@@ -1417,7 +1378,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             self._zoom_mode_changed("100")
         else:
             self._zoom_panel.setVisible(False)
-            self._refresh_opt_row()
+            self._refresh_side_tools()
 
     def _zoom_mode_changed(self, mode: str) -> None:
         if mode == "100":
@@ -1440,7 +1401,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             self.custom_zoom_pct = 100
             self._update_zoom_slider_range()
         self._zoom_panel.setVisible(mode == "100")
-        self._refresh_opt_row()
+        self._refresh_side_tools()
         self.render_page()
 
     def _update_zoom_slider_range(self) -> None:
@@ -1463,15 +1424,14 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         if self.zoom_mode == "100":
             self.render_page()
 
-    def _refresh_opt_row(self) -> None:
+    def _refresh_side_tools(self) -> None:
         # isHidden() not isVisible() — avoids dependency on parent visibility
-        self._opt_row.setVisible(any(
-            not w.isHidden() for w in (self._sign_panel, self._compress_panel)))
         self.sidebar.set_tools_visible(any(
             not w.isHidden() for w in (
                 self._txt_panel, self._note_panel, self._markup_panel,
-                self._rect_panel, self._emoji_panel,
+                self._rect_panel, self._emoji_panel, self._sign_panel,
                 self._edit_panel, self._zoom_panel, self._pages_panel,
+                self._compress_panel,
             )))
 
     def resizeEvent(self, event):
@@ -1582,7 +1542,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         Nunca reduce imágenes por debajo de 75 ppp al imprimir en DIN A4."""
         if not self._require_open():
             return
-        level = pdf_compression.LEVELS_BY_KEY[self._compress_level_cb.currentData()]
+        level = pdf_compression.LEVELS_BY_KEY[self._compress_level_key]
         if doc_tools.has_signatures(self.doc):
             r = QMessageBox.warning(
                 self, "Comprimir PDF",
@@ -1725,10 +1685,6 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         dlg = CertPickerDialog(self, saved_cert=load_saved_cert())
         if dlg.exec():
             self._refresh_cert_label()
-
-    def _forget_cert(self) -> None:
-        forget_cert()
-        self._refresh_cert_label()
 
     # ── Helper ─────────────────────────────────────────────────────────── #
 
