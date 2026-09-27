@@ -2370,5 +2370,85 @@ class TestFirmaManuscrita(unittest.TestCase):
         self.assertEqual(render.pixel(2, 2), (255, 255, 255))      # fondo transparente
 
 
+class TestMenuContextual(_ConCarpeta):
+    """(r86) Llegada de archivos desde el menú contextual del Explorador."""
+
+    def test_expandir_lista_lee_y_borra_el_temporal(self):
+        import menu_contextual as mc
+        lista = os.path.join(self.tmp, "lista.txt")
+        with open(lista, "w", encoding="utf-8") as f:
+            f.write("C:\\a b\\uno.pdf\nC:\\ñ\\dos.pdf\n\n")
+        self.assertEqual(mc.expandir_lista([mc.ARG_COMBINAR, mc.ARG_LISTA, lista]),
+                         [mc.ARG_COMBINAR, "C:\\a b\\uno.pdf", "C:\\ñ\\dos.pdf"])
+        self.assertFalse(os.path.exists(lista))
+        self.assertEqual(mc.expandir_lista(["x.pdf"]), ["x.pdf"])
+
+    def test_sin_accion_no_espera_ni_agrupa(self):
+        import menu_contextual as mc
+        self.assertEqual(mc.agrupar_invocaciones(["doc.pdf"]), ["doc.pdf"])
+        self.assertEqual(mc.agrupar_invocaciones([]), [])
+
+    @unittest.skipUnless(sys.platform == "win32", "solo Windows")
+    def test_un_proceso_por_archivo_acaba_en_uno_solo(self):
+        """El menú clásico lanza un proceso por archivo: solo uno sigue, con
+        todos los archivos en orden natural; los demás salen sin más."""
+        import subprocess
+        raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        codigo = ("import sys, menu_contextual as m; "
+                  "print('|'.join(m.agrupar_invocaciones(sys.argv[1:])))")
+        env = {**os.environ, "LOCALAPPDATA": self.tmp, "PYTHONIOENCODING": "utf-8"}
+        nombres = ["doc10.pdf", "doc2.pdf", "doc1.pdf", "otro.pdf"]
+        procesos = [subprocess.Popen([sys.executable, "-c", codigo, "--combinar", n],
+                                     cwd=raiz, env=env, stdout=subprocess.PIPE, text=True)
+                    for n in nombres]
+        salidas = [p.communicate(timeout=60)[0].strip() for p in procesos]
+        self.assertTrue(all(p.returncode == 0 for p in procesos))
+        llenas = [s for s in salidas if s]
+        self.assertEqual(llenas, ["--combinar|doc1.pdf|doc2.pdf|doc10.pdf|otro.pdf"])
+
+
+def _hay_word_o_libreoffice() -> bool:
+    import conversion_office
+    if conversion_office._soffice():
+        return True
+    if sys.platform != "win32":
+        return False
+    import winreg
+    try:
+        winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, r"Word.Application\CurVer").Close()
+        return True
+    except OSError:
+        return False
+
+
+class TestConversionOffice(_ConCarpeta):
+    """(r86) Documentos de Word a PDF (Word o LibreOffice) y mezclas."""
+
+    def test_tipos(self):
+        import conversion_office as co
+        self.assertEqual([co.tipo_de(p) for p in ("a.PDF", "b.jpeg", "c.DocX", "d.doc", "e.txt")],
+                         ["pdf", "img", "word", "word", ""])
+
+    @unittest.skipUnless(_hay_word_o_libreoffice(), "no hay Word ni LibreOffice")
+    def test_docx_a_pdf_conserva_el_texto(self):
+        import conversion_office as co
+        from pdf2docx import Converter
+        origen = os.path.join(self.tmp, "origen.pdf")
+        doc = fitz.open()
+        doc.new_page().insert_text((72, 100), "Contrato de prueba AventyaPDF", fontsize=14)
+        doc.save(origen)
+        docx = os.path.join(self.tmp, "carta con espacios.docx")
+        cv = Converter(origen)
+        cv.convert(docx)
+        cv.close()
+        img = os.path.join(self.tmp, "foto.png")
+        fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 20, 10), False).save(img)
+
+        docs = co.archivos_a_pdfs([origen, docx, img])
+        self.assertEqual(len(docs), 3)
+        self.assertIn("Contrato de prueba AventyaPDF", docs[1][0].get_text())
+        self.assertEqual(len(co.combinar(docs)), 3)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

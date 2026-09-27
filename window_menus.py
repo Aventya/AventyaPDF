@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
 )
 
 import actualizaciones
+import conversion_office
 import dialogs
 import doc_tools
 import icons
@@ -31,7 +32,7 @@ import tesseract_ui
 from signer_backend import TSA_PRESETS
 
 SETTINGS = ("aventyapdf", "config")
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 # (r71) Titular y repositorio público (AGPL-3.0, libre distribución).
 APP_OWNER = "Aventya Asesoría Integral SL"
 APP_REPO = "https://github.com/Aventya/AventyaPDF"
@@ -425,6 +426,60 @@ class MenusMixin:
             self._begin_new_session()
             self._set_document(doc, "", None, modified=True)
         self.statusBar().showMessage(f"{len(docs)} PDF creados a partir de imágenes — sin guardar")
+
+    def combine_files_to_pdf(self, paths):
+        """(r86) Menú contextual del Explorador, «Combinar en un PDF»: PDF,
+        imágenes y documentos de Word mezclados, en el orden recibido, en un
+        único documento nuevo sin guardar."""
+        paths = [p for p in paths if conversion_office.tipo_de(p)]
+        if len(paths) < 2:
+            QMessageBox.warning(self, "Combinar en un PDF",
+                                "Hacen falta al menos dos archivos (PDF, imágenes o Word) para combinarlos.")
+            return
+        docs = self._convert_paths(paths, "Combinar en un PDF")
+        if docs is None:
+            return
+        doc = conversion_office.combinar(docs)
+        self._begin_new_session()
+        self._set_document(doc, "", None, modified=True)
+        self.statusBar().showMessage(f"PDF combinado a partir de {len(paths)} archivos — sin guardar")
+
+    def convert_files_to_pdfs(self, paths):
+        """(r86) Menú contextual del Explorador, «Convertir a PDF»: cada imagen
+        o documento de Word en su propio PDF, cada uno en una pestaña nueva sin
+        guardar."""
+        paths = [p for p in paths if conversion_office.tipo_de(p) in ("img", "word")]
+        if not paths:
+            return
+        docs = self._convert_paths(paths, "Convertir a PDF")
+        if docs is None:
+            return
+        for doc in docs:
+            self._begin_new_session()
+            self._set_document(doc, "", None, modified=True)
+        self.statusBar().showMessage(f"{len(docs)} PDF creados — sin guardar")
+
+    def sign_files(self, paths):
+        """(r86) Menú contextual del Explorador, «Firmar digitalmente»: abre
+        los PDF y deja puesta la herramienta Firma en el último."""
+        abiertos = [p for p in paths if p.lower().endswith(".pdf") and self.open_path(p)]
+        if abiertos:
+            self._select_tool("SIGN")
+
+    def _convert_paths(self, paths, titulo):
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        if any(conversion_office.tipo_de(p) == "word" for p in paths):
+            self.statusBar().showMessage("Convirtiendo documentos de Word…")
+            QApplication.processEvents()
+        try:
+            return conversion_office.archivos_a_pdfs(paths)
+        except Exception as e:
+            QApplication.restoreOverrideCursor()
+            QMessageBox.critical(self, titulo, f"No se pudieron convertir los archivos:\n{e}")
+            return None
+        finally:
+            while QApplication.overrideCursor() is not None:
+                QApplication.restoreOverrideCursor()
 
     def show_properties(self):
         if self.doc is None:

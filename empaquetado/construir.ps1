@@ -6,7 +6,9 @@
        PyInstaller. Se crea solo si falta.
     2. PyInstaller → carpeta con AventyaPDF.exe (fuera del proyecto, que es una
        carpeta compartida: %LOCALAPPDATA%\aventyapdf\build-dist).
-    3. Tesseract OCR dentro, en <app>\tesseract (preparar_tesseract.py).
+    3. Tesseract OCR dentro, en <app>\tesseract (preparar_tesseract.py), y
+       (r86) la extensión del menú contextual de Windows 11: DLL junto al .exe
+       y paquete firmado en <app>\menu-contextual (shell\construir_shell.ps1).
     4. Autodiagnóstico del EJECUTABLE ya empaquetado (ventana, archivos, OCR
        con el Tesseract incluido, firma con un certificado de pruebas). Si algo
        falla, no se crea el instalador.
@@ -17,7 +19,8 @@
         .\empaquetado\construir.ps1 -SinInstalador     # solo la carpeta de la app
 
     Requisitos: el entorno de la aplicación (.\run.ps1 una vez), Tesseract
-    instalado (la app lo instala) e Inno Setup 6 (winget install JRSoftware.InnoSetup).
+    instalado (la app lo instala), Inno Setup 6 (winget install JRSoftware.InnoSetup)
+    y (r86) Visual Studio con C++ y el Windows SDK, para el menú contextual.
 #>
 [CmdletBinding()]
 param([switch]$SinInstalador)
@@ -80,6 +83,11 @@ Comprobar 'PyInstaller'
 Paso 'Tesseract OCR incluido'
 & $BuildPy (Join-Path $PSScriptRoot 'preparar_tesseract.py') $App
 Comprobar 'Preparar Tesseract'
+
+# ── 3b. Menú contextual de Windows 11 (r86) ───────────────────────────────── #
+Paso 'Menú contextual del Explorador (extensión de Windows 11)'
+& (Join-Path $Raiz 'shell\construir_shell.ps1') -Version $Version -Salida (Join-Path $App 'menu-contextual')
+Move-Item -Force (Join-Path $App 'menu-contextual\AventyaPDFShell.dll') $App
 
 # ── 4. Autodiagnóstico del ejecutable ─────────────────────────────────────── #
 Paso 'Autodiagnóstico del ejecutable empaquetado'

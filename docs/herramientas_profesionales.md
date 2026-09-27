@@ -10,7 +10,7 @@ están en [MEMORIA_EVOLUTIVA.md](../MEMORIA_EVOLUTIVA.md) §4.
 | Área | Función | Dónde | Módulo |
 | :-- | :-- | :-- | :-- |
 | Archivo | Nuevo PDF en blanco, crear desde imágenes, abrir recientes, arrastrar y soltar, abrir desde el Explorador | Archivo | `window_document`, `window_menus`, `main.py` |
-| Archivo | Menú contextual del Explorador de Windows: combinar varios PDF en uno, convertir imágenes a un PDF o a varios (uno por imagen) — sin tener que abrir antes la aplicación | Clic derecho en el Explorador | `Install-ContextMenu.ps1`, `main.procesar_argumentos`, `window_menus.combine_pdfs_from_paths` / `create_separate_pdfs_from_images`, `doc_tools.merge_pdfs` |
+| Archivo | Menú contextual del Explorador de Windows (submenú «AventyaPDF»): firmar PDF, combinar PDF, imágenes y Word en un PDF, convertir imágenes y Word a PDF (uno por archivo) — sin abrir antes la aplicación | Clic derecho en el Explorador | `shell/AventyaPDFShell.cpp`, `empaquetado/AventyaPDF.iss` ([Code]), `menu_contextual.py`, `main.procesar_argumentos`, `window_menus.sign_files` / `combine_files_to_pdf` / `convert_files_to_pdfs`, `conversion_office.py` |
 | Archivo | Guardar (Ctrl+S) sobre el mismo archivo, aviso de cambios sin guardar | Archivo | `window_document` |
 | Archivo | Exportar a imágenes, texto y Word; propiedades del documento | Archivo › Exportar / Propiedades | `window_menus`, `doc_tools`, `dialogs` |
 | Edición | Deshacer / rehacer con etiqueta de la acción | Edición, barra superior | `history`, `window_document` |
@@ -71,44 +71,47 @@ y sin red:
 Lo que no cubren (diálogos modales, impresión, OCR, sellado de tiempo por red,
 certificados de Windows) sigue en el plan manual.
 
-## Menú contextual del Explorador de Windows (r55)
+## Menú contextual del Explorador de Windows (r55, rehecho en r86)
 
-`Install-ContextMenu.ps1` añade, solo para el usuario actual (`HKEY_CURRENT_USER`,
-sin permisos de administrador ni instalador — igual de reversible que
-`run.ps1 -Reinstalar`), entradas en el menú contextual del Explorador:
+Lo instala el instalador (no hay script aparte). Al pulsar con el botón
+derecho sobre archivos, submenú **«AventyaPDF»** con el icono de la aplicación:
 
-- Sobre uno o varios **.pdf** seleccionados: **«Combinar con AventyaPDF»**
-  — los une, en el orden en que Windows los pasa, en un PDF nuevo **sin
-  guardar**, en una pestaña nueva, para revisarlo y guardarlo donde se quiera.
-  Con un solo archivo no hace nada (hacen falta al menos dos).
-- Sobre una o varias **imágenes** seleccionadas (mismas extensiones que
-  `IMAGE_EXTS` de `window_document.py`: png, jpg/jpeg, bmp, gif, tif/tiff,
-  webp), submenú **«AventyaPDF»** con:
-  - **«Convertir a un PDF»** — todas juntas, como `create_from_images()`.
-  - **«Convertir a varios PDF (uno por imagen)»** — un PDF de una página por
-    cada imagen, cada uno en su propia pestaña, todos sin guardar.
+| Opción | Cuándo aparece | Qué hace |
+| :-- | :-- | :-- |
+| **Firmar digitalmente** | Solo PDF | Abre los PDF con la herramienta Firma puesta. |
+| **Combinar en un PDF** | 2 o más PDF, imágenes o Word, mezclados | Un PDF nuevo sin guardar con todo, en orden. |
+| **Convertir a PDF** | Imágenes o Word (sin PDF) | Un PDF sin guardar por archivo, cada uno en su pestaña. |
 
-Ningún archivo original se toca ni se sobrescribe: el resultado siempre queda
-sin guardar dentro de la aplicación, igual que «Nuevo PDF en blanco» o «Crear
-PDF desde imágenes».
+Imágenes: png, jpg/jpeg, bmp, gif, tif/tiff, webp. Word: doc, docx, que se
+convierten con Microsoft Word (automatización COM) o, si no está, con
+LibreOffice (`conversion_office.py`). Ningún original se toca: el resultado
+queda sin guardar en la aplicación.
 
-**Mecánica**: cada entrada usa `MultiSelectModel=Player`, para que Windows
-invoque el comando **una sola vez** con todos los archivos seleccionados como
-argumentos (y no un proceso por archivo). El comando registrado llama a
-`run.ps1` (que ya sabe encontrar o crear el entorno virtual) con uno de los
-indicadores `--combinar-pdf` / `--imagenes-a-pdf` / `--imagenes-a-pdfs-separados`,
-seguido de las rutas; `run.ps1` los reenvía tal cual a `main.py`, que los
-interpreta en `procesar_argumentos()` y llama al método correspondiente de
-`MainWindow` (los mismos que usaría el menú normal, no hay lógica duplicada).
-Sin ninguno de esos indicadores, `procesar_argumentos()` se comporta como
-siempre: abre el primer `.pdf` de la lista (el «Abrir con…» de toda la vida).
+**Dos menús, un mismo programa** (`AventyaPDF.exe <acción> <archivos…>`, con
+`--firmar` / `--combinar` / `--convertir`):
 
-Instalar o quitar el menú:
+- **Menú principal de Windows 11**: solo admite extensiones `IExplorerCommand`
+  de aplicaciones con identidad de paquete. `shell/AventyaPDFShell.cpp` (DLL
+  C++ con WRL, cargada en `dllhost.exe`) se registra con un **paquete MSIX
+  disperso** (`shell/AppxManifest.xml`) que el instalador añade con
+  `Add-AppxPackage -ExternalLocation {app}`. La DLL decide qué opciones enseña
+  según lo seleccionado y lanza la aplicación **una vez** con todos los
+  archivos (o con `--lista <archivo>` si no caben en la línea de órdenes).
+  El paquete va firmado con un certificado propio (`shell/construir_shell.ps1`
+  lo crea en `Cert:\CurrentUser\My` del equipo que compila); el instalador
+  añade su parte pública a «Personas de confianza» del equipo, lo único que
+  pide administrador, una vez.
+- **Menú clásico** («Mostrar más opciones»; el único en Windows 10): claves en
+  `HKCU\Software\Classes\SystemFileAssociations\<ext>\shell\AventyaPDF`. Con
+  una orden de línea de comandos el Explorador lanza **un proceso por
+  archivo**, aunque diga `MultiSelectModel=Player` (el error de r55):
+  `menu_contextual.agrupar_invocaciones` los reúne en uno (mutex con nombre +
+  carpeta de intercambio) antes de importar Qt; en este camino el orden es el
+  natural por nombre de archivo.
 
-```powershell
-.\Install-ContextMenu.ps1            # instala
-.\Install-ContextMenu.ps1 -Quitar    # quita las entradas
-```
+Compilar: `empaquetado/construir.ps1` (necesita Visual Studio con C++ y el
+Windows SDK). Los indicadores de r55 (`--combinar-pdf`, `--imagenes-a-pdf`,
+`--imagenes-a-pdfs-separados`) se siguen aceptando.
 
 ## Registro de errores
 
@@ -182,14 +185,13 @@ Checklist manual para validar la versión 2.0 tras `.\run.ps1`:
     seleccionar varios párrafos y una lista, copiar y pegar en el Bloc de notas.
     Cada párrafo debe salir en una sola línea (sin guiones de corte), con una
     línea en blanco entre párrafos, y cada elemento de la lista en la suya.
-21. **Menú contextual del Explorador** (r55): ejecutar `.\Install-ContextMenu.ps1`,
-    seleccionar 2 o más PDF en el Explorador y pulsar «Combinar con
-    AventyaPDF»: debe abrirse la aplicación con un PDF nuevo sin guardar con todas las
-    páginas en orden. Seleccionar varias imágenes y probar «AventyaPDF ›
-    Convertir a un PDF» (una sola pestaña con todas) y «› Convertir a varios PDF»
-    (una pestaña por imagen). Comprobar que los archivos originales siguen
-    intactos. `.\Install-ContextMenu.ps1 -Quitar` debe hacer desaparecer las
-    tres entradas del menú contextual.
+21. **Menú contextual del Explorador** (r86): con AventyaPDF instalado, en
+    Windows 11 pulsar con el botón derecho sobre 1 PDF → submenú «AventyaPDF»
+    con icono en el menú PRINCIPAL, con «Firmar digitalmente» (y, con 2 o más,
+    «Combinar en un PDF»). Sobre imágenes y .docx → «Combinar en un PDF» y
+    «Convertir a PDF». Seleccionar PDF + imagen + .docx → «Combinar en un
+    PDF» debe dar un solo PDF con todo. Repetir desde «Mostrar más opciones».
+    Los originales siguen intactos. Al desinstalar, el submenú desaparece.
 
 ## Relación de documentos
 

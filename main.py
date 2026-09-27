@@ -11,6 +11,14 @@ import traceback
 # ANTES de que nada importe numpy. setdefault: quien lo fije a mano manda.
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 
+# (r86) Menú contextual del Explorador: el menú clásico lanza un proceso por
+# archivo seleccionado. Antes de importar nada pesado, los procesos de una
+# misma acción se reúnen en uno solo; los demás terminan aquí (ver
+# menu_contextual.py). Solo al ejecutarse como programa, no al importarse.
+if __name__ == "__main__":
+    import menu_contextual
+    sys.argv[1:] = menu_contextual.agrupar_invocaciones(sys.argv[1:])
+
 # Todos los complementos son obligatorios: antes de importar nada de fuera se
 # instala a la fuerza lo que falte de requirements.txt (dependencias.py).
 import dependencias
@@ -402,14 +410,14 @@ def _install_error_handler():
     sys.excepthook = hook
 
 
-# (r55) Menú contextual del Explorador de Windows (ver Install-ContextMenu.ps1):
-# «Combinar con AventyaPDF» y «Convertir a PDF» pasan aquí los archivos
-# seleccionados como argumentos, precedidos de uno de estos indicadores. Se
-# procesan en una función aparte (no dentro de main()) para poder probarlos
+# (r55, r86) Menú contextual del Explorador de Windows (ver menu_contextual.py):
+# los archivos seleccionados llegan como argumentos, precedidos de la acción.
+# Se procesan en una función aparte (no dentro de main()) para poder probarlos
 # con una MainWindow de pruebas sin depender de sys.argv real.
-ARG_COMBINAR_PDF = "--combinar-pdf"
-ARG_IMAGENES_UN_PDF = "--imagenes-a-pdf"
-ARG_IMAGENES_VARIOS_PDF = "--imagenes-a-pdfs-separados"
+from menu_contextual import (  # noqa: E402
+    ARG_COMBINAR, ARG_COMBINAR_PDF, ARG_CONVERTIR, ARG_FIRMAR,
+    ARG_IMAGENES_UN_PDF, ARG_IMAGENES_VARIOS_PDF,
+)
 
 
 def procesar_argumentos(window, argv: list[str]) -> None:
@@ -418,15 +426,24 @@ def procesar_argumentos(window, argv: list[str]) -> None:
     normal de un único PDF (el primero de la lista, como toda la vida)."""
     if not argv:
         return
-    accion, resto = argv[0], argv[1:]
+    accion, resto = argv[0], [p for p in argv[1:] if os.path.isfile(p)]
+    if accion == ARG_FIRMAR:
+        window.sign_files(resto)
+        return
+    if accion == ARG_COMBINAR:
+        window.combine_files_to_pdf(resto)
+        return
+    if accion == ARG_CONVERTIR:
+        window.convert_files_to_pdfs(resto)
+        return
     if accion == ARG_COMBINAR_PDF:
-        window.combine_pdfs_from_paths([p for p in resto if os.path.isfile(p)])
+        window.combine_pdfs_from_paths(resto)
         return
     if accion == ARG_IMAGENES_UN_PDF:
-        window.create_from_images([p for p in resto if os.path.isfile(p)])
+        window.create_from_images(resto)
         return
     if accion == ARG_IMAGENES_VARIOS_PDF:
-        window.create_separate_pdfs_from_images([p for p in resto if os.path.isfile(p)])
+        window.create_separate_pdfs_from_images(resto)
         return
     for arg in argv:
         if arg.lower().endswith(".pdf") and os.path.isfile(arg):

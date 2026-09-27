@@ -19,9 +19,9 @@
         .\run.ps1 -Actualizar    # reinstala/actualiza requirements.txt sin borrar el entorno
         .\run.ps1 -Pruebas       # ejecuta las pruebas automáticas (sin abrir ventanas)
 
-    Cualquier otro argumento (r55: lo usa el menú contextual del Explorador,
-    ver Install-ContextMenu.ps1) se reenvía tal cual a main.py, por ejemplo:
-        .\run.ps1 --combinar-pdf "a.pdf" "b.pdf"
+    Cualquier otro argumento se reenvía tal cual a main.py, por ejemplo las
+    acciones del menú contextual del Explorador (ver menu_contextual.py):
+        .\run.ps1 --combinar "a.pdf" "b.docx" "c.png"
 #>
 
 [CmdletBinding()]

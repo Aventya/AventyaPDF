@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Paquete MSIX «disperso» de AventyaPDF (r86). Solo sirve para dar identidad de
+  paquete a la extensión del menú contextual de Windows 11
+  (AventyaPDFShell.dll): el paquete no contiene la aplicación, que sigue en su
+  carpeta de siempre; el instalador lo registra con
+  Add-AppxPackage -ExternalLocation <carpeta de la app>.
+
+  Plantilla: construir_shell.ps1 sustituye @VERSION@ y @PUBLISHER@. Publisher
+  tiene que coincidir EXACTAMENTE con el sujeto del certificado que firma el
+  paquete. Las extensiones son las mismas que en AventyaPDFShell.cpp.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
+  xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap10 desktop4 desktop5 com rescap">
+
+  <Identity Name="Aventya.AventyaPDF.MenuContextual" Publisher="@PUBLISHER@"
+            Version="@VERSION@" ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>AventyaPDF</DisplayName>
+    <PublisherDisplayName>Aventya Asesoría Integral SL</PublisherDisplayName>
+    <Logo>imagenes\StoreLogo.png</Logo>
+    <uap10:AllowExternalContent>true</uap10:AllowExternalContent>
+  </Properties>
+
+  <Resources>
+    <Resource Language="es-es" />
+  </Resources>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+
+  <Applications>
+    <Application Id="AventyaPDF" Executable="AventyaPDF.exe"
+                 uap10:TrustLevel="mediumIL" uap10:RuntimeBehavior="win32App">
+      <uap:VisualElements AppListEntry="none" DisplayName="AventyaPDF"
+                          Description="Menú contextual de AventyaPDF"
+                          BackgroundColor="transparent"
+                          Square150x150Logo="imagenes\Square150x150Logo.png"
+                          Square44x44Logo="imagenes\Square44x44Logo.png" />
+      <Extensions>
+        <desktop4:Extension Category="windows.fileExplorerContextMenus">
+          <desktop4:FileExplorerContextMenus>
+            <desktop5:ItemType Type=".pdf">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".png">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".jpg">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".jpeg">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".bmp">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".gif">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".tif">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".tiff">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".webp">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".doc">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".docx">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+          </desktop4:FileExplorerContextMenus>
+        </desktop4:Extension>
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:SurrogateServer DisplayName="AventyaPDF - menú contextual">
+              <com:Class Id="CFCBA067-9C58-4229-95F8-2F5912C3611F" Path="AventyaPDFShell.dll" ThreadingModel="STA" />
+            </com:SurrogateServer>
+          </com:ComServer>
+        </com:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+</Package>

@@ -10,8 +10,16 @@
 ;    escritorio (casilla), y AventyaPDF en «Abrir con» de los PDF. Windows 11
 ;    no deja que un programa se imponga como predeterminado: queda registrado
 ;    y el usuario lo elige en «Abrir con» o en Aplicaciones predeterminadas.
-;  * Sin menú contextual del Explorador (r55 sigue disponible con
-;    Install-ContextMenu.ps1 para quien lo quiera desde el código fuente).
+;  * (r86) Menú contextual del Explorador, submenú «AventyaPDF» con Firmar
+;    digitalmente / Combinar en un PDF / Convertir a PDF (ver [Code]):
+;      - Menú PRINCIPAL de Windows 11: paquete MSIX disperso firmado con la
+;        DLL de shell\ (Add-AppxPackage -ExternalLocation {app}). Windows solo
+;        lo acepta si el equipo confía en el certificado del paquete: la
+;        primera vez se añade a «Personas de confianza» del equipo, lo único
+;        que pide permiso de administrador (una sola vez por equipo y
+;        certificado). Si se deniega, queda el menú clásico.
+;      - Menú clásico («Mostrar más opciones», y el único en Windows 10):
+;        claves en HKCU\Software\Classes\SystemFileAssociations.
 ;
 ; El AppId NO debe cambiar nunca: es lo que reconoce una instalación anterior
 ; para actualizarla en su sitio y lo que usa el desinstalador.
@@ -100,3 +108,175 @@ Root: HKA; Subkey: "Software\RegisteredApplications"; ValueType: string; ValueNa
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Abrir {#AppName}"; Flags: nowait postinstall skipifsilent
+
+[UninstallDelete]
+Type: files; Name: "{app}\menu-contextual\registro.txt"
+
+[Code]
+// ── (r86) Menú contextual del Explorador ─────────────────────────────────── //
+const
+  PaqueteMenu = 'Aventya.AventyaPDF.MenuContextual';
+  ClaveClasica = 'Software\Classes\SystemFileAssociations\';
+  // Mismas extensiones que shell\AventyaPDFShell.cpp y conversion_office.py.
+  ExtImagenWord = '.png .jpg .jpeg .bmp .gif .tif .tiff .webp .doc .docx';
+
+// Texto como literal de PowerShell entre comillas simples.
+function Literal(const S: String): String;
+var
+  T: String;
+begin
+  T := S;
+  StringChangeEx(T, '''', '''''', True);
+  Result := '''' + T + '''';
+end;
+
+// Ejecuta una orden de PowerShell sin ventana; devuelve su código de salida
+// (-1 si no llegó a ejecutarse, p. ej. si se rechaza el permiso).
+function PowerShell(const Orden: String; Elevado: Boolean): Integer;
+var
+  Exe, Params: String;
+  Codigo: Integer;
+begin
+  Exe := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
+  Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "' + Orden + '"';
+  if Elevado then begin
+    if not ShellExec('runas', Exe, Params, '', SW_HIDE, ewWaitUntilTerminated, Codigo) then
+      Codigo := -1;
+  end else if not Exec(Exe, Params, '', SW_HIDE, ewWaitUntilTerminated, Codigo) then
+    Codigo := -1;
+  Result := Codigo;
+end;
+
+function EsWindows11: Boolean;
+var
+  V: TWindowsVersion;
+begin
+  GetWindowsVersionEx(V);
+  Result := (V.Major > 10) or ((V.Major = 10) and (V.Build >= 22000));
+end;
+
+procedure Aviso(const Texto: String);
+begin
+  if not WizardSilent then
+    MsgBox(Texto, mbInformation, MB_OK);
+end;
+
+procedure QuitarMenuModerno;
+begin
+  PowerShell('Get-AppxPackage -Name ' + PaqueteMenu + ' | Remove-AppxPackage', False);
+end;
+
+procedure InstalarMenuModerno;
+var
+  Carpeta, Cer, Msix, Registro: String;
+begin
+  if not EsWindows11 then
+    exit;
+  Carpeta := ExpandConstant('{app}\menu-contextual');
+  Cer := Carpeta + '\AventyaPDF-MenuContextual.cer';
+  Msix := Carpeta + '\AventyaPDF-MenuContextual.msix';
+  Registro := Carpeta + '\registro.txt';
+  DeleteFile(Registro);
+  // ¿El equipo ya confía en el certificado del paquete?
+  if PowerShell('$c = New-Object Security.Cryptography.X509Certificates.X509Certificate2 ' + Literal(Cer) +
+                '; if (Test-Path (''Cert:\LocalMachine\TrustedPeople\'' + $c.Thumbprint)) { exit 0 } else { exit 1 }',
+                False) <> 0 then begin
+    Aviso('Para que el submenú «AventyaPDF» aparezca en el menú del botón derecho de Windows 11, ' +
+          'Windows tiene que confiar en el certificado de AventyaPDF.' + #13#10#13#10 +
+          'A continuación Windows pedirá permiso de administrador (solo esta vez).');
+    if PowerShell('Import-Certificate -FilePath ' + Literal(Cer) +
+                  ' -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null', True) <> 0 then begin
+      Aviso('No se ha dado el permiso: el submenú «AventyaPDF» estará en «Mostrar más opciones» ' +
+            'del menú del botón derecho. Puede volver a ejecutar el instalador para añadirlo al menú principal.');
+      exit;
+    end;
+  end;
+  if PowerShell('try { Add-AppxPackage -Path ' + Literal(Msix) + ' -ExternalLocation ' +
+                Literal(ExpandConstant('{app}')) + ' -ForceUpdateFromAnyVersion -ErrorAction Stop } ' +
+                'catch { $_ | Out-File -Encoding utf8 ' + Literal(Registro) + '; exit 1 }', False) <> 0 then
+    Aviso('No se pudo añadir el submenú «AventyaPDF» al menú principal de Windows 11 ' +
+          '(sigue en «Mostrar más opciones»). Detalle en:' + #13#10 + Registro);
+end;
+
+procedure OpcionClasica(const Raiz, Verbo, Titulo, Accion: String);
+var
+  Clave: String;
+begin
+  Clave := Raiz + '\shell\' + Verbo;
+  RegWriteStringValue(HKCU, Clave, '', Titulo);
+  RegWriteStringValue(HKCU, Clave, 'MultiSelectModel', 'Player');
+  RegWriteStringValue(HKCU, Clave + '\command', '',
+    '"' + ExpandConstant('{app}\{#AppExe}') + '" ' + Accion + ' "%1"');
+end;
+
+function RaizClasica(const Ext: String): String;
+begin
+  Result := ClaveClasica + Ext + '\shell\AventyaPDF';
+  RegWriteStringValue(HKCU, Result, 'MUIVerb', 'AventyaPDF');
+  RegWriteStringValue(HKCU, Result, 'Icon', ExpandConstant('{app}\{#AppExe},0'));
+  RegWriteStringValue(HKCU, Result, 'SubCommands', '');
+end;
+
+// Lista de extensiones separadas por espacios → una a una.
+function SiguienteExt(var Lista: String): String;
+var
+  P: Integer;
+begin
+  Lista := Trim(Lista);
+  P := Pos(' ', Lista);
+  if P = 0 then begin
+    Result := Lista;
+    Lista := '';
+  end else begin
+    Result := Copy(Lista, 1, P - 1);
+    Delete(Lista, 1, P);
+  end;
+end;
+
+procedure InstalarMenuClasico;
+var
+  Raiz, Lista, Ext: String;
+begin
+  Raiz := RaizClasica('.pdf');
+  OpcionClasica(Raiz, '01Firmar', 'Firmar digitalmente', '--firmar');
+  OpcionClasica(Raiz, '02Combinar', 'Combinar en un PDF', '--combinar');
+  Lista := ExtImagenWord;
+  while Lista <> '' do begin
+    Ext := SiguienteExt(Lista);
+    Raiz := RaizClasica(Ext);
+    OpcionClasica(Raiz, '01Combinar', 'Combinar en un PDF', '--combinar');
+    OpcionClasica(Raiz, '02Convertir', 'Convertir a PDF', '--convertir');
+  end;
+end;
+
+procedure QuitarMenuClasico;
+var
+  Lista: String;
+begin
+  Lista := '.pdf ' + ExtImagenWord;
+  while Lista <> '' do
+    RegDeleteKeyIncludingSubkeys(HKCU, ClaveClasica + SiguienteExt(Lista) + '\shell\AventyaPDF');
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  // Al actualizar: fuera el paquete anterior antes de sustituir su DLL.
+  QuitarMenuModerno;
+  Result := '';
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then begin
+    InstalarMenuClasico;
+    InstalarMenuModerno;
+  end;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usUninstall then begin
+    QuitarMenuModerno;
+    QuitarMenuClasico;
+  end;
+end;

@@ -13,7 +13,7 @@ ni permisos de administrador.
 | **OCR** | Tesseract OCR dentro, en `tesseract\` (motor, las DLL que necesita y los modelos «best» de español, inglés y orientación). El OCR funciona nada más instalar. |
 | **Accesos directos** | Menú Inicio (siempre) y escritorio (casilla del asistente). |
 | **«Abrir con»** | AventyaPDF aparece en «Abrir con» de los `.pdf` y en Configuración › Aplicaciones predeterminadas. Windows 11 no deja que un programa se imponga como predeterminado: lo elige el usuario. |
-| **No incluye** | El menú contextual del Explorador (r55); se puede seguir instalando desde el código con `Install-ContextMenu.ps1`. |
+| **Menú contextual** | (r86) Submenú «AventyaPDF» con su icono al pulsar con el botón derecho sobre PDF, imágenes o documentos de Word: **Firmar digitalmente**, **Combinar en un PDF**, **Convertir a PDF**. En Windows 11 sale en el menú **principal** gracias a un paquete MSIX disperso firmado (`menu-contextual\`) con la extensión `AventyaPDFShell.dll`; la primera vez el instalador pide permiso de administrador para que el equipo confíe en su certificado. También está en «Mostrar más opciones» (claves de `HKCU`). Ver `shell\` y la sección [Code] de `AventyaPDF.iss`. |
 
 El desinstalador (Configuración › Aplicaciones) quita el programa, los accesos
 directos y todas las claves del registro. **No** borra

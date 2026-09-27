@@ -429,6 +429,39 @@ class TestVentanaPrincipal(unittest.TestCase):
         main.procesar_argumentos(w, [main.ARG_IMAGENES_VARIOS_PDF] + imgs)
         self.assertEqual(len(w._sessions), 2)
 
+    def test_procesar_argumentos_combinar_mezcla(self):
+        """(r86) «Combinar en un PDF» del Explorador: PDF e imágenes mezclados,
+        en el orden recibido, en una sola pestaña nueva sin guardar."""
+        import main
+        w = self.w
+        a = self._crear_pdf_con_nombre("a.pdf", 2)
+        img = self._crear_imagen("b.png")
+        antes = len(w._sessions)
+        main.procesar_argumentos(w, [main.ARG_COMBINAR, a, img])
+        self.assertEqual(len(w._sessions), antes + 1)
+        self.assertEqual(len(w.doc), 3)
+        self.assertEqual(w.pdf_path, "")
+
+    def test_procesar_argumentos_convertir_uno_por_archivo(self):
+        """(r86) «Convertir a PDF»: un PDF por imagen; los PDF se ignoran."""
+        import main
+        w = self.w
+        imgs = [self._crear_imagen("a.png"), self._crear_imagen("b.png", 5)]
+        pdf = self._crear_pdf_con_nombre("c.pdf", 1)
+        antes = len(w._sessions)
+        main.procesar_argumentos(w, [main.ARG_CONVERTIR] + imgs + [pdf])
+        self.assertEqual(len(w._sessions), antes + 2)
+
+    def test_procesar_argumentos_firmar(self):
+        """(r86) «Firmar digitalmente»: abre el PDF con la herramienta Firma puesta."""
+        import main
+        w = self.w
+        a = self._crear_pdf_con_nombre("a.pdf", 1)
+        main.procesar_argumentos(w, [main.ARG_FIRMAR, a])
+        self.assertEqual(w.pdf_path, a)
+        self.assertEqual(w.viewer.mode, "SIGN")
+        w._select_tool("NONE")
+
     def test_procesar_argumentos_abre_un_pdf_como_siempre(self):
         """(r55) Sin indicador del menú contextual: sigue abriendo el primer
         .pdf de la lista, como el «Abrir con…» normal de toda la vida."""
