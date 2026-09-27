@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QGridLayout, QSizePolicy, QStyle, QStyledItemDelegate,
 )
 from PyQt6.QtGui import QPixmap, QImage, QPainter, QColor, QFont
-from PyQt6.QtCore import Qt, QTimer, QRectF, QSize
+from PyQt6.QtCore import QEvent, Qt, QTimer, QRectF, QSize
 
 # (r36) Iconos: Fluent UI System Icons (icons.py). Mismas claves que antes.
 import icons  # noqa: E402
@@ -37,7 +37,7 @@ from window_menus import MenusMixin
 def _make_color_btn(color: QColor, parent=None) -> QPushButton:
     btn = QPushButton(parent)
     btn.setObjectName("color_swatch")
-    btn.setFixedSize(24, 24)
+    btn.setFixedSize(icons.CONTROL, icons.CONTROL)
     _set_color_btn(btn, color)
     return btn
 
@@ -167,7 +167,8 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
     def _build_topbar(self) -> QFrame:
         bar = QFrame()
         bar.setObjectName("topbar")
-        bar.setFixedHeight(50)
+        # (petición de Ricardo) Alto = controles de 32 px + 7 px arriba y abajo.
+        bar.setFixedHeight(icons.CONTROL + 2 * 7)
         self._topbar = bar
 
         lay = QHBoxLayout(bar)
@@ -293,9 +294,40 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._btn_find = self._glyph_btn(
             "search", "Buscar  (Ctrl+F)  ·  pulsar de nuevo la cierra")
         self._btn_find.clicked.connect(lambda _c=False: self._toggle_find_bar())
+        # (petición de Ricardo) Oculta, la lupa conserva su sitio: el buscador
+        # flota encima de la barra (no está en el layout) y nada se desplaza.
+        keep = self._btn_find.sizePolicy()
+        keep.setRetainSizeWhenHidden(True)
+        self._btn_find.setSizePolicy(keep)
         lay.addWidget(self._btn_find)
-        lay.addWidget(self._build_find_bar())
+        self._build_find_bar()
+        bar.installEventFilter(self)
         return bar
+
+    def _place_find_bar(self) -> None:
+        """(petición de Ricardo) Coloca el buscador flotante con su borde
+        derecho en el de la lupa, a su misma altura, por encima de las
+        herramientas que queden debajo. Una herramienta que quedaría tapada
+        a medias se tapa entera, para que no asome medio icono. Si la barra
+        es más estrecha que el buscador, este se estrecha desde la izquierda."""
+        fb, lupa = self._find_bar, self._btn_find.geometry()
+        left = max(0, lupa.right() + 1 - fb.sizeHint().width())
+        lay = self._topbar.layout()
+        for i in range(lay.count()):
+            w = lay.itemAt(i).widget()
+            if w is not None and w.isVisible() and w.x() < left <= w.geometry().right():
+                left = w.x()
+        height = max(lupa.height(), fb.sizeHint().height())
+        fb.setGeometry(left, lupa.center().y() - (height - 1) // 2,
+                       lupa.right() + 1 - left, height)
+        fb.raise_()
+
+    def eventFilter(self, obj, event):
+        if obj is getattr(self, "_topbar", None) and event.type() in (
+                QEvent.Type.Resize, QEvent.Type.LayoutRequest):
+            if self._find_bar.isVisible():
+                self._place_find_bar()
+        return super().eventFilter(obj, event)
 
     def _toggle_find_bar(self) -> None:
         """(r50, petición de Ricardo) El botón de la barra principal alterna:
@@ -368,9 +400,9 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._lbl_pages_sel = self._side_hint(g, "")
         self._pages_btns = []
         # (r31) Una sola fila de iconos; qué hace cada uno, en su tooltip.
-        icons = QHBoxLayout()
-        icons.setContentsMargins(0, 0, 0, 0)
-        icons.setSpacing(0)
+        page_icons = QHBoxLayout()
+        page_icons.setContentsMargins(0, 0, 0, 0)
+        page_icons.setSpacing(0)
         for glyph, tip, op in [
             ("rotate_left", "Girar 90° a la izquierda las páginas seleccionadas", "left"),
             ("rotate_right", "Girar 90° a la derecha las páginas seleccionadas", "right"),
@@ -383,10 +415,10 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             b = self._opt_icon_btn(glyph, tip)
             b.setObjectName("side_icon_btn")
             b.clicked.connect(lambda _c=False, o=op: self._pages_op(o))
-            icons.addWidget(b)
+            page_icons.addWidget(b)
             self._pages_btns.append(b)
-        icons.addStretch()
-        g.addLayout(icons, g.rowCount(), 0, 1, 2)
+        page_icons.addStretch()
+        g.addLayout(page_icons, g.rowCount(), 0, 1, 2)
         self._side_hint(g, "Arrastra una miniatura para moverla")
         self._side_hint(g, "Ctrl o Mayús para elegir varias")
 
@@ -420,7 +452,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
                     Qt.ItemDataRole.ToolTipRole)
         self._cb_font.setItemDelegate(_FontPreviewDelegate(self._cb_font))
         self._cb_font.setCurrentText("Noto Sans")
-        self._cb_font.setFixedSize(160, 28)          # (r69) cabe «Noto Sans Mono» en su letra
+        self._cb_font.setFixedSize(160, icons.CONTROL)          # (r69) cabe «Noto Sans Mono» en su letra
         self._cb_font.currentTextChanged.connect(self._show_font_in_combo)
         self._cb_font.currentTextChanged.connect(self._on_txt_font)
         self._show_font_in_combo(self._cb_font.currentText())
@@ -441,7 +473,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._cb_markup.addItem("Subrayar", "underline")
         self._cb_markup.addItem("Tachar", "strike")
         self._cb_markup.addItem("Ondulado", "squiggly")
-        self._cb_markup.setFixedSize(104, 28)
+        self._cb_markup.setFixedSize(104, icons.CONTROL)
         self._cb_markup.currentIndexChanged.connect(self._on_markup_kind)
         self._side_row(g, "Tipo de marca", self._cb_markup)
         self._markup_color_btn = _make_color_btn(QColor(255, 235, 0))
@@ -506,21 +538,30 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         # opciones: elegir otro certificado (icono del certificado digital) y
         # firma manuscrita (icono intercambiado con el del botón de la barra
         # principal: aquí "sign", allí "handsign").
+        # (petición de Ricardo) Más visual: arriba, el aviso de dibujar el área
+        # (enmarcado, para que se lea como aviso y no como herramienta); debajo,
+        # dos filas con el texto a la izquierda y su botón a la derecha, los
+        # dos botones en la misma columna.
         self._sign_panel, g = self._side_form("Firma")
+        g.setColumnStretch(0, 1)             # el texto se estira; los botones, a la derecha
+        g.setColumnStretch(1, 0)
+        notice = QLabel("Antes de firmar digitalmente, dibuja en la página "
+                        "el área donde irá la firma.")
+        notice.setObjectName("side_notice")
+        notice.setWordWrap(True)
+        g.addWidget(notice, g.rowCount(), 0, 1, 2)
         self._sign_cert_lbl = QLabel("Sin certificado")
         self._sign_cert_lbl.setObjectName("opt_lbl")
         # Con ajuste de línea: el nombre de un certificado real (el del
         # almacén de Windows) puede ser bastante más largo que los de
         # prueba y no cabría en una sola línea en la columna lateral.
         self._sign_cert_lbl.setWordWrap(True)
-        g.addWidget(self._sign_cert_lbl, g.rowCount(), 0, 1, 2)
-        sign_icons = QHBoxLayout()
-        sign_icons.setContentsMargins(0, 0, 0, 0)
-        sign_icons.setSpacing(0)
-        btn_change_cert = self._opt_icon_btn("opt_cert", "Seleccionar un certificado digital…")
+        r = g.rowCount()
+        g.addWidget(self._sign_cert_lbl, r, 0)
+        btn_change_cert = self._opt_icon_btn("opt_cert", "Seleccionar otro certificado digital…")
         btn_change_cert.setObjectName("side_icon_btn")
         btn_change_cert.clicked.connect(self._change_cert)
-        sign_icons.addWidget(btn_change_cert)
+        g.addWidget(btn_change_cert, r, 1, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._btn_handsign = self._opt_icon_btn(
             "sign", "Firma manuscrita: dibújala con el ratón (plumilla de "
             "estilográfica) o carga la imagen de tu firma, y colócala en la página")
@@ -529,10 +570,13 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._btn_handsign.setStyleSheet(
             "QPushButton#side_icon_btn:checked { background:#CCE4F7; border-color:#0078D4; }")
         self._btn_handsign.clicked.connect(lambda _c=False: self._on_hand_signature())
-        sign_icons.addWidget(self._btn_handsign)
-        sign_icons.addStretch()
-        g.addLayout(sign_icons, g.rowCount(), 0, 1, 2)
-        self._side_hint(g, "Dibuja el área donde irá la firma")
+        r = g.rowCount()
+        # Corta: debe caber en una línea con el ancho mínimo del panel
+        # (COLUMN_MIN); lo de dibujarla o cargar la imagen, en el tooltip.
+        hand_lbl = QLabel("Firma manuscrita")
+        hand_lbl.setObjectName("side_lbl")
+        g.addWidget(hand_lbl, r, 0)
+        g.addWidget(self._btn_handsign, r, 1, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
         # ── Panel: Comprimir (petición de Ricardo: al panel lateral, no
         # encima del visor, igual que Firma; luego, «sigue siendo un caos»:
@@ -595,13 +639,13 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         f.setObjectName("vline")
         f.setFrameShape(QFrame.Shape.VLine)
         f.setFixedWidth(1)
-        f.setFixedHeight(32)
+        f.setFixedHeight(icons.CONTROL)
         return f
 
     @staticmethod
     def _make_spin(lo: int, hi: int, default: int, callback) -> QFrame:
         container = QFrame()
-        container.setFixedHeight(24)
+        container.setFixedHeight(icons.CONTROL)
         lay = QHBoxLayout(container)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(2)
@@ -610,17 +654,17 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         sb.setValue(default)
         sb.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         sb.setObjectName("opt_spin_field")
-        sb.setFixedSize(36, 22)
+        sb.setFixedSize(36, icons.CONTROL)
         sb.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
         sb.valueChanged.connect(callback)
         btn_m = QPushButton(_G["minus"])
         btn_m.setObjectName("opt_spin_btn")
-        btn_m.setFixedSize(22, 22)
+        btn_m.setFixedSize(icons.CONTROL, icons.CONTROL)
         btn_m.setFlat(False)
         btn_m.clicked.connect(sb.stepDown)
         btn_p = QPushButton(_G["plus"])
         btn_p.setObjectName("opt_spin_btn")
-        btn_p.setFixedSize(22, 22)
+        btn_p.setFixedSize(icons.CONTROL, icons.CONTROL)
         btn_p.setFlat(False)
         btn_p.clicked.connect(sb.stepUp)
         lay.addWidget(btn_m)
@@ -644,7 +688,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         btn.setObjectName("opt_btn")
         btn.setCheckable(True)
         btn.setToolTip(tip)
-        btn.setFixedSize(28, 28)
+        btn.setFixedSize(icons.CONTROL, icons.CONTROL)
         btn.setStyleSheet(
             "QPushButton#opt_btn:checked { background:#CCE4F7;"
             " border-color:#0078D4; }")

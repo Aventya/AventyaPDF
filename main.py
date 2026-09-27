@@ -46,6 +46,11 @@ QFrame#topbar {
     border-bottom: 1px solid #E0E0E0;
 }
 
+/* (petición de Ricardo) TODOS los botones y campos de formulario de la
+   aplicación miden 32 px de alto (y los botones de icono, 32×32). En Qt,
+   min/max-height es la altura del contenido: sin borde se pone 32 y con
+   borde de 1 px, 30 (30 + 1 + 1 = 32). Ver icons.CONTROL.               */
+
 /* ── Botones de icono ──────────────────────────────────────────────────────
    TODOS los iconos de la aplicación son de **Fluent UI System Icons** (fuente
    incluida en vendor/fonts/fluent-icons, licencia MIT). Los glifos se piden por
@@ -56,8 +61,8 @@ QPushButton#tbr_btn {
     border-radius: 6px;
     font-family: "FluentSystemIcons-Regular";
     font-size: 20px;
-    min-width: 36px;  max-width: 40px;
-    min-height: 36px; max-height: 40px;
+    min-width: 32px;  max-width: 32px;
+    min-height: 32px; max-height: 32px;
     padding: 0;
 }
 QPushButton#tbr_btn:hover   { background: #F0F0F0; }
@@ -72,8 +77,8 @@ QPushButton#nav_btn {
     border-radius: 6px;
     font-family: "FluentSystemIcons-Regular";
     font-size: 20px;
-    min-width: 36px;  max-width: 40px;
-    min-height: 36px; max-height: 40px;
+    min-width: 32px;  max-width: 32px;
+    min-height: 32px; max-height: 32px;
     padding: 0;
 }
 QPushButton#nav_btn:hover   { background: #F0F0F0; }
@@ -97,8 +102,8 @@ QPushButton#opt_btn {
     border-radius: 4px;
     font-family: "FluentSystemIcons-Regular";
     font-size: 18px;
-    min-width: 22px;  max-width: 28px;
-    min-height: 22px; max-height: 28px;
+    min-width: 30px;  max-width: 30px;
+    min-height: 30px; max-height: 30px;
     padding: 0;
 }
 QPushButton#opt_btn:hover   { background: #EBEBEB; border-color: #D2D0CE; }
@@ -107,13 +112,17 @@ QPushButton#opt_btn:pressed { background: #D8D8D8; }
 
 /* ── Color swatch buttons (secondary toolbar) ── */
 QPushButton#color_swatch {
-    min-width: 24px;  max-width: 24px;
-    min-height: 24px; max-height: 24px;
+    min-width: 30px;  max-width: 30px;
+    min-height: 30px; max-height: 30px;
     padding: 0;
     border: 1px solid #8A8886;
     border-radius: 3px;
 }
 QPushButton#color_swatch:hover { border-color: #605E5C; }
+/* (petición de Ricardo) Paleta de colores: menú emergente en el cursor,
+   con el mismo aspecto que QMenu. */
+QFrame#color_popup { background: #FFFFFF; border: 1px solid #D2D0CE; }
+QFrame#color_popup QLabel { background: transparent; }
 
 /* ── Options row — botones +/− del spin personalizado ── */
 QPushButton#opt_spin_btn {
@@ -124,8 +133,8 @@ QPushButton#opt_spin_btn {
     font-size: 14px; color: #201F1E;
     padding: 0;
     margin: 0;
-    min-width: 22px; max-width: 22px;
-    min-height: 22px; max-height: 22px;
+    min-width: 30px; max-width: 30px;
+    min-height: 30px; max-height: 30px;
 }
 QPushButton#opt_spin_btn:hover   { background: #E5E5E5; border-color: #8A8886; }
 QPushButton#opt_spin_btn:pressed { background: #D8D8D8; }
@@ -135,7 +144,7 @@ QSpinBox#opt_spin_field {
     border-radius: 0;
     background: #FFFFFF; color: #201F1E;
     min-width: 34px; max-width: 40px;
-    min-height: 22px; max-height: 22px;
+    min-height: 30px; max-height: 30px;
     padding: 0;
     selection-background-color: #0078D4;
 }
@@ -145,8 +154,8 @@ QSpinBox#opt_spin_field {
 QSpinBox {
     background: #FFFFFF; color: #201F1E;
     border: 1px solid #8A8886; border-radius: 4px;
-    padding: 2px 4px;
-    min-height: 24px; max-height: 28px;
+    padding: 0 4px;
+    min-height: 30px; max-height: 30px;
     selection-background-color: #0078D4;
 }
 QSpinBox:focus { border-color: #0078D4; }
@@ -164,8 +173,8 @@ QSpinBox::up-button:hover, QSpinBox::down-button:hover { background: #E0E0E0; }
 QComboBox {
     background: #FFFFFF; color: #201F1E;
     border: 1px solid #8A8886; border-radius: 4px;
-    padding: 2px 6px;
-    min-height: 24px; max-height: 28px;
+    padding: 0 6px;
+    min-height: 30px; max-height: 30px;
 }
 QComboBox:hover { border-color: #605E5C; }
 QComboBox::drop-down { border: none; padding-right: 4px; }
@@ -177,6 +186,10 @@ QComboBox QAbstractItemView {
 }
 
 /* ── Sliders (zoom, compresión) ── */
+/* (petición de Ricardo) Fondo transparente: se ve el de su contenedor (el
+   blanco del menú de colores, el del panel lateral…) y no el gris de la regla
+   general `QWidget`. */
+QSlider { background: transparent; }
 QSlider::groove:horizontal {
     height: 4px; background: #D2D0CE; border-radius: 2px; margin: 0;
 }
@@ -225,7 +238,7 @@ QFrame#vline { background: #E0E0E0; max-width: 1px; }
 QLineEdit {
     background: #FFFFFF; color: #201F1E;
     border: 1px solid #8A8886; border-radius: 4px;
-    padding: 3px 6px; min-height: 24px;
+    padding: 0 6px; min-height: 30px; max-height: 30px;
     selection-background-color: #0078D4; selection-color: #FFFFFF;
 }
 QLineEdit:focus { border-color: #0078D4; }
@@ -233,7 +246,7 @@ QLineEdit:focus { border-color: #0078D4; }
 QPushButton {
     background: #FBFBFB; color: #201F1E;
     border: 1px solid #8A8886; border-radius: 4px;
-    padding: 5px 12px; min-height: 28px;
+    padding: 0 12px; min-height: 30px; max-height: 30px;
 }
 QPushButton:hover   { background: #F0F0F0; border-color: #605E5C; }
 QPushButton:pressed { background: #E5E5E5; }
@@ -261,7 +274,7 @@ QFrame#rail { background: #FFFFFF; border-right: 1px solid #E0E0E0; }
 QPushButton#rail_btn {
     background: transparent; border: none; border-radius: 6px;
     font-family: "FluentSystemIcons-Regular"; font-size: 20px;
-    min-width: 36px; max-width: 36px; min-height: 36px; max-height: 36px; padding: 0;
+    min-width: 32px; max-width: 32px; min-height: 32px; max-height: 32px; padding: 0;
 }
 QPushButton#rail_btn:hover   { background: #F0F0F0; }
 QPushButton#rail_btn:checked { background: #CCE4F7; border-left: 3px solid #0078D4; }
@@ -271,7 +284,7 @@ QScrollArea#rail_docs, QWidget#rail_docs_holder { background: transparent; borde
 QPushButton#rail_doc {
     background: transparent; border: none; border-radius: 6px; color: #A4262C;
     font-family: "FluentSystemIcons-Regular"; font-size: 20px;
-    min-width: 36px; max-width: 36px; min-height: 36px; max-height: 36px; padding: 0;
+    min-width: 32px; max-width: 32px; min-height: 32px; max-height: 32px; padding: 0;
 }
 QPushButton#rail_doc:hover   { background: #F0F0F0; }
 QPushButton#rail_doc:checked { background: #CCE4F7; border-left: 3px solid #0078D4; }
@@ -282,6 +295,13 @@ QFrame#side_tools { background: #FAFAFA; border-bottom: 1px solid #E0E0E0; }
 QFrame#side_tool_panel, QFrame#side_tool_panel QLabel { background: #FAFAFA; }
 QLabel#side_lbl { font-size: 12px; color: #201F1E; }
 QLabel#side_hint { font-size: 12px; color: #605E5C; }
+/* (petición de Ricardo) Aviso enmarcado dentro de un panel (p. ej. Firma):
+   con marco y fondo propios, para que se lea como aviso y no como control.
+   Dos ids en el selector: si no, gana el fondo de `#side_tool_panel QLabel`. */
+QFrame#side_tool_panel QLabel#side_notice {
+    background: #E5F1FB; color: #004578; font-size: 12px;
+    border: 1px solid #C7E0F4; border-radius: 4px; padding: 6px 8px;
+}
 QStackedWidget#side_stack QListWidget, QStackedWidget#side_stack QTreeWidget {
     background: #FAFAFA; border: none;
 }
@@ -314,10 +334,11 @@ QTreeWidget::item:selected { background: #CCE4F7; color: #201F1E; }
 QSplitter::handle { background: #E0E0E0; width: 1px; }
 
 /* ── Búsqueda (r78: en línea en la barra principal) ── */
-/* (r79, petición de Ricardo) Transparente a propósito: sin esto, la regla
-   general `QWidget { background-color: #F3F3F3 }` de arriba le pintaba un
-   fondo gris que desentonaba con el blanco de `#topbar`. */
-QWidget#find_bar, QWidget#find_bar QLabel { background: transparent; }
+/* (r79, petición de Ricardo) Sin el gris de la regla general `QWidget`:
+   el blanco de `#topbar`. (Petición de Ricardo) Opaco, porque flota encima
+   de la barra y tapa las herramientas que queden debajo. */
+QWidget#find_bar { background: #FFFFFF; }
+QWidget#find_bar QLabel { background: transparent; }
 QLabel#find_count { color: #605E5C; font-size: 12px; }
 
 /* ── Aviso de documento (firmas, formularios, protección) ── */

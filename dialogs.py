@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 
 import color_picker
 import doc_tools
+import icons
 
 _SETTINGS = ("aventyapdf", "config")
 
@@ -39,7 +40,7 @@ class ColorButton(QPushButton):
     def __init__(self, color: tuple = (0, 0, 0), parent=None,
                  opacity: float | None = None, titulo: str = "Color"):
         super().__init__(parent)
-        self.setFixedSize(40, 26)
+        self.setFixedSize(icons.CONTROL, icons.CONTROL)
         self._color = tuple(color)
         self._opacity = opacity              # (r41) None = sin transparencia
         self._titulo = titulo

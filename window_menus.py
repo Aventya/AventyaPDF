@@ -30,7 +30,7 @@ import tesseract_ui
 from signer_backend import TSA_PRESETS
 
 SETTINGS = ("aventyapdf", "config")
-APP_VERSION = "2.0.5"
+APP_VERSION = "1.0.0"
 # (r71) Titular y repositorio público (AGPL-3.0, libre distribución).
 APP_OWNER = "Aventya Asesoría Integral SL"
 APP_REPO = "https://github.com/Aventya/AventyaPDF"
@@ -177,13 +177,23 @@ class MenusMixin:
         """(r78, petición de Ricardo) Ya no es una barra aparte encima del
         visor: estos controles ocupan, dentro de la propia barra principal,
         el sitio del botón de búsqueda (`_btn_find`) mientras están
-        visibles — nunca se ven los dos a la vez (`show_find`/`hide_find`)."""
-        box = QWidget()
+        visibles — nunca se ven los dos a la vez (`show_find`/`hide_find`).
+
+        (petición de Ricardo) No forma parte del layout de la barra: flota
+        encima de ella (`_place_find_bar`), con su borde derecho en el de la
+        lupa, y tapa las herramientas que queden debajo en vez de empujarlas
+        o de obligar a ensanchar la ventana. La X las vuelve a dejar ver."""
+        box = QWidget(self._topbar)
         box.setObjectName("find_bar")
+        # Fondo opaco (el blanco de la barra) para tapar lo que haya debajo.
+        box.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         box.hide()
         lay = QHBoxLayout(box)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(6)
+        # Un poco de aire a la izquierda: no pegarse a la herramienta tapada.
+        lay.setContentsMargins(8, 0, 0, 0)
+        lay.addStretch()        # controles a la derecha si se ensancha para tapar
+        # (petición de Ricardo) Misma separación que la barra principal.
+        lay.setSpacing(self._topbar.layout().spacing())
         # (r50, petición de Ricardo) La lupa desaparece; en su sitio va el
         # contador, con ancho fijo para que no desplace el resto de la barra
         # al crecer el número de coincidencias («Sin resultados» es lo más
@@ -205,16 +215,15 @@ class MenusMixin:
         sc.setContext(Qt.ShortcutContext.WidgetShortcut)
         sc.activated.connect(self.find_prev)
         lay.addWidget(self._find_edit)
-        for glyph, tip, fn in [(icons.glyph("find_prev"), "Anterior (Mayús+F3)", self.find_prev),
-                               (icons.glyph("find_next"), "Siguiente (F3)", self.find_next)]:
-            b = QPushButton(glyph)
-            b.setObjectName("opt_btn")
-            b.setToolTip(tip)
+        # (petición de Ricardo) Todos los botones del buscador son del mismo
+        # tipo que los de la barra principal (`tbr_btn`, 32×32), no `opt_btn`,
+        # que es más pequeño: así la X ocupa exactamente el sitio de la lupa.
+        for key, tip, fn in [("find_prev", "Anterior (Mayús+F3)", self.find_prev),
+                             ("find_next", "Siguiente (F3)", self.find_next)]:
+            b = self._glyph_btn(key, tip)
             b.clicked.connect(lambda _c=False, f=fn: f())
             lay.addWidget(b)
-        close = QPushButton(icons.glyph("close"))
-        close.setObjectName("opt_btn")
-        close.setToolTip("Cerrar (Esc)")
+        close = self._glyph_btn("close", "Cerrar (Esc)")
         close.clicked.connect(lambda _c=False: self.hide_find())
         lay.addWidget(close)
         self._find_bar = box

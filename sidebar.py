@@ -702,7 +702,7 @@ class SidePanel(QWidget):
 
         self.rail = QFrame()
         self.rail.setObjectName("rail")
-        self.rail.setFixedWidth(44)
+        self.rail.setFixedWidth(icons.CONTROL + 2 * 4)   # botón de 32 px + márgenes
         rl = QVBoxLayout(self.rail)
         rl.setContentsMargins(4, 8, 4, 8)
         rl.setSpacing(4)

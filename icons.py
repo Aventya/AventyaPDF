@@ -34,6 +34,10 @@ ICON_DIR = os.path.join(RAIZ, "vendor", "fonts", "fluent-icons")
 ICON_TTF = os.path.join(ICON_DIR, "FluentSystemIcons-Regular.ttf")
 ICON_JSON = os.path.join(ICON_DIR, "FluentSystemIcons-Regular.json")
 ICON_FAMILY = "FluentSystemIcons-Regular"
+# (petición de Ricardo) Alto de TODOS los botones y campos de formulario, y
+# lado de los botones de icono. La hoja de estilos (main.STYLESHEET) usa el
+# mismo valor; los tamaños fijados desde el código salen de aquí.
+CONTROL = 32
 NOTO_DIR = os.path.join(RAIZ, "vendor", "fonts", "noto")
 EMOJI_DIR = os.path.join(RAIZ, "vendor", "fonts", "noto-emoji")
 APP_ICON = os.path.join(RAIZ, "vendor", "icono", "aventyapdf.ico")

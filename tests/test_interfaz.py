@@ -896,16 +896,18 @@ class TestVentanaPrincipal(unittest.TestCase):
     def test_todos_los_colores_usan_la_misma_tabla(self):
         """(r41, paleta de r42) Los selectores de color son la misma tabla de 17
         colores, con opacidad solo donde la herramienta la admite."""
-        from PyQt6.QtWidgets import QDialog, QPushButton
+        from PyQt6.QtWidgets import QDialog, QFrame, QPushButton
 
         w = self.w
         self.assertTrue(w.open_path(self._crear_pdf(1)))
-        # (r42) La paleta es la de Ricardo, con su mismo orden y sus nombres.
+        # (r42) La paleta es la de Ricardo, con su mismo orden y sus nombres;
+        # (petición de Ricardo) con un gris claro y otro oscuro junto al gris.
         self.assertEqual(color_picker.PALETTE,
-                         ["#FFFFFF", "#AAAAAA", "#000000", "#AA0000", "#FF0000", "#FFAA00",
+                         ["#FFFFFF", "#D5D5D5", "#AAAAAA", "#555555", "#000000",
+                          "#AA0000", "#FF0000", "#FFAA00",
                           "#FFFF00", "#FFFFAA", "#AAFF00", "#00FF00", "#00FFAA", "#AAFFFF",
                           "#00AAFF", "#0000FF", "#AA00FF", "#FF00FF", "#FFAAFF"])
-        self.assertLessEqual(color_picker.SWATCH, 24)
+        self.assertEqual(color_picker.SWATCH, 32)
         self.assertTrue(all(h in color_picker._NOMBRES for h in color_picker.PALETTE))
 
         # El cuadro: un recuadro por color, del tamaño indicado, y opacidad
@@ -914,16 +916,34 @@ class TestVentanaPrincipal(unittest.TestCase):
         recuadros = [b for b in dlg.findChildren(QPushButton) if b.objectName() == "swatch"]
         self.assertEqual(len(recuadros), len(color_picker.PALETTE))
         self.assertEqual(recuadros[0].size().width(), color_picker.SWATCH)
+        # (petición de Ricardo) Círculos, en columnas de 4 leídas de arriba
+        # abajo: la primera va del blanco al gris oscuro.
+        self.assertIn(f"border-radius: {color_picker.SWATCH // 2}px", recuadros[0].styleSheet())
+        rejilla = dlg.findChild(QFrame, "color_popup").layout().itemAt(0).layout()
+        self.assertEqual(rejilla.rowCount(), color_picker.ROWS)
+        primera = [rejilla.itemAtPosition(f, 0).widget().toolTip().split()[-1] for f in range(4)]
+        self.assertEqual(primera, ["#FFFFFF", "#D5D5D5", "#AAAAAA", "#555555"])
+        # (petición de Ricardo) No es una ventana aparte, sino un menú
+        # emergente que se abre en el cursor y no se sale de la pantalla.
+        self.assertTrue(dlg.windowFlags() & Qt.WindowType.Popup)
+        from PyQt6.QtCore import QPoint
+        dlg.popup_at(QPoint(40, 50))
+        self.assertEqual((dlg.x(), dlg.y()), (40, 50))
+        area = self.app.primaryScreen().availableGeometry()
+        dlg.popup_at(QPoint(area.right() + 500, area.bottom() + 500))
+        self.assertTrue(area.contains(dlg.geometry()))
         self.assertFalse(hasattr(dlg, "_slider"))
         self.assertEqual(dlg.values(), (color_picker.to_rgb("#FF0000"), None))
         con_op = color_picker.ColorDialog(w, (1, 1, 0), 0.45, "Color")
         self.assertEqual(con_op.values()[1], 0.45)
+        con_op._slider.setValue(70)
         con_op._pick("#0000FF")
-        self.assertEqual(con_op.values(), (color_picker.to_rgb("#0000FF"), 0.45))
-        # Sin opacidad, un clic elige y cierra; con opacidad hay que aceptar.
+        self.assertEqual(con_op.values(), (color_picker.to_rgb("#0000FF"), 0.70))
+        # Como en un menú, un clic en un color elige y cierra, también con
+        # opacidad (se toma la que marque su control).
         dlg._pick("#00FF00")
         self.assertEqual(dlg.result(), int(QDialog.DialogCode.Accepted))
-        self.assertNotEqual(con_op.result(), int(QDialog.DialogCode.Accepted))
+        self.assertEqual(con_op.result(), int(QDialog.DialogCode.Accepted))
 
         # Cada herramienta abre esa tabla; las que tienen transparencia la piden.
         casos = [
@@ -1756,7 +1776,17 @@ class TestVentanaPrincipal(unittest.TestCase):
         close.click()
         self.assertTrue(w._find_bar.isHidden())
         self.assertFalse(w._btn_find.isHidden())
+        # (petición de Ricardo) La X queda exactamente donde estaba la lupa.
+        self.app.processEvents()
+        lupa = (w._btn_find.mapTo(w, w._btn_find.rect().topLeft()), w._btn_find.size())
         w._toggle_find_bar()
+        self.app.processEvents()
+        self.assertEqual((close.mapTo(w, close.rect().topLeft()), close.size()), lupa)
+        # Botones, campo y separación iguales a los de la barra principal.
+        for b in w._find_bar.findChildren(QPushButton):
+            self.assertEqual(b.size(), w._btn_find.size())
+        self.assertEqual(w._find_edit.height(), w._page_edit.height())
+        self.assertEqual(w._find_bar.layout().spacing(), w._topbar.layout().spacing())
 
         # Sin icono de lupa: el contador tiene ancho fijo y no se mueve nada
         # de la barra al crecer el texto del contador.
@@ -1885,6 +1915,128 @@ class TestVentanaPrincipal(unittest.TestCase):
         w.hide_find()
         self.app.processEvents()
         self.assertFalse(w._btn_find.isHidden())
+
+    def test_botones_y_campos_miden_32_px(self):
+        """(petición de Ricardo) Todos los botones y campos de formulario
+        miden 32 px de alto, y los botones de icono 32×32; la barra principal
+        y el rail del panel lateral se adaptan a ese tamaño."""
+        from PyQt6.QtWidgets import (QAbstractSpinBox, QComboBox, QLineEdit,
+                                     QPushButton)
+        import icons
+        import main
+        w = self.w
+        self.assertTrue(w.open_path(self._crear_pdf(2)))
+        anterior = self.app.styleSheet()
+        self.app.setStyleSheet(main.STYLESHEET)
+        try:
+            iconos = ("tbr_btn", "nav_btn", "opt_btn", "rail_btn", "rail_doc",
+                      "side_icon_btn", "opt_spin_btn", "color_swatch")
+            for cls in (QPushButton, QLineEdit, QComboBox, QAbstractSpinBox):
+                for x in w.findChildren(cls):
+                    if isinstance(x, QLineEdit) and isinstance(
+                            x.parent(), (QComboBox, QAbstractSpinBox)):
+                        continue      # el campo interno de un combo o spin
+                    x.ensurePolished()
+                    alto = max(x.minimumHeight(), min(x.sizeHint().height(), x.maximumHeight()))
+                    self.assertEqual(alto, icons.CONTROL, f"{type(x).__name__} {x.objectName()!r}")
+                    if isinstance(x, QPushButton) and x.objectName() in iconos:
+                        ancho = max(x.minimumWidth(), min(x.sizeHint().width(), x.maximumWidth()))
+                        self.assertEqual(ancho, icons.CONTROL, x.objectName())
+            self.assertEqual(w._topbar.height(), icons.CONTROL + 2 * 7)
+            self.assertEqual(w.sidebar.rail.width(), icons.CONTROL + 2 * 4)
+        finally:
+            self.app.setStyleSheet(anterior)
+
+    def test_buscador_flota_sobre_la_barra(self):
+        """(petición de Ricardo) El buscador se superpone a las herramientas
+        de la barra en vez de empujarlas u obligar a ensanchar la ventana;
+        las que tapa, las tapa enteras. La X las vuelve a dejar ver."""
+        import main
+        w = self.w
+        self.assertTrue(w.open_path(self._crear_pdf(1)))
+        anterior = self.app.styleSheet()
+        self.app.setStyleSheet(main.STYLESHEET)
+        try:
+            w.resize(900, 600)
+            self.app.processEvents()
+            minimo = w._topbar.minimumSizeHint().width()
+            ancho = w.width()
+            lupa = w._btn_find.geometry()
+            w.show_find()
+            self.app.processEvents()
+            self.assertEqual(w._topbar.minimumSizeHint().width(), minimo)
+            self.assertEqual(w.width(), ancho, "abrir el buscador no ensancha la ventana")
+            fb = w._find_bar.geometry()
+            self.assertEqual(fb.right(), lupa.right())
+            self.assertEqual(w._btn_find.geometry(), lupa, "la lupa conserva su sitio")
+            lay = w._topbar.layout()
+            for i in range(lay.count()):
+                x = lay.itemAt(i).widget()
+                if x is not None and x.isVisible():
+                    g = x.geometry()
+                    self.assertFalse(g.left() < fb.left() <= g.right(),
+                                     f"{x.objectName()} queda tapado a medias")
+            w.hide_find()
+            self.app.processEvents()
+            self.assertTrue(w._find_bar.isHidden())
+        finally:
+            self.app.setStyleSheet(anterior)
+
+    def test_panel_de_firma_aviso_arriba_y_botones_a_la_derecha(self):
+        """(petición de Ricardo) Panel Firma: arriba, el aviso de dibujar el
+        área, enmarcado; debajo, certificado y firma manuscrita con su texto a
+        la izquierda y su botón a la derecha, en la misma columna."""
+        from PyQt6.QtWidgets import QLabel
+        import main
+        w = self.w
+        self.assertTrue(w.open_path(self._crear_pdf(1)))
+        anterior = self.app.styleSheet()
+        self.app.setStyleSheet(main.STYLESHEET)
+        try:
+            w._toggle_tool("SIGN")
+            self.app.processEvents()
+            p = w._sign_panel
+            aviso = p.findChild(QLabel, "side_notice")
+            self.assertIn("dibuja", aviso.text())
+            self.assertTrue(aviso.wordWrap())
+            # Enmarcado: en su borde se ve el color del marco, no el del panel.
+            img = p.grab().toImage()
+            borde = aviso.mapTo(p, aviso.rect().topLeft())
+            self.assertEqual(img.pixelColor(borde.x() + 6, borde.y()).name(), "#c7e0f4")
+
+            def y(x):
+                return x.mapTo(p, x.rect().topLeft()).y()
+
+            cert = [b for b in p.findChildren(type(w._btn_handsign))
+                    if b.toolTip().startswith("Seleccionar")][0]
+            self.assertLess(y(aviso), y(w._sign_cert_lbl))
+            self.assertLess(y(w._sign_cert_lbl), y(w._btn_handsign))
+            for lbl, btn in ((w._sign_cert_lbl, cert),
+                             (p.findChild(QLabel, "side_lbl"), w._btn_handsign)):
+                self.assertLess(lbl.geometry().right(), btn.geometry().left())
+                self.assertLessEqual(abs(lbl.geometry().center().y() - btn.geometry().center().y()), 1)
+            self.assertEqual(cert.geometry().right(), w._btn_handsign.geometry().right())
+            w._toggle_tool("SIGN")
+        finally:
+            self.app.setStyleSheet(anterior)
+
+    def test_barra_de_opacidad_sin_fondo_propio(self):
+        """(petición de Ricardo) El control de opacidad del menú de colores no
+        tiene fondo propio: se ve el blanco del menú que lo contiene."""
+        import main
+        anterior = self.app.styleSheet()
+        self.app.setStyleSheet(main.STYLESHEET)
+        try:
+            dlg = color_picker.ColorDialog(self.w, (1, 0, 0), 0.5, "Color")
+            dlg.show()
+            self.app.processEvents()
+            s = dlg._slider
+            esquina = s.mapTo(dlg, s.rect().topLeft())
+            img = dlg.grab().toImage()
+            self.assertEqual(img.pixelColor(esquina.x() + 1, esquina.y() + 1).name(), "#ffffff")
+            dlg.close()
+        finally:
+            self.app.setStyleSheet(anterior)
 
     def test_tooltips_con_fondo_amarillo_crema(self):
         """Todos los mensajes emergentes salen en crema, también los de los

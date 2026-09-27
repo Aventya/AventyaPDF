@@ -633,6 +633,7 @@ class DocumentMixin:
         # ocupan el mismo sitio en la barra principal: nunca se ven los dos.
         self._btn_find.hide()
         self._find_bar.show()
+        self._place_find_bar()          # flota sobre la barra, en la lupa
         self._find_edit.setFocus()
         self._find_edit.selectAll()
 
