@@ -330,6 +330,13 @@ class PropertiesDialog(QDialog):
 
 # ── Opciones de firma ─────────────────────────────────────────────────────── #
 
+# (petición de Ricardo) El sello de tiempo va marcado de entrada. Clave nueva
+# (antes "signing/tsa_on", con «no» por defecto): aquella guardaba «no» al
+# aceptar el diálogo aunque el usuario no hubiera tocado la casilla, así que no
+# distinguía una decisión suya. Con esta, todos empiezan con el sello activado
+# y a partir de ahí se respeta lo que cada uno elija.
+_KEY_TSA = "signing/tsa_enabled"
+
 class SignOptionsDialog(QDialog):
     """Motivo, lugar, contacto, sellado de tiempo y certificación. Recuerda
     los últimos valores en QSettings."""
@@ -353,7 +360,8 @@ class SignOptionsDialog(QDialog):
         form.addRow("Contacto:", self._contact)
 
         self._tsa = QCheckBox("Añadir sello de tiempo cualificado (PAdES-B-T)")
-        self._tsa.setChecked(s.value("signing/tsa_on", "false") == "true")
+        # (petición de Ricardo) Marcado de entrada: solo el usuario lo quita.
+        self._tsa.setChecked(SignOptionsDialog._tsa_on(s))
         form.addRow(self._tsa)
         self._tsa_url = QComboBox(); self._tsa_url.setEditable(True)
         self._tsa_url.addItems(tsa_presets)
@@ -378,7 +386,7 @@ class SignOptionsDialog(QDialog):
         s.setValue("signing/reason", self._reason.currentText())
         s.setValue("signing/location", self._location.text())
         s.setValue("signing/contact", self._contact.text())
-        s.setValue("signing/tsa_on", "true" if self._tsa.isChecked() else "false")
+        s.setValue(_KEY_TSA, "true" if self._tsa.isChecked() else "false")
         s.setValue("signing/tsa_url", self._tsa_url.currentText())
         s.setValue("signing/skip_dialog", "true" if self._remember.isChecked() else "false")
         s.sync()
@@ -394,9 +402,14 @@ class SignOptionsDialog(QDialog):
             reason=s.value("signing/reason", ""),
             location=s.value("signing/location", ""),
             contact=s.value("signing/contact", ""),
-            tsa_url=s.value("signing/tsa_url", "") if s.value("signing/tsa_on", "false") == "true" else "",
+            tsa_url=s.value("signing/tsa_url", "") if SignOptionsDialog._tsa_on(s) else "",
             certify=certify,
         )
+
+    @staticmethod
+    def _tsa_on(s: QSettings) -> bool:
+        """Sello de tiempo activado salvo que el usuario lo haya desmarcado."""
+        return s.value(_KEY_TSA, "true") == "true"
 
     @staticmethod
     def skip_requested() -> bool:

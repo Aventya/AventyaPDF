@@ -5,6 +5,9 @@ PyQt6>=6.5.0
 PyMuPDF>=1.24.0
 pyHanko>=0.20.0
 pyhanko-certvalidator>=0.20.0
+# Texto de la firma visible en Noto Sans incrustada (pyHanko[opentype]):
+# HarfBuzz compone y mide el texto con la fuente real.
+uharfbuzz>=0.39
 cryptography>=41.0.0
 keyring>=24.0.0
 # OCR: enderezado de páginas torcidas (pdf_ocr, r60)

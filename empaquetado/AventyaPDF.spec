@@ -26,6 +26,8 @@ hiddenimports = (
     + collect_submodules("pyhanko.sign")
     + collect_submodules("pyhanko_certvalidator")
     + collect_submodules("keyring.backends")
+    # Texto de la firma visible con Noto Sans incrustada (import bajo demanda).
+    + ["pyhanko.pdf_utils.font.opentype", "uharfbuzz"]
 )
 
 a = Analysis(

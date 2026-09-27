@@ -29,7 +29,7 @@ from PyQt6.QtWidgets import QApplication, QMessageBox  # noqa: E402
 import color_picker  # noqa: E402
 import doc_tools  # noqa: E402
 
-_CLAVES = ("recent/files", "recent/dir", "view/sidebar")
+_CLAVES = ("recent/files", "recent/dir", "view/sidebar", "signing/tsa_enabled")
 
 
 def _objetos_pdf(doc) -> list[str]:
@@ -2019,6 +2019,61 @@ class TestVentanaPrincipal(unittest.TestCase):
             w._toggle_tool("SIGN")
         finally:
             self.app.setStyleSheet(anterior)
+
+    def test_sello_de_tiempo_marcado_de_entrada(self):
+        """(petición de Ricardo) En las opciones de firma, el sello de tiempo
+        sale marcado de entrada: solo el usuario puede quitarlo, y entonces
+        se respeta su decisión."""
+        import dialogs
+        s = QSettings("aventyapdf", "config")
+        s.remove("signing/tsa_enabled")
+        dlg = dialogs.SignOptionsDialog(self.w, False, ["http://tsa.example"])
+        self.assertTrue(dlg._tsa.isChecked())
+        self.assertTrue(dlg._tsa_url.isEnabled())
+        self.assertEqual(dialogs.SignOptionsDialog.saved()["tsa_url"],
+                         s.value("signing/tsa_url", ""))
+        dlg._tsa.setChecked(False)          # el usuario lo quita
+        dlg.accept()
+        self.assertFalse(dialogs.SignOptionsDialog(self.w, False, ["http://tsa.example"])
+                         ._tsa.isChecked())
+        self.assertEqual(dialogs.SignOptionsDialog.saved()["tsa_url"], "")
+
+    def test_buscar_actualizaciones(self):
+        """(petición de Ricardo) Ayuda › Buscar actualizaciones… avisa si hay
+        una versión nueva y da el enlace directo a su instalador."""
+        import actualizaciones
+        import window_menus
+        w = self.w
+        textos = [a.text() for a in w.menuBar().actions()[-1].menu().actions()]
+        self.assertIn("Buscar actualizaciones…", textos)
+        url = "https://github.com/Aventya/AventyaPDF/releases/download/v9.0.0/AventyaPDF-Setup-9.0.0.exe"
+        info = {"version": "9.0.0", "tag": "v9.0.0", "installer_name": "AventyaPDF-Setup-9.0.0.exe",
+                "installer_url": url, "page_url": "https://github.com/Aventya/AventyaPDF/releases/tag/v9.0.0"}
+        vistos = []
+
+        def mostrar(caja):
+            vistos.append((caja.text(), [b.text() for b in caja.buttons()]))
+            return 0
+
+        with mock.patch.object(actualizaciones, "fetch_latest", return_value=info),                 mock.patch.object(QMessageBox, "exec", mostrar):
+            w.check_updates()
+        texto, botones = vistos[-1]
+        self.assertIn("Hay una versión nueva: AventyaPDF 9.0.0", texto)
+        self.assertIn(f"href='{url}'", texto)
+        self.assertIn("Descargar ahora", botones)
+        # Al día: lo dice, y el enlace directo sigue ahí.
+        al_dia = dict(info, version=window_menus.APP_VERSION)
+        with mock.patch.object(actualizaciones, "fetch_latest", return_value=al_dia),                 mock.patch.object(QMessageBox, "exec", mostrar):
+            w.check_updates()
+        texto, botones = vistos[-1]
+        self.assertIn("Tienes la última versión", texto)
+        self.assertIn(f"href='{url}'", texto)
+        self.assertNotIn("Descargar ahora", botones)
+        # Sin conexión: se explica y se ofrece la página de versiones.
+        with mock.patch.object(actualizaciones, "fetch_latest",
+                               side_effect=actualizaciones.UpdateError("sin red")),                 mock.patch.object(QMessageBox, "exec", mostrar):
+            w.check_updates()
+        self.assertIn(actualizaciones.RELEASES_URL, vistos[-1][0])
 
     def test_barra_de_opacidad_sin_fondo_propio(self):
         """(petición de Ricardo) El control de opacidad del menú de colores no

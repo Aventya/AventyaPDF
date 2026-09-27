@@ -14,13 +14,14 @@ import tempfile
 import traceback
 
 import fitz
-from PyQt6.QtCore import Qt, QSettings
-from PyQt6.QtGui import QAction, QIcon, QKeySequence, QShortcut
+from PyQt6.QtCore import Qt, QSettings, QUrl
+from PyQt6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication, QFileDialog, QFrame, QHBoxLayout, QInputDialog, QLabel,
     QLineEdit, QMessageBox, QProgressDialog, QPushButton, QWidget,
 )
 
+import actualizaciones
 import dialogs
 import doc_tools
 import icons
@@ -168,6 +169,8 @@ class MenusMixin:
         m = mb.addMenu("A&yuda")
         A(m, "Atajos de teclado", lambda: dialogs.show_shortcuts(self), "F1", needs_doc=False)
         A(m, "Presentación de AventyaPDF", self.show_welcome, needs_doc=False)
+        m.addSeparator()
+        A(m, "Buscar actualizaciones…", self.check_updates, needs_doc=False)
         A(m, "Acerca de AventyaPDF", self.show_about, needs_doc=False)
 
         self._esc_shortcut = QShortcut(QKeySequence("Escape"), self)
@@ -736,6 +739,54 @@ class MenusMixin:
         reactivarla al arrancar."""
         import presentacion
         return presentacion.show_welcome(self)
+
+    def check_updates(self):
+        """(petición de Ricardo) Ayuda › Buscar actualizaciones…: pregunta a
+        GitHub por la última versión publicada y da el enlace directo a su
+        instalador, que sale de la propia publicación (siempre la última)."""
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            info = actualizaciones.fetch_latest()
+        except actualizaciones.UpdateError as e:
+            QApplication.restoreOverrideCursor()
+            caja = QMessageBox(QMessageBox.Icon.Warning, "Buscar actualizaciones",
+                               "", parent=self)
+            caja.setText(
+                f"<p>No se pudo comprobar si hay una versión nueva.</p><p>{e}</p>"
+                f"<p>Puedes consultarlas en <a href='{actualizaciones.RELEASES_URL}'>"
+                f"{actualizaciones.RELEASES_URL}</a></p>")
+            caja.setTextFormat(Qt.TextFormat.RichText)
+            caja.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+            caja.exec()
+            return
+        QApplication.restoreOverrideCursor()
+        nueva = actualizaciones.is_newer(info["version"], APP_VERSION)
+        nombre = info["installer_name"] or "la página de la versión"
+        enlace = (f"<p>Enlace directo de descarga:<br>"
+                  f"<a href='{info['installer_url']}'>{nombre}</a></p>"
+                  f"<p style='color:#605E5C'>Novedades: <a href='{info['page_url']}'>"
+                  f"AventyaPDF {info['version']}</a></p>")
+        caja = QMessageBox(self)
+        caja.setWindowTitle("Buscar actualizaciones")
+        caja.setIconPixmap(QIcon(icons.APP_ICON).pixmap(64, 64))
+        if nueva:
+            caja.setText(
+                f"<h3>Hay una versión nueva: AventyaPDF {info['version']}</h3>"
+                f"<p>Tienes la {APP_VERSION}. Descarga el instalador y ejecútalo: "
+                "se instala encima de la versión actual.</p>" + enlace)
+            descargar = caja.addButton("Descargar ahora", QMessageBox.ButtonRole.AcceptRole)
+            caja.addButton("Cerrar", QMessageBox.ButtonRole.RejectRole)
+            caja.setDefaultButton(descargar)
+        else:
+            caja.setText(
+                f"<h3>Tienes la última versión: AventyaPDF {APP_VERSION}</h3>" + enlace)
+            descargar = None
+            caja.addButton("Cerrar", QMessageBox.ButtonRole.RejectRole)
+        caja.setTextFormat(Qt.TextFormat.RichText)
+        caja.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+        caja.exec()
+        if descargar is not None and caja.clickedButton() is descargar:
+            QDesktopServices.openUrl(QUrl(info["installer_url"]))
 
     def show_about(self):
         try:

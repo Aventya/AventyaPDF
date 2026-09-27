@@ -1,3 +1,4 @@
+import functools
 import os
 import re
 import traceback
@@ -18,6 +19,7 @@ from pyhanko.stamp import TextStampStyle
 from pyhanko.stamp.text import TextStamp
 
 import doc_tools
+import icons
 
 # Fondo del sello: PDF vectorial generado desde MOSCA.svg con
 # create_signature_background.py (regenerarlo si cambia el SVG).
@@ -168,13 +170,15 @@ class _SpanishCertTextStamp(TextStamp):
 
     # El texto se compone a un cuerpo grande y luego se escala con `cm`: pyHanko
     # escribe `Tf`/`TL` como enteros y redondea el ancho de cada línea, así que
-    # a 100 pt el error es menor del 1 %. La fuente es Courier (monoespaciada),
-    # cuyo ancho medido por pyHanko es exacto.
+    # a 100 pt el error es menor del 1 %. (Petición de Ricardo) La fuente es
+    # la sans base de la aplicación, Noto Sans, incrustada en el PDF (antes,
+    # Courier, la que pyHanko usa por defecto): HarfBuzz la compone y mide
+    # con sus anchos reales, así que el ajuste al recuadro sigue siendo exacto.
     _LAYOUT_FONT_SIZE = 100
-    # Hueco bajo la última línea (fracción del cuerpo) para los descendentes.
-    _DESCENT = 0.25
+    _FONT_PATH = icons.noto_path("sans")
 
     def _text_layout(self):
+        from pyhanko.pdf_utils.font.opentype import GlyphAccumulatorFactory
         from pyhanko.pdf_utils.text import TextBoxStyle, TextBox
         from pyhanko.pdf_utils.layout import AxisAlignment, LayoutError, Margins, SimpleBoxLayoutRule
 
@@ -191,9 +195,11 @@ class _SpanishCertTextStamp(TextStamp):
         # Sin márgenes a los lados: el ancho natural es exactamente el de la
         # línea más larga (pyHanko pone 10 pt por lado si no se indica).
         rule = SimpleBoxLayoutRule(AxisAlignment.ALIGN_MIN, AxisAlignment.ALIGN_MIN,
-                                   margins=Margins(0, 0, 0, round(fs * self._DESCENT)))
+                                   margins=Margins(0, 0, round(fs * _font_extents()[0]),
+                                                   round(fs * _font_extents()[1])))
         self.text_box = tb = TextBox(
-            TextBoxStyle(font_size=fs, box_layout_rule=rule),
+            TextBoxStyle(font=GlyphAccumulatorFactory(self._FONT_PATH),
+                         font_size=fs, box_layout_rule=rule),
             writer=self.writer,
             resources=self.resources,
             box=None,
@@ -235,8 +241,8 @@ class _SpanishCertTextStamp(TextStamp):
                     grouped.append(current)
                     current = lines[i]
             grouped.append(current)
-            chars = max(len(g) for g in grouped)       # Courier: todas las letras miden igual
-            scale = min(w / max(chars, 1), h / (len(grouped) + self._DESCENT))
+            ancho = max(_text_width(g) for g in grouped)   # en «em», con la fuente real
+            scale = min(w / max(ancho, 1e-6), h / (len(grouped) + sum(_font_extents())))
             # Con escalas prácticamente iguales, mejor más líneas (lo de siempre).
             if scale > best_scale * 1.02 or (scale >= best_scale * 0.98 and len(grouped) > len(best)):
                 best, best_scale = grouped, max(scale, best_scale)
@@ -257,6 +263,32 @@ class _SpanishCertTextStamp(TextStamp):
         sy = min(sx, h / th)
         ty = m + (h - th * sy) / 2
         return [b"q", f"{sx:.6f} 0 0 {sy:.6f} {m:.6f} {ty:.6f} cm".encode(), commands, b"Q"]
+
+
+@functools.lru_cache(maxsize=1)
+def _font_metrics() -> tuple[dict, dict, int]:
+    """(cmap, anchos de avance, unidades por em) de la fuente del sello."""
+    from fontTools.ttLib import TTFont
+    f = TTFont(_SpanishCertTextStamp._FONT_PATH, lazy=True)
+    return f.getBestCmap(), {g: m[0] for g, m in f["hmtx"].metrics.items()}, f["head"].unitsPerEm
+
+
+@functools.lru_cache(maxsize=1)
+def _font_extents() -> tuple[float, float]:
+    """(lo que el ascendente sobresale por encima del cuerpo, descendente),
+    en «em». Con Noto Sans, 0,069 y 0,293: se reservan arriba y abajo del
+    texto para que las letras no se salgan del margen del recuadro."""
+    from fontTools.ttLib import TTFont
+    f = TTFont(_SpanishCertTextStamp._FONT_PATH, lazy=True)
+    upm = f["head"].unitsPerEm
+    return max(0.0, f["hhea"].ascent / upm - 1), abs(f["hhea"].descent) / upm
+
+
+def _text_width(text: str) -> float:
+    """Ancho de `text` en «em» (1 = el cuerpo de la letra), sin interletraje:
+    basta para elegir cómo repartir las líneas (`_arrange_lines`)."""
+    cmap, widths, upm = _font_metrics()
+    return sum(widths.get(cmap.get(ord(c), ".notdef"), upm // 2) for c in text) / upm
 
 
 @dataclass(frozen=True)

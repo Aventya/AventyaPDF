@@ -338,6 +338,42 @@ class TestDependencias(unittest.TestCase):
             instalar.assert_not_called()
 
 
+class TestActualizaciones(unittest.TestCase):
+    """(petición de Ricardo) Ayuda › Buscar actualizaciones: versión y enlace
+    directo al instalador sacados de la última publicación de GitHub."""
+
+    def test_comparar_versiones(self):
+        import actualizaciones as a
+        self.assertEqual(a.parse_version("v1.2.3"), (1, 2, 3))
+        self.assertTrue(a.is_newer("1.0.1", "1.0.0"))
+        self.assertTrue(a.is_newer("v1.0.10", "1.0.9"))       # números, no texto
+        self.assertTrue(a.is_newer("1.1", "1.0.9"))
+        self.assertFalse(a.is_newer("1.0.0", "1.0.0"))
+        self.assertFalse(a.is_newer("0.9.5", "1.0.0"))
+
+    def test_enlace_directo_del_instalador(self):
+        import actualizaciones as a
+        info = a.release_info({
+            "tag_name": "v1.2.0",
+            "html_url": "https://github.com/Aventya/AventyaPDF/releases/tag/v1.2.0",
+            "assets": [{"name": "notas.txt", "browser_download_url": "https://x/notas.txt"},
+                       {"name": "AventyaPDF-Setup-1.2.0.exe",
+                        "browser_download_url": "https://x/AventyaPDF-Setup-1.2.0.exe"}]})
+        self.assertEqual(info["version"], "1.2.0")
+        self.assertEqual(info["installer_name"], "AventyaPDF-Setup-1.2.0.exe")
+        self.assertEqual(info["installer_url"], "https://x/AventyaPDF-Setup-1.2.0.exe")
+        # Sin instalador adjunto, el enlace lleva a la página de la versión.
+        sin = a.release_info({"tag_name": "v1.2.0", "html_url": "https://x/v1.2.0", "assets": []})
+        self.assertEqual(sin["installer_url"], "https://x/v1.2.0")
+
+    def test_sin_conexion(self):
+        import urllib.error
+        import actualizaciones as a
+        with mock.patch("urllib.request.urlopen", side_effect=urllib.error.URLError("sin red")):
+            with self.assertRaises(a.UpdateError):
+                a.fetch_latest()
+
+
 class TestFondoFirma(unittest.TestCase):
     """signature_background.pdf (MOSCA.svg) debe ser vectorial y sin bordes:
     con la máscara rasterizada por Edge se colaba una línea de 1 px en el
@@ -1893,6 +1929,19 @@ class TestFirma(_ConCarpeta):
                 self.assertAlmostEqual(max(p[2] for p in palabras), rect[2] - margen, delta=0.5)
                 self.assertGreaterEqual(min(p[1] for p in palabras), alto - rect[3] + margen - 0.5)
                 self.assertLessEqual(max(p[3] for p in palabras), alto - rect[1] - margen + 0.5)
+
+    def test_texto_del_sello_en_fuente_sans(self):
+        """(petición de Ricardo) El texto de la firma visible va en la sans
+        de la aplicación (Noto Sans, incrustada), no en Courier."""
+        from signer_backend import PAdESSigner
+        firmado = PAdESSigner.sign_pdf_bytes(pdf_de_prueba(1).tobytes(), self.pfx, "1234", 0,
+                                             (72, 600, 372, 680), reason="Conformidad")
+        page = fitz.open("pdf", firmado)[0]
+        fuentes = {s["font"] for bl in page.get_text("dict")["blocks"]
+                   for linea in bl.get("lines", []) for s in linea["spans"]
+                   if "Conformidad" in s["text"]}
+        self.assertTrue(any("NotoSans" in f for f in fuentes), fuentes)
+        self.assertFalse(any("Courier" in f for f in fuentes), fuentes)
 
     def test_nombre_del_firmante_sin_identificadores(self):
         from signer_backend import _signer_display_name as nombre
