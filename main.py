@@ -468,6 +468,9 @@ def main():
     procesar_argumentos(window, sys.argv[1:])
     # (r70) Presentación inicial, salvo que se marcara «No volver a mostrar».
     QTimer.singleShot(250, lambda: presentacion.show_welcome(window, only_if_enabled=True))
+    # (petición de Ricardo) Aviso de versión nueva, en segundo plano; espera
+    # a que se cierre la presentación si está abierta.
+    window.start_update_check()
     sys.exit(app.exec())
 
 

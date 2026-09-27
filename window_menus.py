@@ -14,10 +14,10 @@ import tempfile
 import traceback
 
 import fitz
-from PyQt6.QtCore import Qt, QSettings, QUrl
+from PyQt6.QtCore import QObject, Qt, QSettings, QTimer, QUrl, pyqtSignal
 from PyQt6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
-    QApplication, QFileDialog, QFrame, QHBoxLayout, QInputDialog, QLabel,
+    QApplication, QCheckBox, QFileDialog, QFrame, QHBoxLayout, QInputDialog, QLabel,
     QLineEdit, QMessageBox, QProgressDialog, QPushButton, QWidget,
 )
 
@@ -35,7 +35,28 @@ APP_VERSION = "1.0.0"
 # (r71) Titular y repositorio público (AGPL-3.0, libre distribución).
 APP_OWNER = "Aventya Asesoría Integral SL"
 APP_REPO = "https://github.com/Aventya/AventyaPDF"
+# (petición de Ricardo) Aviso automático de versiones nuevas al iniciar.
+_KEY_AUTO_UPDATE = "updates/check_on_start"
+_KEY_SKIP_VERSION = "updates/skip_version"
 OCR_LANGS = ["spa", "spa+eng", "eng", "cat", "glg", "eus", "por", "fra", "deu", "ita"]
+
+
+class _UpdateNotifier(QObject):
+    """Consulta la última versión en un hilo aparte (sin frenar la ventana)
+    y, si responde, la entrega en el hilo de la interfaz con `found`. Los
+    errores (sin conexión…) se callan: el aviso automático no molesta."""
+    found = pyqtSignal(dict)
+
+    def start(self) -> None:
+        import threading
+        threading.Thread(target=self._run, daemon=True).start()
+
+    def _run(self) -> None:
+        try:
+            info = actualizaciones.fetch_latest()
+        except actualizaciones.UpdateError:
+            return
+        self.found.emit(info)
 
 
 class MenusMixin:
@@ -171,6 +192,12 @@ class MenusMixin:
         A(m, "Presentación de AventyaPDF", self.show_welcome, needs_doc=False)
         m.addSeparator()
         A(m, "Buscar actualizaciones…", self.check_updates, needs_doc=False)
+        # (petición de Ricardo) Aviso automático al iniciar, activado de entrada.
+        self._act_auto_update = QAction("Avisar de actualizaciones al iniciar", self)
+        self._act_auto_update.setCheckable(True)
+        self._act_auto_update.setChecked(self._auto_update_enabled())
+        self._act_auto_update.toggled.connect(self._set_auto_update)
+        m.addAction(self._act_auto_update)
         A(m, "Acerca de AventyaPDF", self.show_about, needs_doc=False)
 
         self._esc_shortcut = QShortcut(QKeySequence("Escape"), self)
@@ -760,6 +787,11 @@ class MenusMixin:
             caja.exec()
             return
         QApplication.restoreOverrideCursor()
+        self._show_update_dialog(info)
+
+    def _show_update_dialog(self, info: dict, automatic: bool = False) -> None:
+        """Ventana de actualizaciones. `automatic`: el aviso al iniciar, que
+        solo sale si hay versión nueva y ofrece no volver a avisar de ella."""
         nueva = actualizaciones.is_newer(info["version"], APP_VERSION)
         nombre = info["installer_name"] or "la página de la versión"
         enlace = (f"<p>Enlace directo de descarga:<br>"
@@ -767,16 +799,20 @@ class MenusMixin:
                   f"<p style='color:#605E5C'>Novedades: <a href='{info['page_url']}'>"
                   f"AventyaPDF {info['version']}</a></p>")
         caja = QMessageBox(self)
-        caja.setWindowTitle("Buscar actualizaciones")
+        caja.setWindowTitle("Actualización disponible" if automatic else "Buscar actualizaciones")
         caja.setIconPixmap(QIcon(icons.APP_ICON).pixmap(64, 64))
+        omitir = None
         if nueva:
             caja.setText(
                 f"<h3>Hay una versión nueva: AventyaPDF {info['version']}</h3>"
                 f"<p>Tienes la {APP_VERSION}. Descarga el instalador y ejecútalo: "
                 "se instala encima de la versión actual.</p>" + enlace)
             descargar = caja.addButton("Descargar ahora", QMessageBox.ButtonRole.AcceptRole)
-            caja.addButton("Cerrar", QMessageBox.ButtonRole.RejectRole)
+            caja.addButton("Ahora no" if automatic else "Cerrar", QMessageBox.ButtonRole.RejectRole)
             caja.setDefaultButton(descargar)
+            if automatic:
+                omitir = QCheckBox("No volver a avisar de esta versión")
+                caja.setCheckBox(omitir)
         else:
             caja.setText(
                 f"<h3>Tienes la última versión: AventyaPDF {APP_VERSION}</h3>" + enlace)
@@ -785,8 +821,45 @@ class MenusMixin:
         caja.setTextFormat(Qt.TextFormat.RichText)
         caja.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
         caja.exec()
+        if omitir is not None and omitir.isChecked():
+            s = QSettings(*SETTINGS)
+            s.setValue(_KEY_SKIP_VERSION, info["version"])
+            s.sync()
         if descargar is not None and caja.clickedButton() is descargar:
             QDesktopServices.openUrl(QUrl(info["installer_url"]))
+
+    # ── aviso automático al iniciar (petición de Ricardo) ─────────────── #
+
+    def start_update_check(self, delay_ms: int = 4000) -> None:
+        """Al arrancar (main.py): si está activado, comprueba en segundo plano
+        si hay una versión nueva, sin frenar el arranque. Solo avisa si la
+        hay; sin conexión o al día, no dice nada."""
+        if not self._auto_update_enabled():
+            return
+        self._update_notifier = _UpdateNotifier()
+        self._update_notifier.found.connect(self._on_update_found)
+        QTimer.singleShot(delay_ms, self._update_notifier.start)
+
+    def _on_update_found(self, info: dict) -> None:
+        if not actualizaciones.is_newer(info["version"], APP_VERSION):
+            return
+        if QSettings(*SETTINGS).value(_KEY_SKIP_VERSION, "") == info["version"]:
+            return                               # el usuario pidió no avisar de esta
+        # No encima de otra ventana (la presentación inicial, un diálogo…):
+        # se espera a que se cierre.
+        if QApplication.activeModalWidget() is not None:
+            QTimer.singleShot(2000, lambda: self._on_update_found(info))
+            return
+        self._show_update_dialog(info, automatic=True)
+
+    @staticmethod
+    def _auto_update_enabled() -> bool:
+        return QSettings(*SETTINGS).value(_KEY_AUTO_UPDATE, "true") == "true"
+
+    def _set_auto_update(self, on: bool) -> None:
+        s = QSettings(*SETTINGS)
+        s.setValue(_KEY_AUTO_UPDATE, "true" if on else "false")
+        s.sync()
 
     def show_about(self):
         try:

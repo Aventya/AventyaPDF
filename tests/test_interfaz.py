@@ -29,7 +29,8 @@ from PyQt6.QtWidgets import QApplication, QMessageBox  # noqa: E402
 import color_picker  # noqa: E402
 import doc_tools  # noqa: E402
 
-_CLAVES = ("recent/files", "recent/dir", "view/sidebar", "signing/tsa_enabled")
+_CLAVES = ("recent/files", "recent/dir", "view/sidebar", "signing/tsa_enabled",
+           "updates/check_on_start", "updates/skip_version")
 
 
 def _objetos_pdf(doc) -> list[str]:
@@ -2074,6 +2075,82 @@ class TestVentanaPrincipal(unittest.TestCase):
                                side_effect=actualizaciones.UpdateError("sin red")),                 mock.patch.object(QMessageBox, "exec", mostrar):
             w.check_updates()
         self.assertIn(actualizaciones.RELEASES_URL, vistos[-1][0])
+
+    def test_aviso_automatico_de_actualizaciones(self):
+        """(petición de Ricardo) Al iniciar se comprueba en segundo plano si
+        hay versión nueva; solo se avisa si la hay, no encima de otra ventana,
+        y se puede desactivar o pedir que no se avise de una versión."""
+        import actualizaciones
+        import window_menus
+        w = self.w
+        s = QSettings("aventyapdf", "config")
+        s.remove("updates/check_on_start")
+        s.remove("updates/skip_version")
+        nueva = {"version": "9.0.0", "tag": "v9.0.0", "installer_name": "AventyaPDF-Setup-9.0.0.exe",
+                 "installer_url": "https://x/AventyaPDF-Setup-9.0.0.exe", "page_url": "https://x/v9.0.0"}
+
+        # El hilo entrega la versión si GitHub responde y calla si no.
+        notif = window_menus._UpdateNotifier()
+        recibidos = []
+        notif.found.connect(recibidos.append)
+        with mock.patch.object(actualizaciones, "fetch_latest", return_value=nueva):
+            notif._run()
+        with mock.patch.object(actualizaciones, "fetch_latest",
+                               side_effect=actualizaciones.UpdateError("sin red")):
+            notif._run()
+        self.assertEqual(recibidos, [nueva])
+
+        # Activado de entrada; con una versión nueva, sale el aviso con la
+        # casilla de no volver a avisar.
+        self.assertTrue(w._act_auto_update.isChecked())
+        vistos = []
+
+        def mostrar(caja):
+            vistos.append((caja.text(), [b.text() for b in caja.buttons()], caja.checkBox()))
+            return 0
+
+        with mock.patch.object(QMessageBox, "exec", mostrar):
+            w._on_update_found(dict(nueva, version=window_menus.APP_VERSION))   # al día: nada
+            self.assertEqual(vistos, [])
+            w._on_update_found(nueva)
+        texto, botones, casilla = vistos[-1]
+        self.assertIn("Hay una versión nueva: AventyaPDF 9.0.0", texto)
+        self.assertIn("Descargar ahora", botones)
+        self.assertIsNotNone(casilla)
+
+        # Si hay otra ventana modal abierta (la presentación…), espera.
+        with mock.patch.object(QApplication, "activeModalWidget", return_value=w), \
+                mock.patch.object(QMessageBox, "exec", mostrar), \
+                mock.patch("window_menus.QTimer.singleShot") as luego:
+            w._on_update_found(nueva)
+        self.assertEqual(len(vistos), 1)
+        luego.assert_called_once()
+
+        # «No volver a avisar de esta versión»: esa ya no avisa; otra más nueva sí.
+        def marcar(caja):
+            caja.checkBox().setChecked(True)
+            return mostrar(caja)
+
+        with mock.patch.object(QMessageBox, "exec", marcar):
+            w._on_update_found(nueva)
+        self.assertEqual(s.value("updates/skip_version"), "9.0.0")
+        with mock.patch.object(QMessageBox, "exec", mostrar):
+            w._on_update_found(nueva)
+            self.assertEqual(len(vistos), 2)
+            w._on_update_found(dict(nueva, version="9.1.0"))
+        self.assertEqual(len(vistos), 3)
+
+        # Desactivado desde el menú: no se lanza la comprobación.
+        w._act_auto_update.setChecked(False)
+        self.assertEqual(s.value("updates/check_on_start"), "false")
+        with mock.patch.object(window_menus, "_UpdateNotifier") as notificador:
+            w.start_update_check(delay_ms=0)
+        notificador.assert_not_called()
+        w._act_auto_update.setChecked(True)
+        with mock.patch.object(window_menus, "_UpdateNotifier") as notificador, \
+                mock.patch("window_menus.QTimer.singleShot"):
+            w.start_update_check(delay_ms=0)
+        notificador.assert_called_once()
 
     def test_barra_de_opacidad_sin_fondo_propio(self):
         """(petición de Ricardo) El control de opacidad del menú de colores no
