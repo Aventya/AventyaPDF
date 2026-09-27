@@ -6,8 +6,8 @@
 
 | Campo | Valor |
 | :-- | :-- |
-| Revisión de la memoria | **r83** |
-| Fecha de la revisión | 2026-09-25 |
+| Revisión de la memoria | **r85** |
+| Fecha de la revisión | 2026-09-27 |
 | Versión de la app | **1.0.0**, la primera versión definitiva (r84, petición de Ricardo: «esta sería la versión 1, es decir la versión definitiva correcta. las anteriores deben ser de menor unidad»). Las publicaciones anteriores 2.0.3, 2.0.4 y 2.0.5 se renumeran **0.9.3, 0.9.4 y 0.9.5** (etiquetas `v0.9.x`, marcadas como versión previa; sus instaladores ya compilados siguen diciendo 2.0.x por dentro). `window_menus.APP_VERSION`, `APP_OWNER`, `APP_REPO` |
 | Raíz del proyecto | `C:\Users\Aventya\Proyectos\AVENTYAPDF` (✅ ya renombrada, comprobado en r71; antes `ANTIGRAVITY-PDF`, ver r56) (hasta r5: `A:\CARPETA IA\RICARDO\ANTIGRAVITY-PDF`, carpeta compartida por varios equipos) |
 | Control de versiones | ✅ **git** desde r71, repositorio **público** https://github.com/Aventya/AventyaPDF (cuenta de GitHub `Aventya`, rama `main`). Licencia **AGPL-3.0** (`LICENSE`). Titular: **Aventya Asesoría Integral SL**. |
@@ -1037,6 +1037,23 @@ Certificado de pruebas: `python create_test_cert.py` → `test_certificate.pfx` 
 instalador si falla el autodiagnóstico del ejecutable. Detalle en
 [docs/empaquetado.md](docs/empaquetado.md).
 
+**(r85) Publicar una versión — versionado evolutivo** (petición de Ricardo: «ok,
+a partir de ahora versiones evolutivas»). Desde la 1.0.0 cada publicación lleva
+un número **mayor** que la última de GitHub: el último número para correcciones
+(1.0.1, 1.0.2…) y el del medio para funciones nuevas (1.1.0…). Nunca se
+republica encima de una versión ya publicada (ni se mueve su etiqueta ni se
+sustituye su instalador): el aviso automático de actualizaciones
+(`actualizaciones.is_newer`) compara números, y quien ya tuviera instalada esa
+versión no se enteraría del cambio. Pasos:
+
+1. Subir `APP_VERSION` en `window_menus.py`.
+2. Pruebas: `%LOCALAPPDATA%\aventyapdf\venv\Scripts\python.exe -m unittest discover -s tests`.
+3. `.\empaquetado\construir.ps1` (autodiagnóstico incluido).
+4. Commit y `git push origin main`; etiqueta anotada `v<versión>` y su push.
+5. `gh release create v<versión> empaquetado\salida\AventyaPDF-Setup-<versión>.exe --latest`
+   con notas en español: instalación, aviso de SmartScreen y cambios respecto
+   a la anterior.
+
 Tesseract OCR (r16): `.\run.ps1` lo comprueba antes de arrancar y, si falta, lo
 instala solo (pedirá permiso de administrador) con los idiomas español, inglés y
 osd. A mano: `python tesseract_setup.py` con el Python del entorno.
@@ -1071,6 +1088,7 @@ motivos, invariantes, trampas y estado.
 
 | Rev | Fecha | Cambio |
 | :-- | :-- | :-- |
+| r85 | 2026-09-27 | **Versionado evolutivo** (petición de Ricardo: «ok, a partir de ahora versiones evolutivas»). Desde la 1.0.0, cada publicación sube de número y nunca se republica encima de una ya publicada; procedimiento en §8 «Publicar una versión». (La 1.0.0 se sustituyó dos veces el mismo día, sin descargas, porque Ricardo quería que la versión publicada ese día fuera la 1.0.0; desde ahora, no.) Cabecera puesta al día (se quedó en r83). |
 | r84 | 2026-09-27 | **Versión 1.0.0 y renumeración de las anteriores** (petición de Ricardo, ver «Versión de la app»). Cambios de interfaz incluidos: **todos los botones y campos miden 32 px** (`icons.CONTROL`; botones de icono 32×32; barra principal 46 px, rail 40 px); **buscador flotante** sobre la barra principal (`_place_find_bar`: borde derecho en el de la lupa, que conserva su sitio; tapa enteras las herramientas de debajo en vez de ensanchar la ventana; botones del mismo tipo y separación que la barra); **paleta de colores como menú emergente en el cursor** (`ColorDialog` con `Qt.WindowType.Popup`, `popup_at`; sin Aceptar/Cancelar: un clic elige), **19 colores** en **círculos de 32 px** y **columnas de 4** (nuevos Gris claro `#D5D5D5` y Gris oscuro `#555555`), barra de opacidad sin fondo propio (`QSlider { background: transparent; }`); **panel Firma** reorganizado: aviso enmarcado arriba (`QLabel#side_notice`) y dos filas texto-izquierda/botón-derecha (certificado + cambiarlo; «Firma manuscrita» + plumilla). Segunda parte (petición de Ricardo, antes de dar por buena la 1.0.0, que se republica sin descargas): **sello de tiempo marcado de entrada** en las opciones de firma (clave nueva `signing/tsa_enabled`); **texto de la firma en Noto Sans** incrustada en lugar de Courier (dependencia nueva `uharfbuzz`, también en el `.spec`); **Ayuda › Buscar actualizaciones…** con enlace directo al último instalador de GitHub (`actualizaciones.py`) y **aviso automático al iniciar** (en segundo plano, solo si hay versión nueva, espera a que no haya ventanas modales, casilla «No volver a avisar de esta versión», desactivable en «Ayuda › Avisar de actualizaciones al iniciar»). 180 pruebas OK. |
 | r83 | 2026-09-25 | **Reempaquetado del instalador y publicación de la versión 2.0.5 en GitHub.** Se ejecuta `empaquetado/construir.ps1`, superando las 7 pruebas de autodiagnóstico del ejecutable y generando `AventyaPDF-Setup-2.0.5.exe`. Se crea y publica la Release v2.0.5 en GitHub junto al instalador. |
 | r82 | 2026-09-25 | **Probado el arrastre de verdad (agente, con permiso de Ricardo: «te dejo la pantalla libre, haz la prueba tu mismo») y sin alfa en el fantasma tras nueva confirmación de Ricardo de que seguía en negro.** Lanzada la build de desarrollo (r72-r81 sin reempaquetar) con un intérprete de Python distinto al venv habitual, dependencias instaladas aparte para no tocar el entorno real; arrastre simulado con eventos de ratón reales (`SetCursorPos`/`mouse_event`, no Qt), captura de pantalla completa **con el cursor superpuesto** (`GetCursorInfo`/`DrawIcon`, que una captura normal no incluye) justo antes de soltar. Resultado de esa prueba: fantasma gris claro, sin negro, arrastre funcional (la página se reordenó). **Pero Ricardo, tras probarlo él en su pantalla real, seguía viéndolo negro** — y aquí el dato clave: ni mi captura con cursor ni su propia grabación con la Herramienta Recortes de Windows lo recogen. El negro es real en la composición **en pantalla** (lo ve en vivo) pero no está en el mapa de bits que ninguna herramienta de captura o grabación lee — apunta a un fallo de composición del canal alfa de la ventana en capas que usa Windows para esta imagen de arrastre, no a nada que una captura pueda enseñar. Revisado `HKCU\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers` (vacío, sin capa de compatibilidad para ningún exe) y `HKCU\...\Themes\Personalize\EnableTransparency` (=1, no desactivada): no es ninguna de las dos causas per-usuario más obvias. **Arreglo**: `_run_drag` deja de usar canal alfa por completo — `QImage.Format.Format_RGB32` (opaco) en vez de `Format_ARGB32_Premultiplied`, relleno celeste claro `#EAF3FC` con borde azul, sin `setOpacity()`. Sin alfa que la composición pueda mezclar mal, no hay semitransparencia que falle; a cambio el fantasma deja de ser semitransparente. 169/169 OK (5 omitidas). **Pendiente de que Ricardo confirme en su pantalla real** — si sigue en negro incluso sin alfa, el siguiente paso sería descartar una causa de sesión (reiniciar `explorer.exe`/DWM, o comprobar si el `AventyaPDF.exe` instalado sin ningún cambio de esta sesión también lo muestra ahora mismo, para separar «algo cambió en el código» de «algo cambió en el equipo desde ayer», que es la sospecha de Ricardo). Sin reempaquetar. Propagado a [docs/edicion_pdf.md](docs/edicion_pdf.md). |
