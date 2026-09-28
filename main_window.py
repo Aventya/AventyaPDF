@@ -1370,13 +1370,14 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
     # ── Zoom ───────────────────────────────────────────────────────────── #
 
     def _build_status_zoom(self) -> None:
-        """(r90, petición de Ricardo) Herramienta de zoom siempre visible, a
-        la derecha de la barra de estado, del mismo alto que esta —los
+        """(r90/r91, petición de Ricardo) Herramienta de zoom siempre visible,
+        a la derecha de la barra de estado, del mismo alto que esta —los
         controles se adaptan a la barra, no al revés, por eso su tamaño sale
         de #status_zoom_btn / #status_zoom_pct en la hoja de estilos, no de
-        `icons.CONTROL`—: menos, campo con el porcentaje (editable: al salir
-        de él con Intro o con el ratón fuera se aplica lo escrito — ver
-        `_on_zoom_pct_edit`), barra de desplazamiento y más."""
+        `icons.CONTROL`—, en este orden: campo con el porcentaje (lo más
+        estrecho que quepa «400%»; editable — al salir de él con Intro o con
+        el ratón fuera se aplica lo escrito, ver `_on_zoom_pct_edit`), menos,
+        barra de desplazamiento y más."""
         box = QWidget()
         self._zoom_status_box = box
         # (bug de r89: sin tamaño fijo, el widget se estira para llenar el
@@ -1387,19 +1388,19 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         lay.setContentsMargins(0, 0, 8, 0)
         lay.setSpacing(3)
 
+        self._zoom_pct_edit = QLineEdit(f"{self.custom_zoom_pct}%")
+        self._zoom_pct_edit.setObjectName("status_zoom_pct")
+        self._zoom_pct_edit.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self._zoom_pct_edit.setMaxLength(4)
+        self._zoom_pct_edit.setToolTip("Porcentaje de ampliación — escribe uno y pulsa Intro")
+        self._zoom_pct_edit.editingFinished.connect(self._on_zoom_pct_edit)
+        lay.addWidget(self._zoom_pct_edit)
+
         btn_m = QPushButton(_G["zoom_out"])
         btn_m.setObjectName("status_zoom_btn")
         btn_m.setToolTip("Alejar  (Ctrl+-)")
         btn_m.clicked.connect(lambda _c=False: self.zoom_step(-1))
         lay.addWidget(btn_m)
-
-        self._zoom_pct_edit = QLineEdit(f"{self.custom_zoom_pct} %")
-        self._zoom_pct_edit.setObjectName("status_zoom_pct")
-        self._zoom_pct_edit.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        self._zoom_pct_edit.setMaxLength(6)
-        self._zoom_pct_edit.setToolTip("Porcentaje de ampliación — escribe uno y pulsa Intro")
-        self._zoom_pct_edit.editingFinished.connect(self._on_zoom_pct_edit)
-        lay.addWidget(self._zoom_pct_edit)
 
         self._zoom_slider = QSlider(Qt.Orientation.Horizontal)
         self._zoom_slider.setFixedWidth(110)
@@ -1431,7 +1432,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             pct = self.custom_zoom_pct
         pct = max(self._zoom_slider.minimum(), min(400, pct))
         self._set_custom_zoom(pct)
-        self._zoom_pct_edit.setText(f"{pct} %")
+        self._zoom_pct_edit.setText(f"{pct}%")
 
     def _compute_scale(self) -> float:
         if not self.doc:
@@ -1519,7 +1520,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         sl.setToolTip(f"Zoom: {pct} %")
         sl.blockSignals(False)
         if hasattr(self, "_zoom_pct_edit") and not self._zoom_pct_edit.hasFocus():
-            self._zoom_pct_edit.setText(f"{pct} %")
+            self._zoom_pct_edit.setText(f"{pct}%")
 
     def _on_zoom_slider(self, value: int) -> None:
         if self.doc is None:
