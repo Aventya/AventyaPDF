@@ -247,6 +247,35 @@ QStatusBar {
     padding: 2px 8px; font-size: 12px;
 }
 
+/* ── Herramienta de zoom de la barra de estado (petición de Ricardo: del
+   mismo alto que la barra original — los controles se adaptan a ella, no
+   al revés, así que su tamaño se fija aquí y no con icons.CONTROL) ── */
+QPushButton#status_zoom_btn {
+    background: transparent;
+    border: none;
+    border-radius: 3px;
+    font-family: "FluentSystemIcons-Regular";
+    font-size: 12px;
+    min-width: 16px;  max-width: 16px;
+    min-height: 16px; max-height: 16px;
+    padding: 0;
+}
+QPushButton#status_zoom_btn:hover    { background: #E4E4E4; }
+QPushButton#status_zoom_btn:pressed  { background: #D0D0D0; }
+QPushButton#status_zoom_btn:disabled { color: #C8C6C4; }
+
+QLineEdit#status_zoom_pct {
+    background: #FFFFFF; color: #201F1E;
+    border: 1px solid #C8C6C4; border-radius: 3px;
+    padding: 0 3px;
+    font-size: 11px;
+    min-width: 62px; max-width: 62px;
+    min-height: 16px; max-height: 16px;
+    selection-background-color: #0078D4; selection-color: #FFFFFF;
+}
+QLineEdit#status_zoom_pct:focus    { border-color: #0078D4; }
+QLineEdit#status_zoom_pct:disabled { background: #F3F3F3; color: #C8C6C4; }
+
 /* ── Separator line ── */
 QFrame#vline { background: #E0E0E0; max-width: 1px; }
 

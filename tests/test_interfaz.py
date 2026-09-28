@@ -699,10 +699,11 @@ class TestVentanaPrincipal(unittest.TestCase):
         self.assertFalse(btn.isChecked())
 
         # Ajustado al alto: el próximo clic vuelve a la escala original
-        # (100 %) → icono de zoom (r89, tercera opción del ciclo).
+        # (100 %) → icono de «document fit» (r89/r90, tercera opción del
+        # ciclo, petición de Ricardo).
         w.zoom_fit_page()
         self.assertEqual(w.zoom_mode, "height")
-        self.assertEqual(btn.text(), icons.glyph("zoom100"))
+        self.assertEqual(btn.text(), icons.glyph("fit_original"))
         self.assertFalse(btn.isChecked())
 
         # El propio botón recorre el ciclo igual (clic real, no solo la
@@ -1974,7 +1975,12 @@ class TestVentanaPrincipal(unittest.TestCase):
     def test_botones_y_campos_miden_32_px(self):
         """(petición de Ricardo) Todos los botones y campos de formulario
         miden 32 px de alto, y los botones de icono 32×32; la barra principal
-        y el rail del panel lateral se adaptan a ese tamaño."""
+        y el rail del panel lateral se adaptan a ese tamaño. (r90, excepción
+        pedida por Ricardo) La herramienta de zoom de la barra de estado mide
+        lo que mide esa barra —bastante menos que 32 px—, a propósito: «esta
+        barra de herramienta debe tener el mismo tamaño que la barra de
+        tareas original... los botones, iconos, etc. deben adaptarse a esta
+        barra y no al revés»."""
         from PyQt6.QtWidgets import (QAbstractSpinBox, QComboBox, QLineEdit,
                                      QPushButton)
         import icons
@@ -1986,11 +1992,14 @@ class TestVentanaPrincipal(unittest.TestCase):
         try:
             iconos = ("tbr_btn", "nav_btn", "opt_btn", "rail_btn", "rail_doc",
                       "side_icon_btn", "opt_spin_btn", "color_swatch")
+            exentos_zoom_estado = ("status_zoom_btn", "status_zoom_pct")
             for cls in (QPushButton, QLineEdit, QComboBox, QAbstractSpinBox):
                 for x in w.findChildren(cls):
                     if isinstance(x, QLineEdit) and isinstance(
                             x.parent(), (QComboBox, QAbstractSpinBox)):
                         continue      # el campo interno de un combo o spin
+                    if x.objectName() in exentos_zoom_estado:
+                        continue      # (r90) se adaptan a la barra de estado, no a 32 px
                     x.ensurePolished()
                     alto = max(x.minimumHeight(), min(x.sizeHint().height(), x.maximumHeight()))
                     self.assertEqual(alto, icons.CONTROL, f"{type(x).__name__} {x.objectName()!r}")

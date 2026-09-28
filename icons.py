@@ -54,7 +54,9 @@ ICONS = {
     "print": "print",
     "prev": "chevron_left",
     "next": "chevron_right",
-    "zoom100": "zoom_in",
+    "zoom_in": "zoom_in",               # (r90) botón «más» de la herramienta de zoom
+    "zoom_out": "zoom_out",             # (r90) botón «menos» de la herramienta de zoom
+    "fit_original": "document_fit",     # (r90) «ancho/alto/original»: próxima acción = original
     "type": "auto_fit_width",          # (r48) icono cuando el clic ajustaría al ANCHO
     "type_height": "auto_fit_height",  # (r48) icono cuando el clic ajustaría al ALTO
     "text": "text_add_t",

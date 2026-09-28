@@ -750,7 +750,7 @@ class DocumentMixin:
             return
         pct = self.viewer.scale_factor * 100
         new = pct * 1.2 if direction > 0 else pct / 1.2
-        self._set_custom_zoom(int(max(10, min(800, round(new)))))
+        self._set_custom_zoom(int(max(10, min(400, round(new)))))
 
     def zoom_actual(self):
         self._set_custom_zoom(100)

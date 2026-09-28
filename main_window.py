@@ -1370,51 +1370,68 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
     # ── Zoom ───────────────────────────────────────────────────────────── #
 
     def _build_status_zoom(self) -> None:
-        """(r89, petición de Ricardo) Herramienta de zoom siempre visible, a
-        la derecha de la barra de estado: lupa (solo indica), menos, barra
-        de desplazamiento y más — sustituye al botón «Zoom» de la barra
-        principal y a su panel lateral, que ya no existen."""
+        """(r90, petición de Ricardo) Herramienta de zoom siempre visible, a
+        la derecha de la barra de estado, del mismo alto que esta —los
+        controles se adaptan a la barra, no al revés, por eso su tamaño sale
+        de #status_zoom_btn / #status_zoom_pct en la hoja de estilos, no de
+        `icons.CONTROL`—: menos, campo con el porcentaje (editable: al salir
+        de él con Intro o con el ratón fuera se aplica lo escrito — ver
+        `_on_zoom_pct_edit`), barra de desplazamiento y más."""
         box = QWidget()
         self._zoom_status_box = box
-        # (bug: sin tamaño fijo, el widget se estira para llenar el hueco
-        # sobrante de la barra de estado y su único hijo sin tamaño fijo
-        # —la lupa— se estira con él, dejando el glifo fuera de la vista)
+        # (bug de r89: sin tamaño fijo, el widget se estira para llenar el
+        # hueco sobrante de la barra de estado y su único hijo sin tamaño
+        # fijo se estiraba con él, quedando fuera de la vista)
         box.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         lay = QHBoxLayout(box)
         lay.setContentsMargins(0, 0, 8, 0)
-        lay.setSpacing(2)
+        lay.setSpacing(3)
 
-        lupa = QLabel(_G["zoom100"])
-        lupa.setObjectName("opt_glyph")
-        lupa.setToolTip("Zoom")
-        lupa.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lupa.setFixedSize(icons.CONTROL, icons.CONTROL)
-        lay.addWidget(lupa)
-
-        btn_m = QPushButton(_G["minus"])
-        btn_m.setObjectName("opt_spin_btn")
-        btn_m.setFixedSize(icons.CONTROL, icons.CONTROL)
+        btn_m = QPushButton(_G["zoom_out"])
+        btn_m.setObjectName("status_zoom_btn")
         btn_m.setToolTip("Alejar  (Ctrl+-)")
         btn_m.clicked.connect(lambda _c=False: self.zoom_step(-1))
         lay.addWidget(btn_m)
 
+        self._zoom_pct_edit = QLineEdit(f"{self.custom_zoom_pct} %")
+        self._zoom_pct_edit.setObjectName("status_zoom_pct")
+        self._zoom_pct_edit.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self._zoom_pct_edit.setMaxLength(6)
+        self._zoom_pct_edit.setToolTip("Porcentaje de ampliación — escribe uno y pulsa Intro")
+        self._zoom_pct_edit.editingFinished.connect(self._on_zoom_pct_edit)
+        lay.addWidget(self._zoom_pct_edit)
+
         self._zoom_slider = QSlider(Qt.Orientation.Horizontal)
-        self._zoom_slider.setFixedWidth(120)
-        self._zoom_slider.setRange(10, 800)
+        self._zoom_slider.setFixedWidth(110)
+        self._zoom_slider.setRange(10, 400)
         self._zoom_slider.setValue(self.custom_zoom_pct)
         self._zoom_slider.setToolTip(f"Zoom: {self.custom_zoom_pct} %")
         self._zoom_slider.valueChanged.connect(self._on_zoom_slider)
         lay.addWidget(self._zoom_slider)
 
-        btn_p = QPushButton(_G["plus"])
-        btn_p.setObjectName("opt_spin_btn")
-        btn_p.setFixedSize(icons.CONTROL, icons.CONTROL)
+        btn_p = QPushButton(_G["zoom_in"])
+        btn_p.setObjectName("status_zoom_btn")
         btn_p.setToolTip("Acercar  (Ctrl++)")
         btn_p.clicked.connect(lambda _c=False: self.zoom_step(1))
         lay.addWidget(btn_p)
 
         box.setEnabled(False)      # sin documento abierto — ver _update_actions
         self.statusBar().addPermanentWidget(box)
+
+    def _on_zoom_pct_edit(self) -> None:
+        """(r90, petición de Ricardo) Al salir del campo —Intro o el ratón
+        fuera, las dos cosas emiten `editingFinished`— se aplica el
+        porcentaje escrito a mano, dentro de los límites de siempre."""
+        if self.doc is None:
+            return
+        txt = "".join(c for c in self._zoom_pct_edit.text() if c.isdigit())
+        try:
+            pct = int(txt)
+        except ValueError:
+            pct = self.custom_zoom_pct
+        pct = max(self._zoom_slider.minimum(), min(400, pct))
+        self._set_custom_zoom(pct)
+        self._zoom_pct_edit.setText(f"{pct} %")
 
     def _compute_scale(self) -> float:
         if not self.doc:
@@ -1448,7 +1465,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         if self.zoom_mode == "width":
             icon = _G["type_height"]
         elif self.zoom_mode == "height":
-            icon = _G["zoom100"]           # (r89) próxima acción: escala original
+            icon = _G["fit_original"]      # (r90) próxima acción: escala original
         else:
             icon = _G["type"]
         self._zoom_btns["type"].setText(icon)
@@ -1480,11 +1497,13 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         no en modo «100» (ajustar a ancho/alto también lo mueve, sin que
         arrastrarlo a mano cambie de modo — eso lo hace `_on_zoom_slider`,
         bloqueando sus señales mientras se actualiza aquí). Límites: los de
-        siempre, sin tocarlos."""
+        siempre, sin tocarlos (400 % como máximo, petición de Ricardo). El
+        campo de texto del porcentaje se actualiza igual, salvo mientras el
+        usuario lo esté editando a mano."""
         sl = self._zoom_slider
         if not self.doc:
             sl.blockSignals(True)
-            sl.setRange(10, 800)
+            sl.setRange(10, 400)
             sl.blockSignals(False)
             return
         page = self.doc[self.current_page]
@@ -1493,12 +1512,14 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         pct_w = max(1, int(100 * (vp.width()  - 4) / pw))
         pct_h = max(1, int(100 * (vp.height() - 4) / ph))
         min_pct = min(pct_w, pct_h)
-        pct = max(1, min(800, round(self._compute_scale() * 100)))
+        pct = max(1, min(400, round(self._compute_scale() * 100)))
         sl.blockSignals(True)
-        sl.setRange(min(min_pct, pct), 800)
+        sl.setRange(min(min_pct, pct), 400)
         sl.setValue(pct)
         sl.setToolTip(f"Zoom: {pct} %")
         sl.blockSignals(False)
+        if hasattr(self, "_zoom_pct_edit") and not self._zoom_pct_edit.hasFocus():
+            self._zoom_pct_edit.setText(f"{pct} %")
 
     def _on_zoom_slider(self, value: int) -> None:
         if self.doc is None:
