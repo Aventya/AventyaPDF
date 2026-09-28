@@ -1064,8 +1064,9 @@ dejándolos en GitHub pues trabajo desde dos equipos distintos»).
 
 - Todo el trabajo se hace y se sube en la rama **`desarrollo`**. `main` solo
   recibe cambios cuando Ricardo dice que están pulidos y se publica versión
-  (pasos de arriba). Excepción: notas de documentación que el otro equipo
-  necesite leer estando aún en `main`, como esta.
+  (pasos de arriba). Esta misma nota y `CLAUDE.md` solo están en `desarrollo`
+  (decisión de Ricardo): en un equipo que siga en `main`, hay que pedir
+  expresamente «descarga la rama desarrollo de GitHub y sigamos trabajando en ella».
 - Al **empezar** una sesión en cualquier equipo: `git fetch`, `git switch
   desarrollo` (la primera vez en un equipo crea la rama local a partir de
   `origin/desarrollo`) y `git pull`. «Descarga la última versión» significa eso.
