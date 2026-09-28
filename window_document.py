@@ -128,6 +128,8 @@ class DocumentMixin:
         has = self.doc is not None
         for a in getattr(self, "_doc_actions", []):
             a.setEnabled(has)
+        if hasattr(self, "_zoom_status_box"):
+            self._zoom_status_box.setEnabled(has)
         if hasattr(self, "_act_ocr"):          # OCR: además hace falta Tesseract
             self._act_ocr.setEnabled(has and getattr(self, "ocr_available", True))
         can_u = has and self._history.can_undo()
@@ -764,16 +766,16 @@ class DocumentMixin:
             return
         self.zoom_mode = "100"
         self.custom_zoom_pct = pct
-        self._zoom_btns["100"].setChecked(True)
         self._update_zoom_type_icon()      # (r48) icono según la acción libre
         sl = self._zoom_slider
         sl.blockSignals(True)
         if pct < sl.minimum():
             sl.setMinimum(max(10, pct))
         sl.setValue(pct)
+        sl.setToolTip(f"Zoom: {pct} %")
         sl.blockSignals(False)
-        self._lbl_zoom_pct.setText(f"{pct} %")
         self.render_page(keep_selection=True)
+        self.statusBar().showMessage(f"Zoom {pct} %")
         self.statusBar().showMessage(f"Zoom {pct} %")
 
     # ── API para el panel lateral ──────────────────────────────────────── #

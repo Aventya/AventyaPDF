@@ -679,15 +679,15 @@ class TestVentanaPrincipal(unittest.TestCase):
         un icono fijo: muestra la acción que el clic va a ejecutar (la que
         está libre), no la que ya está activa. (r51) Tampoco queda marcado
         como seleccionado tras pulsarlo: no es «checkable», el icono ya dice
-        qué va a hacer el próximo clic."""
+        qué va a hacer el próximo clic. (r89) Ciclo de TRES: ancho → alto →
+        escala original (100 %) → ancho…"""
         import icons
         w = self.w
         self.assertTrue(w.open_path(self._crear_pdf(1)))
         btn = w._zoom_btns["type"]
         self.assertFalse(btn.isCheckable())
 
-        # Zoom 100 %: ninguna de las dos activa, el próximo clic ajusta al
-        # ancho → icono de ancho.
+        # Zoom 100 %: el próximo clic ajusta al ancho → icono de ancho.
         w.zoom_actual()
         self.assertEqual(btn.text(), icons.glyph("type"))
         self.assertFalse(btn.isChecked())
@@ -698,23 +698,24 @@ class TestVentanaPrincipal(unittest.TestCase):
         self.assertEqual(btn.text(), icons.glyph("type_height"))
         self.assertFalse(btn.isChecked())
 
-        # Ajustado al alto: el próximo clic ajustaría al ancho → icono de ancho.
+        # Ajustado al alto: el próximo clic vuelve a la escala original
+        # (100 %) → icono de zoom (r89, tercera opción del ciclo).
         w.zoom_fit_page()
         self.assertEqual(w.zoom_mode, "height")
-        self.assertEqual(btn.text(), icons.glyph("type"))
+        self.assertEqual(btn.text(), icons.glyph("zoom100"))
         self.assertFalse(btn.isChecked())
 
-        # El propio botón alterna igual (clic real, no solo la llamada directa)
-        # y sigue sin quedar marcado como seleccionado.
+        # El propio botón recorre el ciclo igual (clic real, no solo la
+        # llamada directa) y sigue sin quedar marcado como seleccionado.
+        btn.click()
+        self.app.processEvents()
+        self.assertEqual(w.zoom_mode, "100")
+        self.assertEqual(btn.text(), icons.glyph("type"))
+        self.assertFalse(btn.isChecked())
         btn.click()
         self.app.processEvents()
         self.assertEqual(w.zoom_mode, "width")
         self.assertEqual(btn.text(), icons.glyph("type_height"))
-        self.assertFalse(btn.isChecked())
-        btn.click()
-        self.app.processEvents()
-        self.assertEqual(w.zoom_mode, "height")
-        self.assertEqual(btn.text(), icons.glyph("type"))
         self.assertFalse(btn.isChecked())
 
         # Volver a un zoom numérico también deja el icono en «ancho».

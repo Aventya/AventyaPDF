@@ -147,6 +147,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._splitter.setStretchFactor(1, 1)
         root.addWidget(self._splitter, 1)
 
+        self._build_status_zoom()
         self._refresh_side_tools()
         self._update_actions()
         self._update_title()
@@ -232,18 +233,18 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
 
         lay.addWidget(self._vline())
 
-        # ── Zoom: 100% con barra + Type (ancho/alto toggle) ─────────────
+        # ── Zoom: Type (ancho / alto / escala original, alterna al pulsar) ──
+        # (r89, petición de Ricardo) El botón «Zoom» de esta barra y el panel
+        # lateral de zoom desaparecen: la herramienta de zoom vive ahora,
+        # siempre visible, a la derecha de la barra de estado —ver
+        # `_build_status_zoom`—. Este botón se queda, con una tercera opción.
         self._zoom_btns: dict[str, QPushButton] = {}
-
-        b100 = self._glyph_btn("zoom100", "Zoom", checkable=True)
-        b100.clicked.connect(self._on_zoom100_btn)
-        self._zoom_btns["100"] = b100
-        lay.addWidget(b100)
 
         # (r51, petición de Ricardo) No es «checkable»: el icono ya dice qué
         # va a hacer el próximo clic (r48), así que el botón nunca debe quedar
         # marcado como seleccionado tras pulsarlo.
-        btype = self._glyph_btn("type", "Ajustar al ancho / al alto  (alterna al pulsar)")
+        btype = self._glyph_btn(
+            "type", "Ajustar al ancho / al alto / escala original  (alterna al pulsar)")
         btype.clicked.connect(self._toggle_type_zoom)
         self._zoom_btns["type"] = btype
         self._update_zoom_type_icon()      # (r48) icono según la acción libre, no fijo
@@ -384,17 +385,6 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         herramientas de zoom y anotación, arriba del panel lateral: ocupan su
         ancho y lo empujan hacia abajo, para que la herramienta y lo que ya
         se veía en el panel estén disponibles a la vez."""
-        # ── Panel: Zoom (modo 100%) ──────────────────────────────────────
-        self._zoom_panel, g = self._side_form("Zoom")
-        self._lbl_zoom_pct = QLabel("100 %")
-        self._lbl_zoom_pct.setObjectName("side_lbl")
-        self._side_row(g, "Ampliación de la página", self._lbl_zoom_pct)
-        self._zoom_slider = QSlider(Qt.Orientation.Horizontal)
-        self._zoom_slider.setRange(10, 800)
-        self._zoom_slider.setValue(100)
-        self._zoom_slider.valueChanged.connect(self._on_zoom_slider)
-        g.addWidget(self._zoom_slider, g.rowCount(), 0, 1, 2)
-
         # ── Panel: Operaciones de página (r27, sustituye al organizador) ─
         self._pages_panel, g = self._side_form("Operaciones de página")
         self._lbl_pages_sel = self._side_hint(g, "")
@@ -729,8 +719,6 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             return
         if on:
             self._finish_action()
-            self._zoom_btns["100"].setChecked(False)
-            self._zoom_panel.setVisible(False)
             self._pages_closes_sidebar = self.sidebar.stack.isHidden()
             self._pages_mode = True
             self.sidebar.show_panel("thumbs")
@@ -841,8 +829,6 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             self._set_pages_mode(False)
             for m, b in self._tool_btns.items():
                 b.setChecked(False)
-            self._zoom_btns["100"].setChecked(False)
-            self._zoom_panel.setVisible(False)
             self._show_only_tool_panel(None)
             self.viewer.mode = "NONE"
             self.viewer._sel = None
@@ -883,11 +869,6 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self.viewer.update()
 
         self._show_only_tool_panel(mode)
-
-        # When a tool is active, zoom buttons must appear deselected
-        if mode != "NONE":
-            self._zoom_btns["100"].setChecked(False)
-            self._zoom_panel.setVisible(False)
 
         self._refresh_side_tools()
         if mode == "SIGN":
@@ -1388,6 +1369,53 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
 
     # ── Zoom ───────────────────────────────────────────────────────────── #
 
+    def _build_status_zoom(self) -> None:
+        """(r89, petición de Ricardo) Herramienta de zoom siempre visible, a
+        la derecha de la barra de estado: lupa (solo indica), menos, barra
+        de desplazamiento y más — sustituye al botón «Zoom» de la barra
+        principal y a su panel lateral, que ya no existen."""
+        box = QWidget()
+        self._zoom_status_box = box
+        # (bug: sin tamaño fijo, el widget se estira para llenar el hueco
+        # sobrante de la barra de estado y su único hijo sin tamaño fijo
+        # —la lupa— se estira con él, dejando el glifo fuera de la vista)
+        box.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        lay = QHBoxLayout(box)
+        lay.setContentsMargins(0, 0, 8, 0)
+        lay.setSpacing(2)
+
+        lupa = QLabel(_G["zoom100"])
+        lupa.setObjectName("opt_glyph")
+        lupa.setToolTip("Zoom")
+        lupa.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lupa.setFixedSize(icons.CONTROL, icons.CONTROL)
+        lay.addWidget(lupa)
+
+        btn_m = QPushButton(_G["minus"])
+        btn_m.setObjectName("opt_spin_btn")
+        btn_m.setFixedSize(icons.CONTROL, icons.CONTROL)
+        btn_m.setToolTip("Alejar  (Ctrl+-)")
+        btn_m.clicked.connect(lambda _c=False: self.zoom_step(-1))
+        lay.addWidget(btn_m)
+
+        self._zoom_slider = QSlider(Qt.Orientation.Horizontal)
+        self._zoom_slider.setFixedWidth(120)
+        self._zoom_slider.setRange(10, 800)
+        self._zoom_slider.setValue(self.custom_zoom_pct)
+        self._zoom_slider.setToolTip(f"Zoom: {self.custom_zoom_pct} %")
+        self._zoom_slider.valueChanged.connect(self._on_zoom_slider)
+        lay.addWidget(self._zoom_slider)
+
+        btn_p = QPushButton(_G["plus"])
+        btn_p.setObjectName("opt_spin_btn")
+        btn_p.setFixedSize(icons.CONTROL, icons.CONTROL)
+        btn_p.setToolTip("Acercar  (Ctrl++)")
+        btn_p.clicked.connect(lambda _c=False: self.zoom_step(1))
+        lay.addWidget(btn_p)
+
+        box.setEnabled(False)      # sin documento abierto — ver _update_actions
+        self.statusBar().addPermanentWidget(box)
+
     def _compute_scale(self) -> float:
         if not self.doc:
             return 1.5
@@ -1404,32 +1432,26 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         return 1.5
 
     def _toggle_type_zoom(self) -> None:
+        # (r89, petición de Ricardo) Ciclo de tres: ancho → alto → escala
+        # original (100 %) → ancho…
         if self.zoom_mode == "width":
             self._zoom_mode_changed("height")
+        elif self.zoom_mode == "height":
+            self._zoom_mode_changed("100")
         else:
             self._zoom_mode_changed("width")
 
     def _update_zoom_type_icon(self) -> None:
-        """(r48) El icono del botón «ancho/alto» no es fijo: muestra la acción
-        que el clic va a ejecutar (la que está libre), no la que ya está
-        activa — igual que decide `_toggle_type_zoom`. Con zoom 100 % no hay
-        ninguna de las dos activa todavía y el próximo clic ajusta al ancho."""
-        self._zoom_btns["type"].setText(
-            _G["type_height"] if self.zoom_mode == "width" else _G["type"])
-
-    def _on_zoom100_btn(self, checked: bool) -> None:
-        if checked:
-            self._zoom_mode_changed("100")
-            return
-        # (r87, petición de Ricardo: «si le vuelves a pulsar en el mismo
-        # botón, se debe forzar a que la vista vuelva a ser 1:1») Pulsar de
-        # nuevo el botón ya activo no solo cierra el panel: fuerza el zoom
-        # al 100 % real, aunque la barra deslizante tuviera otro porcentaje.
-        self.custom_zoom_pct = 100
-        self._zoom_panel.setVisible(False)
-        self._refresh_side_tools()
-        if self.zoom_mode == "100":
-            self.render_page()
+        """(r48) El icono del botón «ancho/alto/original» no es fijo: muestra
+        la acción que el clic va a ejecutar (la que está libre), no la que ya
+        está activa — igual que decide `_toggle_type_zoom`."""
+        if self.zoom_mode == "width":
+            icon = _G["type_height"]
+        elif self.zoom_mode == "height":
+            icon = _G["zoom100"]           # (r89) próxima acción: escala original
+        else:
+            icon = _G["type"]
+        self._zoom_btns["type"].setText(icon)
 
     def _zoom_mode_changed(self, mode: str) -> None:
         if mode == "100":
@@ -1446,18 +1468,24 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._compress_panel.setVisible(False)
 
         self.zoom_mode = mode
-        self._zoom_btns["100"].setChecked(mode == "100")
         self._update_zoom_type_icon()
         if mode == "100":
             self.custom_zoom_pct = 100
-            self._update_zoom_slider_range()
-        self._zoom_panel.setVisible(mode == "100")
         self._refresh_side_tools()
         self.render_page()
 
     def _update_zoom_slider_range(self) -> None:
+        """(r89, petición de Ricardo) El deslizador de la barra de estado está
+        siempre visible y debe reflejar la ampliación real del visor, esté o
+        no en modo «100» (ajustar a ancho/alto también lo mueve, sin que
+        arrastrarlo a mano cambie de modo — eso lo hace `_on_zoom_slider`,
+        bloqueando sus señales mientras se actualiza aquí). Límites: los de
+        siempre, sin tocarlos."""
+        sl = self._zoom_slider
         if not self.doc:
-            self._zoom_slider.setRange(10, 800)
+            sl.blockSignals(True)
+            sl.setRange(10, 800)
+            sl.blockSignals(False)
             return
         page = self.doc[self.current_page]
         pw, ph = page.rect.width, page.rect.height
@@ -1465,15 +1493,20 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         pct_w = max(1, int(100 * (vp.width()  - 4) / pw))
         pct_h = max(1, int(100 * (vp.height() - 4) / ph))
         min_pct = min(pct_w, pct_h)
-        cur = self._zoom_slider.value()
-        self._zoom_slider.setRange(min(min_pct, self.custom_zoom_pct), 800)
-        self._zoom_slider.setValue(max(min_pct, cur))
+        pct = max(1, min(800, round(self._compute_scale() * 100)))
+        sl.blockSignals(True)
+        sl.setRange(min(min_pct, pct), 800)
+        sl.setValue(pct)
+        sl.setToolTip(f"Zoom: {pct} %")
+        sl.blockSignals(False)
 
     def _on_zoom_slider(self, value: int) -> None:
+        if self.doc is None:
+            return
+        self.zoom_mode = "100"
         self.custom_zoom_pct = value
-        self._lbl_zoom_pct.setText(f"{value} %")
-        if self.zoom_mode == "100":
-            self.render_page()
+        self._update_zoom_type_icon()
+        self.render_page(keep_selection=True)
 
     def _refresh_side_tools(self) -> None:
         # isHidden() not isVisible() — avoids dependency on parent visibility
@@ -1481,7 +1514,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             not w.isHidden() for w in (
                 self._txt_panel, self._note_panel, self._markup_panel,
                 self._rect_panel, self._emoji_panel, self._sign_panel,
-                self._edit_panel, self._zoom_panel, self._pages_panel,
+                self._edit_panel, self._pages_panel,
                 self._compress_panel,
             )))
 
@@ -1503,6 +1536,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         if not self.doc:
             self.viewer.forms.fields = []
             self.viewer.content.clear()
+            self._update_zoom_slider_range()
             return
         self._page_edit.setText(str(self.current_page + 1))
         self._lbl_page.setText(f"/ {len(self.doc)}")
@@ -1530,6 +1564,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             self._hide_annot_opts()
         self.viewer.update()
         self.sidebar.set_current_page(self.current_page)
+        self._update_zoom_slider_range()
 
     def prev_page(self):
         if self.doc and self.current_page > 0:
