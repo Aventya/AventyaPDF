@@ -170,6 +170,7 @@ class PDFViewerWidget(QLabel):
 
         self._erase_checkpointed = False
         self._wheel_accum = 0
+        self._zoom_wheel_accum = 0     # (r97) Ctrl + rueda, ver ctrl_wheel_zoom
 
         # (r68) Firma manuscrita preparada para colocar (herramienta SIGN).
         self.hand_signature = None
@@ -888,9 +889,7 @@ class PDFViewerWidget(QLabel):
         mw = self.main_window
         dy = event.angleDelta().y()
         if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
-            if dy:
-                mw.zoom_step(1 if dy > 0 else -1)
-            event.accept()
+            self.ctrl_wheel_zoom(event)
             return
         if mw is not None and mw.doc is not None and dy:
             bar = mw._scroll.verticalScrollBar()
@@ -919,6 +918,26 @@ class PDFViewerWidget(QLabel):
                 return
         self._wheel_accum = 0
         event.ignore()   # el QScrollArea desplaza la página
+
+    def ctrl_wheel_zoom(self, event) -> None:
+        """(r97, petición de Ricardo) Ctrl + rueda: subir amplía, bajar reduce.
+        Un paso de zoom por cada muesca (120 unidades), acumulando: las ruedas
+        de alta resolución y los paneles táctiles mandan trocitos (15, 30…) y,
+        sin acumular, cada trocito era un paso entero (100% → 400% de una
+        muesca). También lo usa la zona gris que rodea la página
+        (`MainWindow.eventFilter` sobre el viewport)."""
+        event.accept()
+        mw = self.main_window
+        dy = event.angleDelta().y()
+        if mw is None or not dy:
+            return
+        if (self._zoom_wheel_accum > 0) != (dy > 0):
+            self._zoom_wheel_accum = 0          # cambio de sentido: empezar de cero
+        self._zoom_wheel_accum += dy
+        while abs(self._zoom_wheel_accum) >= 120:
+            paso = 1 if self._zoom_wheel_accum > 0 else -1
+            self._zoom_wheel_accum -= 120 * paso
+            mw.zoom_step(paso)
 
     # ── paint ─────────────────────────────────────────────────────────── #
 

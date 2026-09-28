@@ -1798,6 +1798,40 @@ class TestVentanaPrincipal(unittest.TestCase):
         self.assertEqual(len(w.doc), 1)
         w._modified = False
 
+    def test_ctrl_rueda_amplia_y_reduce(self):
+        """(r97, petición de Ricardo) Ctrl + rueda hacia arriba amplía y hacia
+        abajo reduce, sobre la página y también en la zona gris que la rodea;
+        una muesca es un paso, aunque llegue a trozos (rueda fina, panel táctil)."""
+        from PyQt6.QtCore import QPoint, QPointF
+        from PyQt6.QtGui import QWheelEvent
+        w = self.w
+        self.assertTrue(w.open_path(self._crear_pdf(2)))
+
+        def rueda(widget, dy):
+            pos = QPointF(2, 2)
+            ev = QWheelEvent(pos, QPointF(widget.mapToGlobal(pos.toPoint())),
+                             QPoint(0, 0), QPoint(0, dy), Qt.MouseButton.NoButton,
+                             Qt.KeyboardModifier.ControlModifier,
+                             Qt.ScrollPhase.NoScrollPhase, False)
+            self.app.sendEvent(widget, ev)
+            self.app.processEvents()
+
+        w._set_custom_zoom(100)
+        rueda(w.viewer, 120)
+        self.assertEqual(w.custom_zoom_pct, 120)
+        rueda(w.viewer, -120)
+        self.assertEqual(w.custom_zoom_pct, 100)
+        rueda(w._scroll.viewport(), 120)             # zona gris
+        self.assertEqual(w.custom_zoom_pct, 120)
+        rueda(w._scroll.viewport(), -120)
+        self.assertEqual(w.custom_zoom_pct, 100)
+        for _ in range(7):
+            rueda(w.viewer, 15)                      # 105 de 120: aún nada
+        self.assertEqual(w.custom_zoom_pct, 100)
+        rueda(w.viewer, 15)                          # muesca completa: un paso
+        self.assertEqual(w.custom_zoom_pct, 120)
+        self.assertEqual(w.current_page, 0, "Ctrl + rueda no pasa de página")
+
     def test_boton_de_busqueda_alterna_y_busqueda_dinamica(self):
         """(r50, petición de Ricardo) El botón de la barra principal alterna
         mostrar/ocultar la herramienta de búsqueda; escribir busca sin

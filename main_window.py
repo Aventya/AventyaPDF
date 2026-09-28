@@ -328,6 +328,11 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
                 QEvent.Type.Resize, QEvent.Type.LayoutRequest):
             if self._find_bar.isVisible():
                 self._place_find_bar()
+        if (event.type() == QEvent.Type.Wheel
+                and event.modifiers() & Qt.KeyboardModifier.ControlModifier
+                and hasattr(self, "_scroll") and obj is self._scroll.viewport()):
+            self.viewer.ctrl_wheel_zoom(event)
+            return True
         return super().eventFilter(obj, event)
 
     def _toggle_find_bar(self) -> None:
@@ -616,6 +621,9 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self.viewer = PDFViewerWidget()
         self.viewer.main_window = self
         self._scroll.setWidget(self.viewer)
+        # (r97) Ctrl + rueda también en la zona gris que rodea la página: sin
+        # esto, el QScrollArea se quedaba el evento y desplazaba en vez de ampliar.
+        self._scroll.viewport().installEventFilter(self)
         # Zona central del documento (una pila por si algún día hay más vistas).
         self._center = QStackedWidget()
         self._center.addWidget(self._scroll)
