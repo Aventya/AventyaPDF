@@ -1420,9 +1420,16 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
     def _on_zoom100_btn(self, checked: bool) -> None:
         if checked:
             self._zoom_mode_changed("100")
-        else:
-            self._zoom_panel.setVisible(False)
-            self._refresh_side_tools()
+            return
+        # (r87, petición de Ricardo: «si le vuelves a pulsar en el mismo
+        # botón, se debe forzar a que la vista vuelva a ser 1:1») Pulsar de
+        # nuevo el botón ya activo no solo cierra el panel: fuerza el zoom
+        # al 100 % real, aunque la barra deslizante tuviera otro porcentaje.
+        self.custom_zoom_pct = 100
+        self._zoom_panel.setVisible(False)
+        self._refresh_side_tools()
+        if self.zoom_mode == "100":
+            self.render_page()
 
     def _zoom_mode_changed(self, mode: str) -> None:
         if mode == "100":

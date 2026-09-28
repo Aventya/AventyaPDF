@@ -897,9 +897,17 @@ class PDFViewerWidget(QLabel):
             at_bottom = bar.value() >= bar.maximum()
             at_top = bar.value() <= bar.minimum()
             if (dy < 0 and at_bottom) or (dy > 0 and at_top):
-                # En el borde de la página, dos «muescas» pasan de página.
+                # (r87, aviso de Ricardo: «en ocasiones la rueda no
+                # desplaza... deben ir apareciendo, como en la mayoría de
+                # visores») Página a la altura completa del visor —nada que
+                # desplazar dentro de ella, bar.maximum() == bar.minimum()—:
+                # una sola «muesca» pasa de página, sin esperar una segunda
+                # que aquí no protege nada. En una página más alta que el
+                # visor sí hacen falta dos, para no perder el sitio por un
+                # golpe de más al llegar abajo leyendo.
+                umbral = 120 if bar.maximum() <= bar.minimum() else 240
                 self._wheel_accum += dy
-                if abs(self._wheel_accum) >= 240:
+                if abs(self._wheel_accum) >= umbral:
                     self._wheel_accum = 0
                     if dy < 0 and mw.current_page < len(mw.doc) - 1:
                         mw.go_to_page(mw.current_page + 1)

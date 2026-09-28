@@ -89,9 +89,12 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; AppUserModelID: "
 
 [Registry]
 ; Tipo de documento propio y «Abrir con» de los .pdf
+; (r87, petición de Ricardo: «el icono de los PDF no debe cambiar») SIN
+; DefaultIcon aquí a propósito: [Code] lo escribe copiando el que ya
+; tuvieran los .pdf (Acrobat, Edge…) para que elegir AventyaPDF cambie el
+; visor, no el dibujo del archivo en el Explorador — ver CopiarIconoDePdf.
 Root: HKA; Subkey: "Software\Classes\{#ProgId}"; ValueType: string; ValueName: ""; ValueData: "Documento PDF"; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\{#ProgId}"; ValueType: string; ValueName: "AppUserModelID"; ValueData: "Aventya.AventyaPDF"
-Root: HKA; Subkey: "Software\Classes\{#ProgId}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#AppExe},0"
 Root: HKA; Subkey: "Software\Classes\{#ProgId}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
 Root: HKA; Subkey: "Software\Classes\.pdf\OpenWithProgids"; ValueType: string; ValueName: "{#ProgId}"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}"; ValueType: string; ValueName: "FriendlyAppName"; ValueData: "{#AppName}"; Flags: uninsdeletekey
@@ -265,9 +268,55 @@ begin
   Result := '';
 end;
 
+// ── (r87) El icono de los .pdf no debe cambiar ──────────────────────────── //
+// Petición de Ricardo: «el icono de los ficheros PDF del sistema no deben
+// cambiar, deben seguir siendo los originales de Windows 11... lo único que
+// cambia es que el visor es ahora AventyaPDF». En Windows, el icono que
+// enseña el Explorador para un tipo de archivo es el de `DefaultIcon` del
+// ProgID que lo abre (Acrobat, Edge, el que sea) — no hay un "icono nativo
+// de Windows" aparte que copiar. Así que, antes de que AventyaPDF.Document
+// sea ese ProgID, se copia el `DefaultIcon` que YA tuvieran los .pdf, para
+// que asociar AventyaPDF no les cambie el dibujo, solo la app que los abre.
+
+// ProgID que abre hoy los .pdf: primero el elegido por el usuario
+// (Configuración › Aplicaciones predeterminadas, que manda sobre el
+// asociado por la extensión), si no el de la extensión misma.
+function ProgIdActualDePdf: String;
+var
+  Valor: String;
+begin
+  Result := '';
+  if RegQueryStringValue(HKCU,
+       'Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.pdf\UserChoice',
+       'ProgId', Valor) and (Valor <> '') then begin
+    Result := Valor;
+    exit;
+  end;
+  if RegQueryStringValue(HKCR, '.pdf', '', Valor) and (Valor <> '') then
+    Result := Valor;
+end;
+
+procedure CopiarIconoDePdfSiHaceFalta;
+var
+  ProgId, Icono: String;
+begin
+  ProgId := ProgIdActualDePdf;
+  // Vacío (ningún lector de PDF instalado) o ya es el nuestro (instalación
+  // anterior, o esta misma actualización): no hay de dónde copiar, y de
+  // haberlo copiado ya una vez no hace falta —ni conviene— repetirlo.
+  if (ProgId = '') or (ProgId = '{#ProgId}') then
+    exit;
+  if not RegQueryStringValue(HKCR, ProgId + '\DefaultIcon', '', Icono) then
+    exit;
+  if Icono = '' then
+    exit;
+  RegWriteStringValue(HKA, 'Software\Classes\{#ProgId}\DefaultIcon', '', Icono);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then begin
+    CopiarIconoDePdfSiHaceFalta;
     InstalarMenuClasico;
     InstalarMenuModerno;
   end;

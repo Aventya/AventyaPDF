@@ -1,6 +1,7 @@
 """
 menu_contextual.py — Llegada de los archivos desde el menú contextual del
-Explorador de Windows (r86).
+Explorador de Windows (r86) y, desde r87, de cualquier apertura normal
+(«Abrir con…», doble clic, arrastrar varios PDF, otra aplicación).
 
 Dos caminos llevan hasta aquí, los dos con la misma línea de órdenes
 `AventyaPDF.exe <acción> <archivo> <archivo>…`:
@@ -21,6 +22,23 @@ Dos caminos llevan hasta aquí, los dos con la misma línea de órdenes
   dejan sus rutas en una carpeta de intercambio y se cierran sin abrir
   ventana. El Explorador no garantiza el orden de lanzamiento, así que en
   ese camino el orden final es el natural por nombre de archivo.
+
+(r87, aviso de Ricardo: «al abrir varios PDF se abre una ventana por cada
+uno; deben abrirse en pestañas de la misma ventana») La apertura NORMAL de
+uno o varios PDF (sin acción del menú contextual) tiene el mismo problema de
+fondo por partida doble: la asociación de archivo del instalador usa "%1"
+(un proceso por archivo al seleccionar varios y pulsar Intro), y aunque solo
+se abra uno, cada doble clic lanza un AventyaPDF.exe distinto, con ventana
+propia, aunque ya hubiera uno abierto. `es_instancia_secundaria` (mutex
+único, sin acción) es la solución general: el primer proceso en arrancar se
+queda con el mutex y sigue como siempre; cualquier otro deja sus rutas en
+`entrantes\\` y termina sin abrir ventana. La instancia que sigue corriendo
+las recoge con `recoger_entrantes()` (temporizador en `MainWindow`, mientras
+la ventana esté abierta) y abre cada una en su pestaña, con la ventana al
+frente — sirve tanto para varios PDF a la vez como para uno que llega más
+tarde desde otra aplicación. Es un mecanismo aparte de `agrupar_invocaciones`
+porque ese necesita ESPERAR a que lleguen todos los archivos de una ráfaga
+para combinarlos de una vez; abrir pestañas no necesita esperar a nadie.
 
 Todo con la biblioteca estándar: se ejecuta al principio de main.py, antes de
 importar Qt, para que los procesos que solo entregan sus rutas terminen cuanto
@@ -160,3 +178,73 @@ def _agrupar_windows(argv: list[str]) -> list[str]:
     todas = list(dict.fromkeys(rutas + recibidas))
     todas.sort(key=_orden_natural)
     return [accion] + todas
+
+
+# ── (r87) Instancia única para la apertura normal ───────────────────────── #
+
+_CARPETA_ENTRANTES = os.path.join(_CARPETA, "entrantes")
+_MUTEX_INSTANCIA = "Local\\AventyaPDF-instancia"
+# Referencia viva: si se pierde (y Python la recolecta), Windows liberaría el
+# mutex y esta dejaría de ser «la» instancia sin que nadie lo pidiera.
+_mutex_vivo = None
+
+
+def es_instancia_secundaria(argv: list[str]) -> bool:
+    """True si ya hay una instancia de AventyaPDF corriendo: deja `argv`
+    (aunque esté vacío — sirve para que la instancia principal se traiga al
+    frente aun sin archivos, p. ej. al pulsar otra vez el acceso directo) y
+    devuelve True — quien llama debe salir sin más (no crear ventana). False
+    si esta es la primera instancia (debe seguir arrancando con
+    normalidad); en ese caso el mutex queda vivo mientras dure el proceso,
+    para que el siguiente lanzamiento lo detecte."""
+    global _mutex_vivo
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+        from ctypes import wintypes
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.CreateMutexW.restype = wintypes.HANDLE
+        k32.CreateMutexW.argtypes = (ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR)
+        ERROR_ALREADY_EXISTS = 183
+        mutex = k32.CreateMutexW(None, False, _MUTEX_INSTANCIA)
+        if not mutex:
+            return False                       # no se pudo crear: sigue como si fuera la única
+        if ctypes.get_last_error() != ERROR_ALREADY_EXISTS:
+            _mutex_vivo = mutex                # primera instancia: mutex vivo todo el proceso
+            return False
+        k32.CloseHandle(mutex)
+    except Exception:
+        return False                           # ante cualquier imprevisto, arranca como siempre
+    try:
+        os.makedirs(_CARPETA_ENTRANTES, exist_ok=True)
+        nombre = f"{time.time_ns()}-{os.getpid()}"
+        tmp = os.path.join(_CARPETA_ENTRANTES, nombre + ".tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write("\n".join(argv))
+        os.replace(tmp, os.path.join(_CARPETA_ENTRANTES, nombre + ".txt"))
+    except OSError:
+        return False        # no se pudo avisar a la instancia principal: abre esta ventana
+    return True
+
+
+def recoger_entrantes() -> list[list[str]]:
+    """[argv, argv…] dejados por otros procesos mientras esta instancia (la
+    única) seguía abierta — uno por cada apertura que se le cedió, `[]`
+    incluida (solo pide traer la ventana al frente). Se llama periódicamente
+    desde la ventana principal (ver `main._start_instance_watch`)."""
+    if not os.path.isdir(_CARPETA_ENTRANTES):
+        return []
+    resultado = []
+    for nombre in sorted(os.listdir(_CARPETA_ENTRANTES)):
+        if not nombre.endswith(".txt"):
+            continue
+        ruta = os.path.join(_CARPETA_ENTRANTES, nombre)
+        try:
+            with open(ruta, encoding="utf-8") as f:
+                argv = [l for l in f.read().splitlines() if l]
+            os.remove(ruta)
+        except OSError:
+            continue
+        resultado.append(argv)
+    return resultado

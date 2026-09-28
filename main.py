@@ -11,13 +11,21 @@ import traceback
 # ANTES de que nada importe numpy. setdefault: quien lo fije a mano manda.
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 
-# (r86) Menú contextual del Explorador: el menú clásico lanza un proceso por
-# archivo seleccionado. Antes de importar nada pesado, los procesos de una
-# misma acción se reúnen en uno solo; los demás terminan aquí (ver
-# menu_contextual.py). Solo al ejecutarse como programa, no al importarse.
+# (r86, r87) Antes de importar nada pesado: el menú contextual clásico lanza
+# un proceso por archivo seleccionado (los de una misma acción se reúnen en
+# uno solo, ver menu_contextual.py), y CUALQUIER apertura normal —doble
+# clic, «Abrir con…», varios PDF a la vez, otra aplicación— debe acabar en
+# la ÚNICA instancia abierta, no en una ventana nueva por archivo. Solo al
+# ejecutarse como programa, no al importarse.
 if __name__ == "__main__":
     import menu_contextual
-    sys.argv[1:] = menu_contextual.agrupar_invocaciones(sys.argv[1:])
+    _argv = sys.argv[1:]
+    if _argv and _argv[0] in menu_contextual.ACCIONES:
+        sys.argv[1:] = menu_contextual.agrupar_invocaciones(_argv)
+    elif _argv[:1] == ["--autodiagnostico"]:
+        pass                 # invocación especial (construir.ps1): nunca se cede
+    elif menu_contextual.es_instancia_secundaria(_argv):
+        sys.exit(0)          # otra instancia ya recogerá esto (archivos, o solo activarse)
 
 # Todos los complementos son obligatorios: antes de importar nada de fuera se
 # instala a la fuerza lo que falte de requirements.txt (dependencias.py).
@@ -423,7 +431,8 @@ from menu_contextual import (  # noqa: E402
 def procesar_argumentos(window, argv: list[str]) -> None:
     """Interpreta `argv` (sys.argv[1:]) y actúa sobre `window`: o bien una de
     las acciones del menú contextual del Explorador, o bien el «Abrir con…»
-    normal de un único PDF (el primero de la lista, como toda la vida)."""
+    normal — TODOS los .pdf de la lista, cada uno en su pestaña (r87; antes
+    solo abría el primero)."""
     if not argv:
         return
     accion, resto = argv[0], [p for p in argv[1:] if os.path.isfile(p)]
@@ -448,7 +457,31 @@ def procesar_argumentos(window, argv: list[str]) -> None:
     for arg in argv:
         if arg.lower().endswith(".pdf") and os.path.isfile(arg):
             window.open_path(arg)
-            break
+
+
+def _start_instance_watch(window, interval_ms: int = 500) -> None:
+    """(r87, aviso de Ricardo: «al abrir varios PDF se abre una ventana por
+    cada uno») Mientras esta ventana esté abierta —la única instancia,
+    `menu_contextual.es_instancia_secundaria`—, recoge periódicamente los
+    archivos que otros procesos le hayan cedido (otro PDF abierto desde el
+    Explorador o desde otra aplicación mientras esta seguía corriendo) y los
+    abre cada uno en su pestaña, con la ventana al frente."""
+    timer = QTimer(window)
+
+    def recoger():
+        entrantes = menu_contextual.recoger_entrantes()
+        if not entrantes:
+            return
+        for argv in entrantes:
+            procesar_argumentos(window, argv)
+        if window.isMinimized():
+            window.showNormal()
+        window.raise_()
+        window.activateWindow()
+
+    timer.timeout.connect(recoger)
+    timer.start(interval_ms)
+    window._instance_watch_timer = timer      # referencia viva: si se pierde, el timer para
 
 
 def _set_app_user_model_id() -> None:
@@ -483,6 +516,9 @@ def main():
     window.set_ocr_available(ocr_ok, ocr_reason)
     window.show()
     procesar_argumentos(window, sys.argv[1:])
+    # (r87) Mientras esta ventana siga abierta, recoge los PDF que le cedan
+    # otros procesos (otra apertura mientras esta ya corría).
+    _start_instance_watch(window)
     # (r70) Presentación inicial, salvo que se marcara «No volver a mostrar».
     QTimer.singleShot(250, lambda: presentacion.show_welcome(window, only_if_enabled=True))
     # (petición de Ricardo) Aviso de versión nueva, en segundo plano; espera

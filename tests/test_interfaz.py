@@ -463,12 +463,32 @@ class TestVentanaPrincipal(unittest.TestCase):
         w._select_tool("NONE")
 
     def test_procesar_argumentos_abre_un_pdf_como_siempre(self):
-        """(r55) Sin indicador del menú contextual: sigue abriendo el primer
-        .pdf de la lista, como el «Abrir con…» normal de toda la vida."""
+        """(r55) Sin indicador del menú contextual: abre el .pdf, como el
+        «Abrir con…» normal de toda la vida."""
         import main
         w = self.w
         a = self._crear_pdf(1)
         main.procesar_argumentos(w, [a])
+        self.assertEqual(w.pdf_path, a)
+
+    def test_procesar_argumentos_abre_varios_pdf_en_pestanas(self):
+        """(r87, aviso de Ricardo: «al abrir varios PDF se abre una ventana
+        por cada uno») Sin indicador del menú contextual pero con más de un
+        .pdf en la lista (varios seleccionados en el Explorador y «Abrir
+        con…»): los abre TODOS, cada uno en su propia pestaña de la misma
+        ventana — antes solo abría el primero."""
+        import main
+        w = self.w
+        a = self._crear_pdf_con_nombre("a.pdf", 1)
+        b = self._crear_pdf_con_nombre("b.pdf", 1)
+        c = self._crear_pdf_con_nombre("c.pdf", 1)
+        antes = len(w._sessions)
+        main.procesar_argumentos(w, [a, b, c])
+        self.assertEqual(len(w._sessions), antes + 3)
+        self.assertEqual(w.pdf_path, c)          # la pestaña activa es la última abierta
+        # Reabrir uno ya abierto no duplica pestaña: pasa a la suya.
+        main.procesar_argumentos(w, [a])
+        self.assertEqual(len(w._sessions), antes + 3)
         self.assertEqual(w.pdf_path, a)
 
     def test_icono_de_la_aplicacion_con_todos_los_tamanos(self):

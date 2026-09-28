@@ -2406,6 +2406,47 @@ class TestMenuContextual(_ConCarpeta):
         llenas = [s for s in salidas if s]
         self.assertEqual(llenas, ["--combinar|doc1.pdf|doc2.pdf|doc10.pdf|otro.pdf"])
 
+    @unittest.skipUnless(sys.platform == "win32", "solo Windows")
+    def test_instancia_secundaria_cede_sus_archivos(self):
+        """(r87, aviso de Ricardo: «al abrir varios PDF se abre una ventana
+        por cada uno») Con una instancia ya «abierta» (mutex tomado), otro
+        lanzamiento —con o sin archivos— se reconoce como secundario, deja
+        lo que traiga en `entrantes\\` y termina; `recoger_entrantes()` lo
+        recupera en la principal, en el orden en que llegó."""
+        import subprocess
+        raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = {**os.environ, "LOCALAPPDATA": self.tmp, "PYTHONIOENCODING": "utf-8"}
+        # «Primaria»: se queda con el mutex y no lo suelta hasta que la matemos.
+        codigo_primaria = (
+            "import sys, time, menu_contextual as m; "
+            "print(m.es_instancia_secundaria([]), flush=True); "
+            "time.sleep(30)"
+        )
+        primaria = subprocess.Popen([sys.executable, "-c", codigo_primaria], cwd=raiz,
+                                    env=env, stdout=subprocess.PIPE, text=True)
+        try:
+            self.assertEqual(primaria.stdout.readline().strip(), "False")
+
+            codigo_secundaria = ("import sys, menu_contextual as m; "
+                                 "print(m.es_instancia_secundaria(sys.argv[1:]))")
+            # Una sin archivos (solo pide activar la ventana) y otra con uno.
+            p_vacia = subprocess.run([sys.executable, "-c", codigo_secundaria], cwd=raiz,
+                                     env=env, stdout=subprocess.PIPE, text=True, timeout=30)
+            self.assertEqual(p_vacia.stdout.strip(), "True")
+            p_archivo = subprocess.run([sys.executable, "-c", codigo_secundaria, "doc.pdf"],
+                                       cwd=raiz, env=env, stdout=subprocess.PIPE, text=True,
+                                       timeout=30)
+            self.assertEqual(p_archivo.stdout.strip(), "True")
+        finally:
+            primaria.kill()
+            primaria.wait(timeout=10)
+
+        import menu_contextual as mc
+        mc._CARPETA_ENTRANTES = os.path.join(self.tmp, "aventyapdf", "menu-contextual",
+                                             "entrantes")
+        self.assertEqual(mc.recoger_entrantes(), [[], ["doc.pdf"]])
+        self.assertEqual(mc.recoger_entrantes(), [])   # ya recogidos: no se repiten
+
 
 def _hay_word_o_libreoffice() -> bool:
     import conversion_office
