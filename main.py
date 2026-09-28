@@ -244,7 +244,7 @@ QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
 QStatusBar {
     background: #F3F3F3; color: #605E5C;
     border-top: 1px solid #E0E0E0;
-    padding: 2px 8px; font-size: 12px;
+    padding: 2px 0 2px 8px; font-size: 12px;   /* (r95) sin relleno a la derecha: el zoom va pegado al borde */
 }
 
 /* ── Herramienta de zoom de la barra de estado (petición de Ricardo: del
@@ -269,7 +269,7 @@ QLineEdit#status_zoom_pct {
     border: 1px solid #C8C6C4; border-radius: 3px;
     padding: 0 3px;
     font-size: 11px;
-    min-width: 50px; max-width: 50px;
+    min-width: 35px; max-width: 35px;
     min-height: 16px; max-height: 16px;
     selection-background-color: #0078D4; selection-color: #FFFFFF;
 }

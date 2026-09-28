@@ -1385,7 +1385,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         # fijo se estiraba con él, quedando fuera de la vista)
         box.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         lay = QHBoxLayout(box)
-        lay.setContentsMargins(0, 0, 8, 0)
+        lay.setContentsMargins(0, 0, 0, 0)   # (r95) pegado al borde derecho
         lay.setSpacing(3)
 
         self._zoom_pct_edit = QLineEdit(f"{self.custom_zoom_pct}%")
@@ -1417,6 +1417,9 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         lay.addWidget(btn_p)
 
         box.setEnabled(False)      # sin documento abierto — ver _update_actions
+        # (r95, petición de Ricardo) Todo el widget, pegado al borde derecho de
+        # la barra: sin la esquina de redimensionar, que ocupaba ese hueco.
+        self.statusBar().setSizeGripEnabled(False)
         self.statusBar().addPermanentWidget(box)
 
     def _on_zoom_pct_edit(self) -> None:
