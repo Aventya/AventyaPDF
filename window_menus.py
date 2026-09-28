@@ -235,8 +235,10 @@ class MenusMixin:
         self._find_count.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lay.addWidget(self._find_count)
         self._find_edit = QLineEdit()
-        self._find_edit.setPlaceholderText("Buscar en el documento…")
-        self._find_edit.setFixedWidth(220)
+        # (r96, petición de Ricardo) 107 px más estrecho que antes (220) y sin
+        # « en el documento»: todo el buscador flotante se estrecha con él.
+        self._find_edit.setPlaceholderText("Buscar…")
+        self._find_edit.setFixedWidth(113)
         # (r50) Dinámica: cada pulsación relanza la búsqueda (con un pequeño
         # retardo, `_find_live_timer`); Intro ya no hace falta, pero sigue
         # sirviendo para saltar a la siguiente coincidencia.
