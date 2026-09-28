@@ -6,11 +6,11 @@
 
 | Campo | Valor |
 | :-- | :-- |
-| Revisión de la memoria | **r93** |
+| Revisión de la memoria | **r94** |
 | Fecha de la revisión | 2026-09-28 |
 | Versión de la app | **1.1.2** (r89-r92: herramienta de Zoom rediseñada, siempre visible en la barra de estado — campo de porcentaje editable, iconos de lupa +/-, tope 400%, tercera opción «escala original» en ancho/alto). `window_menus.APP_VERSION`, `APP_OWNER`, `APP_REPO` |
-| Raíz del proyecto | `C:\Users\Aventya\Proyectos\AVENTYAPDF` (✅ ya renombrada, comprobado en r71; antes `ANTIGRAVITY-PDF`, ver r56) (hasta r5: `A:\CARPETA IA\RICARDO\ANTIGRAVITY-PDF`, carpeta compartida por varios equipos) |
-| Control de versiones | ✅ **git** desde r71, repositorio **público** https://github.com/Aventya/AventyaPDF (cuenta de GitHub `Aventya`, rama `main`). Licencia **AGPL-3.0** (`LICENSE`). Titular: **Aventya Asesoría Integral SL**. |
+| Raíz del proyecto | (r94) Ricardo trabaja desde **dos equipos**: `C:\Users\ricardo\Proyectos\AventyaPDF` (tiene Inno Setup, Visual Studio con C++ y el certificado del paquete del menú contextual: aquí se puede empaquetar) y `C:\Users\Aventya\Proyectos\AVENTYAPDF` (✅ ya renombrada, comprobado en r71; antes `ANTIGRAVITY-PDF`, ver r56) (hasta r5: `A:\CARPETA IA\RICARDO\ANTIGRAVITY-PDF`, carpeta compartida por varios equipos) |
+| Control de versiones | ✅ **git** desde r71, repositorio **público** https://github.com/Aventya/AventyaPDF (cuenta de GitHub `Aventya`). (r94) **Rama de trabajo: `desarrollo`**; `main` = solo lo publicado (ver §8 «Ramas»). Licencia **AGPL-3.0** (`LICENSE`). Titular: **Aventya Asesoría Integral SL**. |
 | Estado | ✅ **Pruebas automáticas: 190/190** (5 omitidas por falta de `signxml`; r86: 188 (6 omitidas); r82…r72: 169/169; r71: 168; r70, 5 omitidas; r69: 167; r68: 166; r62: instalador `AventyaPDF-Setup-2.0.1.exe` generado y probado). ⚠️ La interfaz real aún no se ha abierto ni probado a mano (ver §7.0). (r86) El menú contextual del Explorador lo instala ya el instalador (menú principal de Windows 11 + clásico). |
 | Líneas de código Python | ~11.000 en 29 módulos + 2 de pruebas (r38: fuera el visor XFA y pdf.js) |
 
@@ -1051,10 +1051,30 @@ versión no se enteraría del cambio. Pasos:
 1. Subir `APP_VERSION` en `window_menus.py`.
 2. Pruebas: `%LOCALAPPDATA%\aventyapdf\venv\Scripts\python.exe -m unittest discover -s tests`.
 3. `.\empaquetado\construir.ps1` (autodiagnóstico incluido).
-4. Commit y `git push origin main`; etiqueta anotada `v<versión>` y su push.
+4. (r94) Pasar `desarrollo` a `main` (`git switch main`, `git merge desarrollo`),
+   commit y `git push origin main`; etiqueta anotada `v<versión>` y su push.
+   Volver a `desarrollo` y ponerla al día con `main`.
 5. `gh release create v<versión> empaquetado\salida\AventyaPDF-Setup-<versión>.exe --latest`
    con notas en español: instalación, aviso de SmartScreen y cambios respecto
    a la anterior.
+
+**(r94) Ramas — trabajo en curso en `desarrollo`** (petición de Ricardo: «los
+cambios no los quiero hacer públicos hasta tenerlos pulidos, pero necesito ir
+dejándolos en GitHub pues trabajo desde dos equipos distintos»).
+
+- Todo el trabajo se hace y se sube en la rama **`desarrollo`**. `main` solo
+  recibe cambios cuando Ricardo dice que están pulidos y se publica versión
+  (pasos de arriba). Excepción: notas de documentación que el otro equipo
+  necesite leer estando aún en `main`, como esta.
+- Al **empezar** una sesión en cualquier equipo: `git fetch`, `git switch
+  desarrollo` (la primera vez en un equipo crea la rama local a partir de
+  `origin/desarrollo`) y `git pull`. «Descarga la última versión» significa eso.
+- Al **terminar** (o cuando Ricardo lo pida): commit y `git push` a `desarrollo`.
+- Nada de etiquetas ni releases desde `desarrollo`: el aviso de actualizaciones
+  (`actualizaciones.fetch_latest`) lee `releases/latest` y enlaza su `.exe`;
+  una release sin instalador o a medias llegaría a todos los usuarios.
+- El repositorio es **público**: lo de `desarrollo` no llega a los usuarios
+  como actualización, pero cualquiera puede ver el código en GitHub.
 
 Tesseract OCR (r16): `.\run.ps1` lo comprueba antes de arrancar y, si falta, lo
 instala solo (pedirá permiso de administrador) con los idiomas español, inglés y
@@ -1090,6 +1110,7 @@ motivos, invariantes, trampas y estado.
 
 | Rev | Fecha | Cambio |
 | :-- | :-- | :-- |
+| r94 | 2026-09-28 | **Rama `desarrollo` para el trabajo en curso** (petición de Ricardo, que trabaja desde dos equipos y no quiere publicar cambios hasta tenerlos pulidos). Creada y subida a GitHub desde `main` (928aa25); procedimiento en §8 «Ramas» y paso 4 de «Publicar una versión». Cabecera: los dos equipos y cuál puede empaquetar (comprobado: Inno Setup en `%LOCALAPPDATA%\Programs\Inno Setup 6`, Visual Studio Community 2026 con C++, certificado `CN=Aventya Asesoria Integral SL` E2A6A6C7… en `CurrentUser\My` y en `LocalMachine\TrustedPeople`). Nuevo `CLAUDE.md` que apunta a esta memoria y a la rama, para que cualquier sesión en cualquier equipo lo sepa sin que se lo digan. Solo documentación, sin cambios de código. |
 | r93 | 2026-09-28 | **Publicada la versión 1.1.2** (petición de Ricardo: «empaqueta y sube la nueva versión... revisión menor 1.1.2»), con el rediseño de la herramienta de Zoom de r89-r92: siempre visible en la barra de estado (campo de porcentaje editable + botones zoom_out/zoom_in con iconos de lupa + barra deslizante, en ese orden), tope de zoom 400%, tercera opción «escala original» (icono «document fit») en el botón ancho/alto, del mismo alto que la barra de estado original. 190 pruebas OK (5 omitidas); autodiagnóstico 7/7. |
 | r92 | 2026-09-28 | **Campo de porcentaje del zoom, al ancho mínimo de verdad** (petición de Ricardo sobre r91, que se había quedado corta: «el 400% no puede ser tan ancho... el campo del formulario debe ser como máximo de ancho lo justo para que el texto "400%" quepa limpio sin deformaciones»). Comprobado por bisección con capturas fuera de pantalla, con «400%» puesto de verdad (`_set_custom_zoom(400)`, no solo escrito en el campo, que `_update_zoom_slider_range` habría vuelto a pisar): a 40 y 44 px de caja de contenido se recorta el «4»; a 48 se ve a medias; a 50 cabe entero y limpio, con margen mínimo. `main.py` baja el ancho de `#status_zoom_pct` de 52 a **50 px** (58 px totales con borde y relleno, frente a los 70 px de r90). Cambio solo gráfico: sin pasar la suite de pruebas, a petición de Ricardo. |
 | r91 | 2026-09-28 | **Orden de la herramienta de zoom de la barra de estado** (petición de Ricardo: «campo de porcentaje (lo más pequeño posible para que quepa el valor 400%), botón de zoom_out, barra deslizante, botón de zoom_in»). `_build_status_zoom` reordenado a ese orden exacto (antes: menos, campo, barra, más); el campo pierde el espacio antes del «%» (`«400%»`, no `«400 %»`) y su ancho en `main.py` baja de 62 a 52 px de caja de contenido —el mínimo que cupo sin recortar el texto, comprobado con capturas fuera de pantalla en varios anchos—. Cambio solo gráfico (posición y tamaño): sin pasar la suite de pruebas, a petición de Ricardo; comprobado con capturas fuera de pantalla que «400%» se ve entero y la barra de estado sigue en 23 px. |
