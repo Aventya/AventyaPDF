@@ -269,7 +269,7 @@ QLineEdit#status_zoom_pct {
     border: 1px solid #C8C6C4; border-radius: 3px;
     padding: 0 3px;
     font-size: 11px;
-    min-width: 52px; max-width: 52px;
+    min-width: 50px; max-width: 50px;
     min-height: 16px; max-height: 16px;
     selection-background-color: #0078D4; selection-color: #FFFFFF;
 }
