@@ -31,7 +31,8 @@ desarrollo.
 .\empaquetado\construir.ps1 -SinInstalador  # solo la carpeta de la app
 ```
 
-Resultado: `empaquetado\salida\AventyaPDF-Setup-<versión>.exe` (~130 MB). La
+Resultado: `empaquetado\salida\AventyaPDF-Setup-<versión>.exe` (~81 MB desde
+r102, sin Tesseract dentro; antes, ~131 MB). La
 versión sale de `APP_VERSION` en `window_menus.py`.
 
 Pasos de `construir.ps1`:
@@ -39,10 +40,10 @@ Pasos de `construir.ps1`:
 1. **Entorno de compilación** `%LOCALAPPDATA%\aventyapdf\build-venv`, con las
    **mismas versiones** de paquetes que el entorno de la app (`pip freeze`), más
    PyInstaller. Así el ejecutable lleva exactamente lo que ya pasó las pruebas.
-2. **PyInstaller** con `empaquetado\AventyaPDF.spec`. La carpeta resultante y
-   los intermedios van a `%LOCALAPPDATA%\aventyapdf\build-dist` y
-   `build-work`, **fuera del proyecto** (carpeta compartida). (r102) Ya no
-   incluye Tesseract: se descarga solo, ver «Qué instala» arriba.
+2. **PyInstaller** con `empaquetado\AventyaPDF.spec`. La carpeta resultante
+   (~280 MB desde r102, sin Tesseract dentro; antes, ~430 MB) y los
+   intermedios van a `%LOCALAPPDATA%\aventyapdf\build-dist` y `build-work`,
+   **fuera del proyecto** (carpeta compartida).
 3. **Autodiagnóstico del ejecutable ya empaquetado**
    (`AventyaPDF.exe --autodiagnostico informe.json cert.pfx clave`, ver
    `autodiagnostico.py`): archivos incluidos, ventana, OCR (con el Tesseract
