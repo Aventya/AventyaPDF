@@ -1876,6 +1876,45 @@ class TestVentanaPrincipal(unittest.TestCase):
         self.assertEqual(len(w.doc), 1)
         w._modified = False
 
+    def test_aviso_de_formulario_y_cifrado_en_la_barra_de_estado(self):
+        """(r101, petición de Ricardo) Formulario sin firmar y/o cifrado:
+        un aviso centrado en la barra de estado, no una barra aparte sobre
+        el visor (r46, retirada)."""
+        w = self.w
+        self.assertTrue(w._notice_box.isHidden())
+
+        # Documento normal: sin aviso.
+        self.assertTrue(w.open_path(self._crear_pdf(1)))
+        self.assertTrue(w._notice_box.isHidden())
+
+        # Con un campo de formulario: aviso visible, con ese texto.
+        path = os.path.join(self.tmp, "formulario.pdf")
+        doc = fitz.open()
+        page = doc.new_page()
+        campo = fitz.Widget()
+        campo.field_type = fitz.PDF_WIDGET_TYPE_TEXT
+        campo.field_name = "a"
+        campo.rect = fitz.Rect(20, 20, 120, 40)
+        page.add_widget(campo)
+        doc.save(path)
+        doc.close()
+        self.assertTrue(w.open_path(path))
+        self.assertFalse(w._notice_box.isHidden())
+        self.assertIn("campos de formulario", w._notice_lbl.text())
+        self.assertNotIn("cifrado", w._notice_lbl.text())
+
+        # Cifrado además de formulario: los dos avisos, combinados.
+        w._orig_encrypted = True
+        w._update_doc_notice()
+        self.assertFalse(w._notice_box.isHidden())
+        self.assertIn("campos de formulario", w._notice_lbl.text())
+        self.assertIn("cifrado", w._notice_lbl.text())
+
+        # Cerrar el documento retira el aviso.
+        w._modified = False
+        w.close_document()
+        self.assertTrue(w._notice_box.isHidden())
+
     def test_ctrl_rueda_amplia_y_reduce(self):
         """(r97, petición de Ricardo) Ctrl + rueda hacia arriba amplía y hacia
         abajo reduce, sobre la página y también en la zona gris que la rodea;
@@ -2046,21 +2085,15 @@ class TestVentanaPrincipal(unittest.TestCase):
             w.sidebar.stack.mapTo(w, w.sidebar.stack.rect().topLeft()).y(), techo_panel)
         self.assertTrue(w.sidebar.tools.isHidden())
 
-        # (r46) El aviso superior («documento firmado / cifrado / con
-        # formulario») va en la columna del visor: solo lo empuja a él.
-        self.assertIs(w._banner.parentWidget(), w._center.parentWidget())
-        self.assertFalse(w.sidebar.isAncestorOf(w._banner))
-        arriba = w.sidebar.mapTo(w, w.sidebar.rect().topLeft()).y()
-        visor = w._center.mapTo(w, w._center.rect().topLeft()).y()
-        self.assertTrue(w._banner.isHidden())
-        w._banner_lbl.setText("Documento protegido con cifrado.")
-        w._banner.show()
-        self.app.processEvents()
-        self.assertEqual(w.sidebar.mapTo(w, w.sidebar.rect().topLeft()).y(), arriba)
-        self.assertEqual(w._center.mapTo(w, w._center.rect().topLeft()).y(),
-                         visor + w._banner.height())
-        w._banner.hide()
-        self.app.processEvents()
+        # (r101, petición de Ricardo: «cualquier aviso que esté preparado
+        # para abrir una barra de notificaciones debe visualizarse centrado
+        # en la barra de tareas») El aviso de formulario/cifrado ya no es
+        # una barra propia sobre el visor (r46, `_build_banner`, retirado):
+        # es un widget permanente de la barra de estado, oculto salvo
+        # cuando hay algo que avisar, y no desplaza ni el visor ni nada.
+        self.assertTrue(w._notice_box.isHidden())
+        w._update_doc_notice()
+        self.assertTrue(w._notice_box.isHidden())      # sin documento, nada que avisar
 
         # (r78, petición de Ricardo: «la barra secundaria debe desaparecer;
         # en su lugar, al pulsar el botón de búsqueda, este se oculta y en

@@ -219,7 +219,7 @@ class DocumentMixin:
         self._hide_annot_opts()
         self.render_page()
         self.sidebar.set_document()
-        self._update_banner()
+        self._update_doc_notice()
         self._update_actions()
         self._update_title()
         h, y = s.get("_scroll_pos", (0, 0))
@@ -337,7 +337,7 @@ class DocumentMixin:
         elif (not self.sidebar.stack.isVisible()
                 and QSettings(*SETTINGS).value("view/sidebar", "true") == "true"):
             self.sidebar.show_panel("thumbs")
-        self._update_banner()
+        self._update_doc_notice()
         self._update_actions()
         self._update_title()
 
@@ -366,7 +366,7 @@ class DocumentMixin:
         self._lbl_page.setText("/ —")
         self._finish_action()
         self.sidebar.set_document()
-        self._update_banner()
+        self._update_doc_notice()
         self._update_actions()
         self._update_title()
         self.statusBar().showMessage("Documento cerrado")
@@ -587,7 +587,7 @@ class DocumentMixin:
         self.mark_modified(structure=True)
         self.render_page()
         self.sidebar.set_document()
-        self._update_banner()
+        self._update_doc_notice()
 
     def undo(self):
         self._step_history(self._history.undo, "Deshecho")
@@ -621,7 +621,7 @@ class DocumentMixin:
         self._clear_find()
         self.render_page()
         self.sidebar.set_document()
-        self._update_banner()
+        self._update_doc_notice()
         self._update_actions()
         self._update_title()
         self.statusBar().showMessage(f"{verb}: {snap.label}" if snap.label else verb)
@@ -1036,25 +1036,26 @@ class DocumentMixin:
             QApplication.clipboard().setText(text)
             self.statusBar().showMessage(f"Copiados {len(text)} caracteres")
 
-    # ── aviso superior ─────────────────────────────────────────────────── #
+    # ── aviso del documento ───────────────────────────────────────────── #
 
-    def _update_banner(self):
-        # (petición de Ricardo) El aviso de firma ya no se muestra sobre el
-        # visor: esa información vive solo en el panel lateral de Firmas
-        # Certificadas (rail o menú), que _set_document abre siempre que el
-        # documento está firmado (r77).
+    def _update_doc_notice(self):
+        """(r101, petición de Ricardo: «cualquier aviso que esté preparado
+        para abrir una barra de notificaciones debe visualizarse centrado
+        en la barra de tareas») Formulario sin firmar y/o cifrado, centrado
+        en la barra de estado (`_notice_box`) — sustituye al aviso superior
+        (`_build_banner`, r46, retirado por no usarlo ya nada). El de firma
+        no se anuncia aquí: vive en el panel lateral de Firmas Certificadas
+        (rail o menú), que `_set_document` abre siempre que el documento
+        está firmado (r77)."""
         msgs = []
         if self.doc is not None:
             if self.doc.is_form_pdf and not doc_tools.signed_count(self.doc):
-                msgs.append(("form", "Este documento contiene campos de formulario: "
-                                     "haz clic en ellos para rellenarlos."))
+                msgs.append("Este documento contiene campos de formulario: "
+                            "haz clic en ellos para rellenarlos.")
             if self._orig_encrypted:
-                msgs.append(("lock", "Documento protegido con cifrado."))
-        if not msgs:
-            self._banner.hide()
-            return
-        self._banner_lbl.setText("   ·   ".join(m for _k, m in msgs))
-        self._banner.show()
+                msgs.append("Documento protegido con cifrado.")
+        self._notice_lbl.setText("   ·   ".join(msgs))
+        self._notice_box.setVisible(bool(msgs))
 
     # ── firma digital ──────────────────────────────────────────────────── #
 

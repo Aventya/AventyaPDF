@@ -402,9 +402,9 @@ QWidget#find_bar { background: #FFFFFF; }
 QWidget#find_bar QLabel { background: transparent; }
 QLabel#find_count { color: #605E5C; font-size: 12px; }
 
-/* ── Aviso de documento (firmas, formularios, protección) ── */
-QFrame#doc_banner { background: #E5F1FB; border-bottom: 1px solid #C7E0F4; }
-QFrame#doc_banner QLabel { color: #004578; }
+/* ── Aviso de documento (formulario sin firmar, cifrado): centrado en la
+   barra de estado (r101) — antes era una barra aparte sobre el visor. ── */
+QLabel#status_notice_lbl { color: #004578; font-size: 12px; }
 
 /* ── Pestañas ── */
 QTabWidget::pane { border: 1px solid #E0E0E0; border-radius: 4px; top: -1px; background: #FFFFFF; }

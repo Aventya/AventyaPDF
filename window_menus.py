@@ -262,22 +262,6 @@ class MenusMixin:
         self._find_bar = box
         return box
 
-    def _build_banner(self) -> QFrame:
-        bar = QFrame()
-        bar.setObjectName("doc_banner")
-        bar.hide()
-        lay = QHBoxLayout(bar)
-        lay.setContentsMargins(14, 5, 10, 5)
-        self._banner_lbl = QLabel("")
-        lay.addWidget(self._banner_lbl)
-        lay.addStretch()
-        close = QPushButton(icons.glyph("close"))
-        close.setObjectName("opt_btn")
-        close.setToolTip("Cerrar el aviso")
-        close.clicked.connect(lambda _c=False: bar.hide())
-        lay.addWidget(close)
-        self._banner = bar
-        return bar
 
     # ── utilidades ─────────────────────────────────────────────────────── #
 

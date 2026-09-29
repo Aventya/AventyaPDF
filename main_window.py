@@ -137,7 +137,6 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         right_lay = QVBoxLayout(right)
         right_lay.setContentsMargins(0, 0, 0, 0)
         right_lay.setSpacing(0)
-        right_lay.addWidget(self._build_banner())
         right_lay.addWidget(self._build_viewer(), 1)
         self._splitter = QSplitter(Qt.Orientation.Horizontal)
         self._splitter.setChildrenCollapsible(False)
@@ -147,6 +146,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._splitter.setStretchFactor(1, 1)
         root.addWidget(self._splitter, 1)
 
+        self._build_status_notice()
         self._build_status_zoom()
         self._refresh_side_tools()
         self._update_actions()
@@ -1467,6 +1467,30 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             QApplication.restoreOverrideCursor()
         self.statusBar().showMessage("Impresión enviada")
 
+    # ── Aviso del documento ──────────────────────────────────────────────── #
+
+    def _build_status_notice(self) -> None:
+        """(r101, petición de Ricardo: «cualquier aviso que esté preparado
+        para abrir una barra de notificaciones debe visualizarse centrado
+        en la barra de tareas») Formulario sin firmar y/o cifrado: en vez
+        del aviso superior de antes (`_build_banner`, r46, retirado), un
+        widget permanente de la barra de estado con hueco elástico a los
+        dos lados (`addStretch`) para que el texto quede centrado en ella;
+        con `stretch=1` en `addPermanentWidget` para que sea él quien ocupe
+        el hueco entre el área de mensajes y la herramienta de zoom, no
+        esta última. `window_document._update_doc_notice` lo rellena."""
+        box = QWidget()
+        self._notice_box = box
+        lay = QHBoxLayout(box)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addStretch()
+        self._notice_lbl = QLabel("")
+        self._notice_lbl.setObjectName("status_notice_lbl")
+        lay.addWidget(self._notice_lbl)
+        lay.addStretch()
+        box.setVisible(False)
+        self.statusBar().addPermanentWidget(box, 1)
+
     # ── Zoom ───────────────────────────────────────────────────────────── #
 
     def _build_status_zoom(self) -> None:
@@ -1485,7 +1509,15 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         # fijo se estiraba con él, quedando fuera de la vista)
         box.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         lay = QHBoxLayout(box)
-        lay.setContentsMargins(0, 0, 0, 0)   # (r95) pegado al borde derecho
+        # (r101, petición de Ricardo: «debes tener en cuenta forzosamente el
+        # ancho de la barra de desplazamiento del visor y ponerle ese mismo
+        # ancho como separación a mano derecha... para que siempre quede
+        # equilibrado») El ancho real de la barra de desplazamiento —lo fija
+        # la hoja de estilos (`QScrollBar:vertical`), no un número aparte
+        # que pudiera desajustarse si cambia—, para que la herramienta de
+        # zoom quede alineada con ella, no con el borde de la ventana.
+        margen_der = self._scroll.verticalScrollBar().sizeHint().width()
+        lay.setContentsMargins(0, 0, margen_der, 0)
         lay.setSpacing(3)
 
         self._zoom_pct_edit = QLineEdit(f"{self.custom_zoom_pct}%")
