@@ -15,6 +15,7 @@ from PyQt6.QtCore import QEvent, QObject, Qt, QUrl
 from PyQt6.QtGui import QColor, QDesktopServices, QFont, QPen
 from PyQt6.QtWidgets import QInputDialog, QLineEdit, QMenu, QMessageBox, QPlainTextEdit
 
+import doc_tools
 import icons
 import pdf_forms
 
@@ -66,6 +67,10 @@ class FormController:
         page = self.viewer.pdf_page
         try:
             self.fields = pdf_forms.field_boxes(page) if page is not None else []
+            if page is not None and page.rotation:
+                # (r105) `Widget.rect` va sin girar; el visor, como se ve.
+                for field in self.fields:
+                    field["rect"] = doc_tools.view_rect(page, field["rect"])
         except Exception:  # noqa: BLE001 — página huérfana tras deshacer
             self.fields = []
 

@@ -6,12 +6,12 @@
 
 | Campo | Valor |
 | :-- | :-- |
-| Revisión de la memoria | **r104** |
+| Revisión de la memoria | **r105** |
 | Fecha de la revisión | 2026-09-29 |
-| Versión de la app | **1.2.0**, publicada (r102: Tesseract bajo demanda, manual en PDF, capturas). 1.2.1 publicada (r103). r104 (recorte de verdad, firma/emojis en páginas recortadas) solo en `desarrollo`, sin publicar. `window_menus.APP_VERSION`, `APP_OWNER`, `APP_REPO` |
+| Versión de la app | **1.2.0**, publicada (r102: Tesseract bajo demanda, manual en PDF, capturas). 1.2.1 publicada (r103). r104 (recorte de verdad, firma/emojis en páginas recortadas) y r105 (herramientas en páginas giradas) solo en `desarrollo`, sin publicar. `window_menus.APP_VERSION`, `APP_OWNER`, `APP_REPO` |
 | Raíz del proyecto | (r94) Ricardo trabaja desde **dos equipos**: `C:\Users\ricardo\Proyectos\AventyaPDF` (tiene Inno Setup, Visual Studio con C++ y el certificado del paquete del menú contextual: aquí se puede empaquetar) y `C:\Users\Aventya\Proyectos\AVENTYAPDF` (✅ ya renombrada, comprobado en r71; antes `ANTIGRAVITY-PDF`, ver r56) (hasta r5: `A:\CARPETA IA\RICARDO\ANTIGRAVITY-PDF`, carpeta compartida por varios equipos) |
 | Control de versiones | ✅ **git** desde r71, repositorio **público** https://github.com/Aventya/AventyaPDF (cuenta de GitHub `Aventya`). (r94) **Rama de trabajo: `desarrollo`**; `main` = solo lo publicado (ver §8 «Ramas»). Licencia **AGPL-3.0** (`LICENSE`). Titular: **Aventya Asesoría Integral SL**. |
-| Estado | ✅ **Pruebas automáticas: 197/197** (r104; 6 omitidas; r95: 190/190, 5 omitidas por falta de `signxml`; r86: 188 (6 omitidas); r82…r72: 169/169; r71: 168; r70, 5 omitidas; r69: 167; r68: 166; r62: instalador `AventyaPDF-Setup-2.0.1.exe` generado y probado). ⚠️ La interfaz real aún no se ha abierto ni probado a mano (ver §7.0). (r86) El menú contextual del Explorador lo instala ya el instalador (menú principal de Windows 11 + clásico). |
+| Estado | ✅ **Pruebas automáticas: 199/199** (r105; 6 omitidas; r104: 197; r95: 190/190, 5 omitidas por falta de `signxml`; r86: 188 (6 omitidas); r82…r72: 169/169; r71: 168; r70, 5 omitidas; r69: 167; r68: 166; r62: instalador `AventyaPDF-Setup-2.0.1.exe` generado y probado). ⚠️ La interfaz real aún no se ha abierto ni probado a mano (ver §7.0). (r86) El menú contextual del Explorador lo instala ya el instalador (menú principal de Windows 11 + clásico). |
 | Líneas de código Python | ~11.000 en 29 módulos + 2 de pruebas (r38: fuera el visor XFA y pdf.js) |
 
 ---
@@ -444,8 +444,9 @@ ventana; ambos llaman a su API pública (`checkpoint`, `mark_modified`,
     preprocesa en gris y se convierte a RGB justo antes. (b) Nunca sustituir
     páginas: la capa de texto se superpone a la original (se conservan vectores,
     anotaciones, formularios y cifrado; un paso de deshacer). (c) Las palabras de
-    `get_text("words")` van en coordenadas de la página **girada** (las mismas
-    del Pixmap), así que para taparlas basta `Rect * Matrix(dpi/72)`. (d) Para
+    `get_text("words")` van **sin girar** y el Pixmap, girado: (r105) se pasan
+    por `doc_tools.view_rect` antes de `* Matrix(dpi/72)`. Antes se tapaba otra
+    zona y en páginas giradas el texto real se reconocía otra vez (duplicado). (d) Para
     orientar, `set_rotation(orig + Rotate de OSD)`, renderizar, superponer y
     restaurar la rotación en un `finally`: la capa queda alineada. (e) Se aplica
     a **todas** las páginas por defecto: el método anterior solo trataba páginas
@@ -546,8 +547,10 @@ ventana; ambos llaman a su API pública (`checkpoint`, `mark_modified`,
     un campo es más alto que el campo). **No** se apartan Highlight, Underline,
     Square…: no pintan texto y sus rectángulos cubren texto real que sí debe
     poder editarse.
-35. **(r21) `Annot.rect` y `Widget.rect` NO siguen la rotación de la página**,
-    aunque `get_text` sí devuelva el texto en la página vista. Con `/Rotate 90`
+35. **(r21) `Annot.rect` y `Widget.rect` NO siguen la rotación de la página**.
+    (r105: **`get_text` y `search_for` TAMPOCO**, comprobado en PyMuPDF 1.28.2
+    renderizando: «Hola» se ve en (700, 102) y `get_text` dice (100, 78). Lo
+    que se dice abajo de que `get_text` va girado era falso; ver invariante 57.) Con `/Rotate 90`
     el rectángulo de un campo llega en coordenadas sin girar y puede caer
     incluso fuera de `page.rect`. Cualquier comparación entre anotaciones y
     texto se hace en la página **sin girar**; mezclarlos hacía que la herramienta
@@ -778,6 +781,25 @@ ventana; ambos llaman a su API pública (`checkpoint`, `mark_modified`,
     **Licencia**: AGPL-3.0 es la única compatible con PyMuPDF (AGPL) y PyQt6
     (GPL) sin licencias comerciales; `.iss` en UTF-8 **con BOM** para que Inno
     Setup lea bien «Asesoría».
+57. **(r105) Páginas giradas: el visor trabaja como se VE la página.** En
+    PyMuPDF 1.28 solo `page.rect` y el Pixmap van girados; `Annot.rect`,
+    `Widget.rect`, `get_text`, `search_for` y lo que reciben los `add_*_annot`,
+    `set_rect` y `write_rect` van **sin girar**. Se convierte en la frontera con
+    `doc_tools.view_rect` / `unrotated_rect` / `unrotated_point` (identidad sin
+    giro, también con recorte): `viewer.annot_rect` (selección, clic, mover,
+    editar texto), `viewer._page_words`, `search_document`, `form_ui.refresh`
+    (campos), `_set_annot_rect` (mover/redimensionar), y al crear:
+    `add_rectangle_annotation`, `add_text_annotation`, `add_note`,
+    `add_text_markup` (cuadriláteros girados, para que el subrayado quede bajo el
+    texto tal como se lee), `add_freehand_markup`, `add_emoji_annot`,
+    `add_hand_signature`. Todas reciben coordenadas VISTAS. **Que se lea
+    derecho**: FreeText con `rotate=page.rotation` y, en
+    `apply_text_appearance`, /BBox con el ancho y alto vistos + /Matrix del giro;
+    emojis y firma manuscrita con `orient_appearance` (/Matrix = `fitz.Matrix(giro)`,
+    comprobado a ojo en los 4 giros); notas con **NoRotate** (icono derecho).
+    Trampa de NoRotate: `Annot.rect` ya da donde se dibuja, pero `set_rect`
+    la deja desplazada el tamaño del icono → `_set_annot_rect` mide y corrige una vez.
+    `pdf_edit` (Editar contenido) ya trabajaba en coordenadas vistas (r21-r22).
 
 ## 5. Operaciones que escriben en disco
 
@@ -947,16 +969,10 @@ validación, `ValidationContext`, `IncrementalPdfFileWriter.encrypt`,
 ### 7.1 Errores o límites conocidos
 - Guardar cambios en un PDF firmado reescribe el archivo (no hay guardado
   incremental con PyMuPDF desde bytes) → las firmas previas se invalidan; se avisa.
-- Páginas giradas: marcas de agua/encabezados compensan la rotación y (r104) la
-  firma digital también, pero **las herramientas de anotación no**: con `/Rotate ≠ 0`
-  el visor pasa coordenadas de pantalla (giradas) a `add_rect_annot`,
-  `add_freetext_annot`, `add_text_annot`, `add_highlight_annot`, `add_ink_annot` y
-  `add_emoji_annot`, que PyMuPDF interpreta SIN girar: rectángulo, texto, nota,
-  resaltado, mano alzada, emoji y firma manuscrita caen en otro sitio. Comprobado en
-  r104 renderizando: ocurre igual con o sin recorte, no lo causa «Recortar». Arreglarlo
-  obliga a tocar también la selección, mover/redimensionar y la orientación de las
-  apariencias (texto de FreeText, emojis). CropBox desplazado sin giro: revisado en
-  r104, todo en su sitio.
+- ~~Páginas giradas: las herramientas de anotación, la selección de texto, la
+  búsqueda y los campos caían en otro sitio~~ → **resuelto en r105** (invariante 57).
+  Sin probar a mano en la app real con un PDF girado de verdad (solo pruebas
+  automáticas con el ratón simulado y renders).
 - ~~OCR reconstruye las páginas como imagen + texto invisible y pierde
   anotaciones y cifrado~~ → **resuelto en r17** (capa superpuesta, invariante 27).
 - (r38) Los **XFA dinámicos** (LiveCycle/AEM) ya no se pueden rellenar: la app
@@ -1124,6 +1140,7 @@ motivos, invariantes, trampas y estado.
 
 | Rev | Fecha | Cambio |
 | :-- | :-- | :-- |
+| r105 | 2026-09-29 | **Todas las herramientas funcionan en páginas giradas** (petición de Ricardo, tras r104: «Si gracias» a arreglar lo pendiente de §7.1). **Causa**: el visor trabaja en las coordenadas de la página tal como se ve (`page.rect`, Pixmap), pero en PyMuPDF 1.28 `Annot.rect`, `Widget.rect`, `get_text`, `search_for` y lo que reciben `add_*_annot`/`set_rect` van SIN girar — la memoria decía lo contrario de `get_text` (invariantes 27c y 35, corregidas). Con `/Rotate ≠ 0`, rectángulo, texto, nota, resaltado, mano alzada, emoji y firma manuscrita caían en otro sitio; seleccionar/mover no acertaba; el resaltado de búsqueda, la selección de texto y los campos de formulario se pintaban fuera de sitio; y el OCR tapaba otra zona y **duplicaba el texto real** (3 palabras de 3 en la prueba). **Arreglo** (invariante 57): conversión en la frontera con `doc_tools.view_rect`/`unrotated_rect`/`unrotated_point`, apariencias orientadas con /Matrix (FreeText, emojis, firma manuscrita) y notas con NoRotate. Revisado a ojo renderizando los 4 giros: todo derecho y en su sitio. Pruebas nuevas: `test_herramientas_en_paginas_giradas` (interfaz, ratón real del visor, 90/180/270 × con y sin recorte: dibujar, seleccionar y mover rectángulo, texto horizontal, nota y moverla, emoji, resaltar y buscar la palabra, mano alzada, firma manuscrita) y `test_pagina_girada_no_duplica_el_texto_real` (OCR, falla sin el arreglo); `test_emoji_en_pagina_recortada_y_girada` (r104) pasa a comparar en coordenadas vistas. **199 pruebas OK** (6 omitidas). Sin probar a mano en la app. |
 | r104 | 2026-09-29 | **El recorte deja de ser solo visual y la firma cae donde se dibuja** (informado por Ricardo: «tras usar la herramienta de recortar, cuando intento firmar digitalmente con certificado el recuadro lo muestra correctamente, pero al terminar de firmar, aparece en otro lugar… debe recortar el viewbox y todo lo demás»; y después: «comprueba si este mismo fallo aparece en el resto de herramientas de edición y creación»). **Causa**: `_do_signature` pasaba a coordenadas PDF solo con el alto de la página (`page_h - y`) y no sumaba el origen de la CropBox, así que en una página recortada el sello se desplazaba justo lo recortado (y con giro, además, iba a otro sitio). **Arreglo**: `doc_tools.page_rect_to_pdf`/`unrotated_rect_to_pdf` (invariante 1). **Recorte de verdad**: `crop_page` pone además la MediaBox igual a la CropBox y ajusta Trim/Bleed/ArtBox dentro de ella (o las quita si quedan fuera), así ningún programa ve ya la página original; el contenido fuera del recuadro sigue en el flujo, oculto, como hace Acrobat. **Resto de herramientas** (revisadas renderizando cada una sobre una página plana, recortada con r104 y recortada solo con CropBox, en los cuatro giros): con la página sin girar, rectángulo, texto, nota, resaltado, mano alzada, emoji, encabezado/pie, marca de agua y Editar contenido caen en su sitio; **emojis y firma manuscrita** (`emoji_font.write_rect`, que usaba `~page.transformation_matrix`) desaparecían en páginas recortadas **y** giradas → corregido. Queda anotado en §7.1 que ninguna herramienta de anotación trata bien las páginas giradas, con o sin recorte (fallo anterior, no del recorte). Pruebas nuevas: `test_recuadro_de_pantalla_a_coordenadas_pdf` (48 casos: 2 MediaBox × 3 recortes × 4 giros, pintando y buscando el recuadro), `test_firma_en_pagina_recortada_y_girada` (firma real con pyHanko) y `test_emoji_en_pagina_recortada_y_girada` (falla sin el arreglo en los tres giros recortados); `test_recortar_pagina` comprueba MediaBox y TrimBox. **197 pruebas OK** (6 omitidas). |
 | r103 | 2026-09-29 | **Dos ajustes tras publicar v1.2.0** (peticiones de Ricardo). **(1)** «debería aparecer seleccionable el MANUAL.PDF nada más pulsar el botón de abrir fichero PDF»: `window_document.open_pdf` ya guardaba la última carpeta usada (`recent/dir`) y arrancaba ahí el diálogo, pero la primera vez —sin nada guardado todavía— se abría en la carpeta por omisión de Windows, sin nada resaltado. Ahora, si no hay carpeta reciente y la app está empaquetada (`sys.frozen`), se le pasa a `QFileDialog.getOpenFileName` la ruta completa de `MANUAL.pdf` (junto al `.exe`, no dentro de `_internal`) en vez de solo la carpeta: Qt abre el diálogo ahí y lo deja ya resaltado, sin necesidad de navegar. `AventyaPDF.iss` copia `docs\MANUAL.pdf` a `{app}` para que exista esa ruta en el instalado. **(2)** «los círculos de selección del modo de compresión deben ser botones de radio, no el invento que has creado tú»: eran ya `QRadioButton` de verdad (`main_window._build_side_tool_panels`, panel Comprimir), pero con un `::indicator:checked` roto —borde grueso de 5 px sobre un círculo de radio 8 px— que Windows pintaba como un cuadrado azul, no un círculo (confirmado con una captura real, plataforma `windows`, ventana fuera del escritorio). Quitar el `::indicator` del todo para que Qt usara el pintor nativo lo empeoró: en cuanto la aplicación tiene UNA hoja de estilos, Qt dejar de pintar nativo también donde esa hoja no llega, y sin `::indicator:checked` propio no se dibujaba nada marcado. Arreglo final en `main.py` (`#side_radio`): un `qradialgradient` centrado como punto de relleno, en vez del borde grueso — círculo limpio, marcado o no, confirmado con una tercera captura. 194 pruebas OK (5 omitidas). Cambios solo en `desarrollo`, sin publicar todavía en un instalador. |
 | r102 | 2026-09-29 | **Antes de publicar versión: Tesseract ya no se empaqueta, README con capturas e icono, manual en PDF** (petición de Ricardo: «pulir líneas de código y hacer que la aplicación pese menos... ¿no se puede hacer que Tesseract OCR y demás componentes se descarguen?... capturas de la aplicación y su icono en GitHub... ningún PDF de prueba, solo un PDF del manual... con capturas de cada sección»). **Auditoría de peso** (`build-dist\AventyaPDF`, 434 MB): Tesseract incluido, 153 MB; dentro de `_internal` (268 MB), `cv2` (OpenCV) es lo más pesado con diferencia, 82 MB en un único `cv2.pyd` — más que PyQt6 (73 MB) — solo para enderezar páginas de OCR torcidas; al ser un binario precompilado no se puede recortar con PyInstaller como se hizo con el códec de vídeo de FFmpeg (~30 MB, ya excluido). Sustituirlo es un cambio de riesgo real sobre la precisión del OCR: se deja documentado en `docs/empaquetado.md` «Pendiente» para una sesión aparte, no se toca aquí. **Tesseract, sí se ha hecho** (decisión de Ricardo, preguntada: bajar el peso a cambio de que la primera vez que se usa el OCR haga falta internet y, si no estuviera ya instalado, permiso de administrador una vez): `empaquetado/construir.ps1` ya no llama a `preparar_tesseract.py` (retirado); `tesseract_setup.py` pierde `BUNDLED_EXE`/`BUNDLED_TESSDATA`/`APP_DIR`, ya sin uso — el mecanismo de instalar y descargar bajo demanda (`tesseract_ui.ensure_at_startup`/`ensure_languages`) ya existía y no cambia: ahora se usa siempre, empaquetado o no. `AventyaPDF.iss` limpia el `tesseract\` de una versión anterior al actualizar (`[InstallDelete]`). **Sin PDF de prueba en el empaquetado**: comprobado que `AventyaPDF.spec` nunca los incluyó (`datas` = solo `vendor/` y `signature_background.pdf`; `tests` explícitamente excluido) — no había nada que quitar. **Manual y capturas**: `docs/crear_capturas.py` abre la aplicación de verdad (plataforma `windows`, ventana fuera del escritorio — no toca la pantalla ni el ratón) sobre PDF de muestra inventados (nunca un documento real) y genera 19 capturas en `docs/capturas/`, una por herramienta; `docs/crear_manual.py` las monta en **`docs/MANUAL.pdf`** (21 páginas, portada con el icono, índice y una sección por herramienta), excepción nueva en `.gitignore` para ese PDF. **Dos fugas de datos reales encontradas y corregidas antes de guardar nada**: el panel «Firma» enseña el nombre del certificado GUARDADO de verdad (salió un NIF real) y el selector de certificado («Almacén de Windows») lee el almacén real del sistema (salió una lista de nombres y NIF casi con toda seguridad clientes reales de la asesoría) — el primero se sustituye por «Certificado de ejemplo» antes de capturar, el segundo directamente no se captura; también el lugar/contacto guardados en «Opciones de firma» (salió el correo real de Ricardo) se sustituyen por unos de ejemplo. Anotado en la memoria del asistente para no repetir el error. El README enlaza el manual y muestra el icono y cuatro capturas. 193 pruebas OK (5 omitidas; la de instancia única falla con la app instalada abierta — del entorno, no del código, ya documentado en r95). |

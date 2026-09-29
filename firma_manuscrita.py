@@ -346,9 +346,12 @@ def fit_rect(sig: HandSignature, center: fitz.Point | None = None,
 
 def add_hand_signature(doc: fitz.Document, page_num: int, rect: fitz.Rect,
                        sig: HandSignature) -> fitz.Annot:
-    """Estampa la firma en `rect` (coordenadas de página de PyMuPDF)."""
+    """Estampa la firma en `rect`, en coordenadas de la página tal como se ve
+    (r105: con `/Rotate` el /Rect va sin girar y la apariencia, girada)."""
+    import doc_tools
     import emoji_font                      # write_rect: /Rect sin regenerar la apariencia
     page = doc[page_num]
+    rect = doc_tools.unrotated_rect(page, rect)
     if sig.is_image:
         annot = page.add_stamp_annot(rect, stamp=sig.png)
         emoji_font.write_rect(page, annot, rect)
@@ -362,9 +365,9 @@ def add_hand_signature(doc: fitz.Document, page_num: int, rect: fitz.Rect,
         doc.xref_set_key(ap_x, "Resources",
                          f"<</ExtGState<</AGFa<</Type/ExtGState/ca {INK_ALPHA:.2f}>>>>>>")
         doc.xref_set_key(ap_x, "BBox", f"[0 0 {caja.width:.3f} {caja.height:.3f}]")
-        doc.xref_set_key(ap_x, "Matrix", "[1 0 0 1 0 0]")
         doc.xref_set_key(annot.xref, "Name", "/AGFirma")
         tipo = "trazo"
+    doc_tools.orient_appearance(doc, annot, page.rotation)
     # Metadatos por xref: set_info() regeneraría la apariencia (invariante 6).
     doc.xref_set_key(annot.xref, "Contents", fitz.get_pdf_str("Firma manuscrita"))
     doc.xref_set_key(annot.xref, "Subj", fitz.get_pdf_str(f"{SUBJECT}|{tipo}"))

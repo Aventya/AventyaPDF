@@ -812,7 +812,7 @@ class DocumentMixin:
         a = self.viewer._annot_by_idx(idx)
         if a is None:
             return
-        r = fitz.Rect(a.rect)
+        r = self.viewer.annot_rect(a)
         self.viewer._sel = AnnotSelection(idx, r, fitz.Rect(r), a.type[1])
         self._show_annot_opts(a)
         self.viewer.update()
@@ -994,7 +994,11 @@ class DocumentMixin:
         if fn is None:
             return
         self.checkpoint(MARKUP_LABELS.get(kind, "Marcar texto"))
-        annot = fn([fitz.Rect(r) for r in rects])
+        # (r105) `rects` como se ve la página. Se pasan como cuadriláteros sin
+        # girar que conservan qué lado es «abajo» en la vista: el subrayado
+        # va bajo el texto tal como se lee, también con la página girada.
+        annot = fn([fitz.Rect(r).quad * page.derotation_matrix if page.rotation
+                    else fitz.Rect(r) for r in rects])
         if annot is None:
             return
         annot.set_colors(stroke=color or MARKUP_COLORS[kind])
@@ -1016,7 +1020,8 @@ class DocumentMixin:
             return
         page = self.doc[self.current_page]
         self.checkpoint(f"{MARKUP_LABELS.get(kind, 'Marcar')} a mano alzada")
-        annot = page.add_ink_annot([[(p.x, p.y) for p in points]])
+        m = page.derotation_matrix                  # (r105) visto → sin girar
+        annot = page.add_ink_annot([[tuple(fitz.Point(p) * m) for p in points]])
         annot.set_colors(stroke=color or MARKUP_COLORS.get(kind, (1.0, 0.92, 0.0)))
         annot.set_border(width=width)
         annot.set_opacity(max(0.05, min(1.0, opacity)))
@@ -1032,7 +1037,11 @@ class DocumentMixin:
             return
         page = self.doc[self.current_page]
         self.checkpoint("Nota")
-        annot = page.add_text_annot(pt, text, icon="Comment")
+        annot = page.add_text_annot(doc_tools.unrotated_point(page, pt), text, icon="Comment")
+        if page.rotation:
+            # (r105) Icono derecho en una página girada: NoRotate lo deja sin
+            # girar, anclado a su esquina superior izquierda.
+            annot.set_flags(annot.flags | fitz.PDF_ANNOT_IS_NO_ROTATE)
         annot.set_colors(stroke=self.viewer.note_color)
         if USER_NAME:
             annot.set_info(title=USER_NAME)

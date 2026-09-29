@@ -33,6 +33,7 @@ import cv2
 import fitz
 import numpy as np
 
+import doc_tools
 import tesseract_setup
 
 DPI = 400
@@ -268,7 +269,8 @@ def ocr_page(page: fitz.Page, language: str = "spa", dpi: int = DPI,
         scale = fitz.Matrix(dpi / 72, dpi / 72)
         pix = page.get_pixmap(matrix=scale, colorspace=fitz.csGRAY, alpha=False, annots=False)
         for word in page.get_text("words"):                  # no duplicar texto real
-            box = (fitz.Rect(word[:4]) * scale).irect
+            # (r105) get_text va SIN girar y el Pixmap, girado.
+            box = (doc_tools.view_rect(page, word[:4]) * scale).irect
             box = fitz.IRect(box.x0 - 2, box.y0 - 2, box.x1 + 2, box.y1 + 2) & pix.irect
             if not box.is_empty:
                 pix.set_rect(box, (255,))

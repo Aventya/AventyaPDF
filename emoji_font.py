@@ -222,14 +222,16 @@ def add_emoji_annot(doc: fitz.Document, page_num: int, point: fitz.Point,
     recursos = (f"<</Font<</AGE {fxref} 0 R>>"
                 f"/ExtGState<</AGEa<</Type/ExtGState/ca {alfa:.4f}/CA {alfa:.4f}>>>>>>")
 
-    rect = fitz.Rect(point.x, point.y, point.x + w, point.y + h)
+    import doc_tools
+    # (r105) `point` va como se ve la página; el /Rect, sin girar.
+    rect = doc_tools.unrotated_rect(page, fitz.Rect(point.x, point.y, point.x + w, point.y + h))
     annot = page.add_stamp_annot(rect)
     write_rect(page, annot, rect)
     annot._setAP(AP_MARKER + b"\n" + ops.encode("latin-1"))
     ap_x = int(doc.xref_get_key(annot.xref, "AP/N")[1].split()[0])
     doc.xref_set_key(ap_x, "Resources", recursos)
     doc.xref_set_key(ap_x, "BBox", f"[0 0 {w:.4f} {h:.4f}]")
-    doc.xref_set_key(ap_x, "Matrix", "[1 0 0 1 0 0]")
+    doc_tools.orient_appearance(doc, annot, page.rotation)
     # Metadatos por xref (set_info regeneraría la apariencia). /Name propio para
     # que ningún visor sustituya el emoji por un sello estándar («Approved»…).
     doc.xref_set_key(annot.xref, "Name", "/AGEmoji")

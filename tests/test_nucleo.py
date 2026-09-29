@@ -235,7 +235,8 @@ class TestPaginas(unittest.TestCase):
                     w, h = emoji_font.box_size("📌", 40)
                     esperado = fitz.Rect(40, 60, 40 + w, 60 + h)
                     p2 = fitz.open("pdf", d.tobytes())[0]  # la anotación guarda una referencia débil a la página
-                    r = next(p2.annots()).rect
+                    # (r105) El punto va como se ve la página; Annot.rect, sin girar.
+                    r = doc_tools.view_rect(p2, next(p2.annots()).rect)
                     for v, e in zip(r, esperado):
                         self.assertAlmostEqual(v, e, places=2)
 
@@ -912,6 +913,18 @@ class TestOCR(unittest.TestCase):
         cajas = page.search_for("Madrid")
         self.assertTrue(cajas and all(zona.contains(c) for c in cajas), f"cajas {cajas}")
         self.assertEqual(len(list(page.annots())), 1)
+
+    def test_pagina_girada_no_duplica_el_texto_real(self):
+        """(r105) `get_text` va sin girar y el Pixmap, girado: en una página
+        con /Rotate se tapaba otra zona y el texto real se volvía a reconocer."""
+        import pdf_ocr
+        for giro in (90, 180, 270):
+            with self.subTest(giro=giro):
+                doc = fitz.open()
+                page = doc.new_page(width=600, height=800)
+                page.insert_text((80, 120), "Texto real seleccionable", fontsize=24)
+                page.set_rotation(giro)
+                self.assertEqual(pdf_ocr.ocr_page(page, "spa", detect_orientation=False), 0)
 
     def test_detecta_la_orientacion(self):
         import pdf_ocr

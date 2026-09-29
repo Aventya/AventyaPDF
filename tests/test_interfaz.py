@@ -673,6 +673,121 @@ class TestVentanaPrincipal(unittest.TestCase):
             v.mouseReleaseEvent(ev(QEvent.Type.MouseButtonRelease, puntos_pdf[-1], izq, nada))
         self.app.processEvents()
 
+    def test_herramientas_en_paginas_giradas(self):
+        """(r105, petición de Ricardo) En una página con /Rotate, recortada o
+        no, cada herramienta deja su marca donde se hizo con el ratón, se
+        puede seleccionar y mover, y la búsqueda y la selección de texto
+        caen sobre la palabra. Antes el visor pasaba coordenadas de pantalla
+        a PyMuPDF, que las toma SIN girar: todo aparecía en otro sitio."""
+        import firma_manuscrita as fm
+        P = fitz.Point
+        w, v = self.w, self.w.viewer
+
+        def imagen():
+            return w.doc[w.current_page].get_pixmap(alpha=False)
+
+        def cambio(antes, despues):
+            """Recuadro (coordenadas vistas, 72 ppp) de los píxeles que cambian."""
+            a, b, n = antes.samples, despues.samples, antes.n
+            xs, ys = [], []
+            for y in range(antes.height):
+                fila = y * antes.width * n
+                for x in range(antes.width):
+                    i = fila + x * n
+                    if max(abs(a[i + k] - b[i + k]) for k in range(3)) > 40:
+                        xs.append(x)
+                        ys.append(y)
+            self.assertTrue(xs, "la herramienta no ha dejado nada en la página")
+            return fitz.Rect(min(xs), min(ys), max(xs) + 1, max(ys) + 1)
+
+        def paso(accion):
+            antes = imagen()
+            accion()
+            self.app.processEvents()
+            return cambio(antes, imagen())
+
+        def cerca(r, esperado, tol=4):
+            for a, b in zip(r, esperado):
+                self.assertAlmostEqual(a, b, delta=tol, msg=f"{r} ≠ {esperado}")
+
+        for giro in (90, 180, 270):
+            for recortar in (False, True):
+                with self.subTest(giro=giro, recortar=recortar):
+                    doc = fitz.open()
+                    pag = doc.new_page(width=600, height=800)
+                    pag.insert_text((80, 120), "Palabra", fontsize=20)
+                    pag.set_rotation(giro)
+                    if recortar:
+                        vista = doc[0].rect
+                        doc_tools.crop_page(doc, 0, fitz.Rect(20, 20, vista.x1 - 30, vista.y1 - 40))
+                    ruta = os.path.join(self.tmp, f"girada_{giro}_{recortar}.pdf")
+                    doc.save(ruta)
+                    doc.close()
+                    self.assertTrue(w.open_path(ruta))
+                    w._modified = False
+
+                    # Rectángulo: donde se arrastra; luego se selecciona y se mueve.
+                    w._select_tool("RECT")
+                    b = paso(lambda: self._arrastrar([P(250, 300), P(400, 360)]))
+                    cerca(b, (250, 300, 400, 360))
+                    self.assertEqual(v.mode, "NONE")
+                    b = paso(lambda: self._arrastrar([P(300, 330), P(320, 350)]))
+                    rect = [a for a in v.pdf_page.annots() if a.type[1] == "Square"][0]
+                    cerca(v.annot_rect(rect), (270, 320, 420, 380), 2)
+
+                    # Texto: se escribe donde se hace clic y se lee en horizontal.
+                    w._select_tool("TEXT")
+                    self._clic(P(250, 150))
+                    b = paso(lambda: v.close_text_editor(commit=True, texto="Hola mundo"))
+                    self.assertGreater(b.width, 3 * b.height, f"texto no horizontal: {b}")
+                    self.assertTrue(fitz.Rect(245, 145, 530, 200).contains(b), b)
+
+                    # Nota: el icono, con su esquina en el clic.
+                    w._select_tool("NOTE")
+                    self._clic(P(450, 60))
+                    b = paso(lambda: v.close_text_editor(commit=True, texto="nota"))
+                    cerca(b.tl, (450, 60), 3)
+                    nota = [a for a in v.pdf_page.annots() if a.type[1] == "Text"][0]
+                    self.assertTrue(v.annot_rect(nota).contains(P(455, 65)))
+                    # Arrastrarla la mueve lo mismo que el ratón (NoRotate).
+                    self._arrastrar([P(455, 65), P(475, 95)])
+                    nota = [a for a in v.pdf_page.annots() if a.type[1] == "Text"][0]
+                    cerca(v.annot_rect(nota).tl, (470, 90), 0.5)
+
+                    # Emoji: esquina en el clic, sin deformar.
+                    w._select_tool("EMOJI")
+                    b = paso(lambda: self._clic(P(250, 400)))
+                    self.assertTrue(fitz.Rect(245, 395, 300, 450).contains(b), b)
+                    self.assertAlmostEqual(b.width, b.height, delta=6)
+
+                    # Resaltar la palabra seleccionándola, y buscarla.
+                    palabra = [x for x in v._page_words() if x[4] == "Palabra"][0]
+                    caja = fitz.Rect(palabra[:4])
+                    medio = (caja.y0 + caja.y1) / 2
+                    w._select_tool("MARKUP")
+                    b = paso(lambda: self._arrastrar([P(caja.x0 + 2, medio), P(caja.x1 - 2, medio)]))
+                    self.assertGreater(abs(b & caja), 0.7 * abs(caja), f"{b} lejos de {caja}")
+                    w._find_edit.setText("Palabra")
+                    w.find_next()
+                    cerca(w._find_hits[w._find_idx][1], caja, 1)
+
+                    # Mano alzada fuera del texto: una raya horizontal.
+                    b = paso(lambda: self._arrastrar(
+                        [P(250 + 10 * i, 470) for i in range(21)], segundos=0.1))
+                    self.assertGreater(b.width, 3 * b.height, f"raya no horizontal: {b}")
+                    cerca(fitz.Rect(b.x0, 0, b.x1, 0), (250, 0, 450, 0), 8)
+                    w._select_tool("NONE")
+
+                    # Firma manuscrita (una raya): encajada en el recuadro.
+                    sig = fm.HandSignature(strokes=[[(2 * i, 20, i / 80) for i in range(101)]],
+                                           width=6, color=(0, 0, 0))
+                    v.set_hand_signature(sig)
+                    b = paso(lambda: w.place_hand_signature(box=fitz.Rect(420, 250, 530, 290)))
+                    self.assertTrue(fitz.Rect(415, 245, 535, 295).contains(b), b)
+                    self.assertGreater(b.width, 3 * b.height)
+                    v.set_hand_signature(None)
+                    w._modified = False
+
     def test_marcar_a_mano_alzada_fuera_del_texto(self):
         """(r59) «Resaltar, subrayar o tachar»: sobre el texto marca el texto;
         fuera de él (una imagen) marca a mano alzada, y un trazo rápido sale

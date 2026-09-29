@@ -153,7 +153,11 @@ Checklist manual para validar la versión 2.0 tras `.\run.ps1`:
 8. **Guardar**: Ctrl+S sobre el archivo abierto (no debe dar error de archivo
    en uso) y reabrir para comprobar que los cambios persisten.
 9. **Páginas**: organizar (arrastrar, girar, insertar PDF, extraer), dividir
-   cada 2 páginas, eliminar rango «2-3».
+   cada 2 páginas, eliminar rango «2-3». Girar una página 90° y recortarla;
+   sobre ella, cada herramienta (rectángulo, texto, nota, resaltar, mano alzada,
+   emoji, firma manuscrita y firma con certificado) debe quedar justo donde se
+   dibuja y leerse derecha; seleccionar y mover también. Buscar una palabra la
+   resalta encima de ella.
 10. **Herramientas**: marca de agua a 45°, encabezado/pie con `{n}`/`{total}`
     y Bates; comprobar también en una página girada.
 11. **Seguridad**: proteger con contraseña de apertura y permisos, guardar,

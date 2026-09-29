@@ -65,6 +65,18 @@ class PDFUtils:
             apx = int(ap.split()[0])
             x0, y0, x1, y1 = (float(v) for v in _re.findall(
                 r"[-\d.]+", doc.xref_get_key(apx, "BBox")[1]))
+            giro = int(annot.rotation or 0) % 360
+            if giro:
+                # (r105) Cuadro de una página girada (/Rotate del FreeText =
+                # giro de la página): se compone en el ancho y alto VISTOS y
+                # la /Matrix lo gira para que se lea derecho.
+                ancho_r, alto_r = annot.rect.width, annot.rect.height
+                if giro in (90, 270):
+                    ancho_r, alto_r = alto_r, ancho_r
+                x0, y0, x1, y1 = 0.0, 0.0, ancho_r, alto_r
+                doc.xref_set_key(apx, "BBox", f"[0 0 {ancho_r:.4f} {alto_r:.4f}]")
+                m = fitz.Matrix(giro)
+                doc.xref_set_key(apx, "Matrix", f"[{m.a:g} {m.b:g} {m.c:g} {m.d:g} 0 0]")
             pad = PDFUtils.TEXT_PAD
             ancho = max(1.0, (x1 - x0) - 2 * pad)
             import pdf_edit                       # aquí: pdf_edit importa módulos pesados
@@ -220,11 +232,15 @@ class PDFUtils:
                              text_color: tuple = (0.0, 0.0, 0.0),
                              bold: bool = False, italic: bool = False,
                              align: int = 0, font_css: str = "sans-serif"):
+        """`rect` como se ve la página (r105: con `/Rotate` se pasa sin girar y
+        el FreeText lleva el mismo giro, para que el texto se lea derecho)."""
+        import doc_tools
         page = doc[page_num]
         rc = PDFUtils._text_richtext(text, fontsize, text_color,
                                      bold, italic, font_css)
         annot = page.add_freetext_annot(
-            rect, rc, fontsize=fontsize, richtext=True, align=align)
+            doc_tools.unrotated_rect(page, rect), rc, fontsize=fontsize,
+            richtext=True, align=align, rotate=page.rotation)
         # Rich-text FreeText always carries a callout line — drop it.
         doc.xref_set_key(annot.xref, "CL", "null")
         annot.update()
@@ -260,8 +276,9 @@ class PDFUtils:
                                    color: tuple = (0.82, 0.20, 0.22),
                                    width: int = 2,
                                    corner_radius: int = 6):
+        import doc_tools
         page = doc[page_num]
-        annot = page.add_rect_annot(rect)
+        annot = page.add_rect_annot(doc_tools.unrotated_rect(page, rect))   # (r105) visto → sin girar
         annot.set_colors(stroke=color)
         annot.set_border(width=width)
         annot.update()

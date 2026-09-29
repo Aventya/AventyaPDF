@@ -1156,7 +1156,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         a = self.viewer._annot_by_idx(sel.idx)
         if not a or not emoji_font.is_emoji(a.info.get("subject", "")):
             return
-        r = fitz.Rect(a.rect)
+        r = self.viewer.annot_rect(a)                  # (r105) como se ve la página
         self.checkpoint("Cambiar emoji")
         self.viewer.pdf_page.delete_annot(a)
         self._insert_emoji(fitz.Point(r.x0, r.y0),
@@ -1169,7 +1169,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         annots = list(page.annots())
         if annots:
             na = annots[-1]
-            nr = fitz.Rect(na.rect)
+            nr = doc_tools.view_rect(page, na.rect)
             self.viewer._sel = AnnotSelection(
                 len(annots) - 1, nr, fitz.Rect(nr), na.type[1])
         self.render_page(keep_selection=True)

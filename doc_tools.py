@@ -116,6 +116,47 @@ def page_rect_to_pdf(page: fitz.Page, rect: fitz.Rect) -> tuple:
     return unrotated_rect_to_pdf(page, fitz.Rect(rect) * page.derotation_matrix)
 
 
+# (r105) Páginas giradas. El visor trabaja en coordenadas VISTAS (`page.rect`,
+# las del Pixmap), pero en PyMuPDF 1.28 todo lo demás va SIN girar: `Annot.rect`,
+# `Widget.rect`, `get_text`, `search_for` y lo que reciben los `add_*_annot`.
+# Se convierte en la frontera con estas cuatro funciones; sin giro son la
+# identidad (también con la página recortada: ambas son relativas a la CropBox).
+
+def view_rect(page: fitz.Page, rect) -> fitz.Rect:
+    """Sin girar (PyMuPDF) → como se ve la página."""
+    r = fitz.Rect(rect)
+    if page.rotation:
+        r = r * page.rotation_matrix
+        r.normalize()
+    return r
+
+
+def unrotated_rect(page: fitz.Page, rect) -> fitz.Rect:
+    """Como se ve la página → sin girar (PyMuPDF)."""
+    r = fitz.Rect(rect)
+    if page.rotation:
+        r = r * page.derotation_matrix
+        r.normalize()
+    return r
+
+
+def unrotated_point(page: fitz.Page, pt) -> fitz.Point:
+    return fitz.Point(pt) * page.derotation_matrix if page.rotation else fitz.Point(pt)
+
+
+def orient_appearance(doc: fitz.Document, annot, rotation: int) -> None:
+    """Gira la apariencia (/AP /N) para que su contenido se vea derecho en una
+    página con `/Rotate`: /Matrix = giro de la página. El dibujo sigue en su
+    /BBox de siempre (con el ancho y alto vistos) y el visor lo encaja en el
+    /Rect sin girar, que tiene ancho y alto intercambiados a 90° y 270°."""
+    kind, ap = doc.xref_get_key(annot.xref, "AP/N")
+    if kind != "xref":
+        return
+    m = fitz.Matrix(rotation % 360)
+    doc.xref_set_key(int(ap.split()[0]), "Matrix",
+                     f"[{m.a:g} {m.b:g} {m.c:g} {m.d:g} 0 0]")
+
+
 def unrotated_rect_to_pdf(page: fitz.Page, rect: fitz.Rect) -> tuple:
     """(r104) Como `page_rect_to_pdf`, pero desde coordenadas de página SIN
     girar (las de `Annot.rect`, invariante 35)."""
@@ -266,8 +307,9 @@ def search_document(doc: fitz.Document, needle: str,
     if not needle:
         return hits
     for pno in range(len(doc)):
-        for r in doc[pno].search_for(needle):
-            hits.append((pno, fitz.Rect(r)))
+        page = doc[pno]
+        for r in page.search_for(needle):
+            hits.append((pno, view_rect(page, r)))     # (r105) como se ve la página
             if len(hits) >= max_hits:
                 return hits
     return hits

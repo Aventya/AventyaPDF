@@ -211,13 +211,47 @@ class PDFViewerWidget(QLabel):
         return QRect(int(fr.x0*s), int(fr.y0*s),
                      int((fr.x1-fr.x0)*s), int((fr.y1-fr.y0)*s))
 
+    # ── páginas giradas (r105) ────────────────────────────────────────── #
+    # El visor trabaja siempre como se ve la página; `Annot.rect` y lo que
+    # escriben `set_rect`/`write_rect` van sin girar (doc_tools.view_rect).
+
+    def annot_rect(self, a) -> fitz.Rect:
+        """Recuadro de la anotación tal como se ve (también el de las notas
+        con NoRotate: MuPDF ya lo tiene en cuenta al acotarla)."""
+        return doc_tools.view_rect(self.pdf_page, a.rect)
+
+    def _set_annot_rect(self, a, r: fitz.Rect) -> None:
+        """Mueve o redimensiona a `r` (como se ve), rehaciendo la apariencia
+        propia de rectángulos y textos. Los sellos (emojis, firma manuscrita)
+        solo cambian /Rect: set_rect() y update() los estropearían (invariante 3)."""
+        mw = self.main_window
+        page = self.pdf_page
+        nr = doc_tools.unrotated_rect(page, r)
+        if emoji_font.is_stamp(a.info.get('subject', '')):
+            emoji_font.write_rect(page, a, nr)
+            return
+        a.set_rect(nr)
+        a.update()
+        if page.rotation and a.flags & fitz.PDF_ANNOT_IS_NO_ROTATE:
+            # Nota con NoRotate: se dibuja desde otra esquina y set_rect la deja
+            # desplazada el tamaño del icono. Es una traslación: se mide y se
+            # corrige una vez.
+            e = r.tl - self.annot_rect(a).tl
+            if abs(e.x) > 0.01 or abs(e.y) > 0.01:
+                a.set_rect(doc_tools.unrotated_rect(page, r + (e.x, e.y, e.x, e.y)))
+                a.update()
+        if a.type[1] == 'Square':
+            PDFUtils.apply_rounded_corners(a, self.rect_corner_radius)
+        elif a.type[1] == 'FreeText':
+            PDFUtils.apply_text_appearance(mw.doc, a)
+
     # ── annotation lookup ─────────────────────────────────────────────── #
 
     def _annot_at(self, pdf_pt):
         if not self.pdf_page:
             return None
         for i, a in enumerate(self.pdf_page.annots()):
-            if a.rect.contains(pdf_pt):
+            if self.annot_rect(a).contains(pdf_pt):
                 return i, a
         return None
 
@@ -229,7 +263,7 @@ class PDFViewerWidget(QLabel):
 
     def _select_hit(self, hit) -> None:
         idx, a = hit
-        r = fitz.Rect(a.rect)
+        r = self.annot_rect(a)
         self._sel = AnnotSelection(idx, fitz.Rect(r), fitz.Rect(r), a.type[1])
         self.main_window._show_annot_opts(a)
 
@@ -251,6 +285,10 @@ class PDFViewerWidget(QLabel):
         if self._words is None and self.pdf_page is not None:
             try:
                 self._words = self.pdf_page.get_text("words")
+                if self.pdf_page.rotation:          # (r105) como se ve la página
+                    m = self.pdf_page.rotation_matrix
+                    girar = lambda w: (*(fitz.Rect(w[:4]) * m).normalize(), *w[4:])
+                    self._words = [girar(w) for w in self._words]
             except Exception:
                 self._words = []
         return self._words or []
@@ -600,7 +638,7 @@ class PDFViewerWidget(QLabel):
                     if emoji_font.is_stamp(subj):
                         # Su apariencia escala con /Rect. Sin set_rect() ni update(),
                         # que la sustituirían por un sello estándar (invariante 3).
-                        emoji_font.write_rect(self.pdf_page, a, nr)
+                        self._set_annot_rect(a, nr)
                         if emoji_font.is_sized(subj) and self._resize_orig_rect:
                             try:
                                 fs = float(a.info.get('title') or self.emoji_font_size)
@@ -609,7 +647,7 @@ class PDFViewerWidget(QLabel):
                             except (TypeError, ValueError):
                                 pass
                     elif subj == 'EmojiStamp' and self._resize_orig_rect:
-                        a.set_rect(nr)
+                        a.set_rect(doc_tools.unrotated_rect(self.pdf_page, nr))
                         orig_h = max(1.0, self._resize_orig_rect.y1 - self._resize_orig_rect.y0)
                         new_h = max(1.0, nr.y1 - nr.y0)
                         stored_fs = a.info.get('title', '')
@@ -620,12 +658,7 @@ class PDFViewerWidget(QLabel):
                         except (ValueError, TypeError):
                             a.update()
                     else:
-                        a.set_rect(nr)
-                        a.update()
-                        if a.type[1] == 'Square':
-                            PDFUtils.apply_rounded_corners(a, self.rect_corner_radius)
-                        elif a.type[1] == 'FreeText':
-                            PDFUtils.apply_text_appearance(mw.doc, a)
+                        self._set_annot_rect(a, nr)
                     mw.mark_modified()
                     self._sel.orig_rect = fitz.Rect(nr)
                     mw.render_page(keep_selection=True)
@@ -645,16 +678,7 @@ class PDFViewerWidget(QLabel):
                         o = self._sel.orig_rect
                         nr = fitz.Rect(o.x0+dx, o.y0+dy, o.x1+dx, o.y1+dy)
                         mw.checkpoint("Mover")
-                        if emoji_font.is_stamp(a.info.get('subject', '')):
-                            # Sin set_rect(): MuPDF regeneraría la apariencia (invariante 3).
-                            emoji_font.write_rect(self.pdf_page, a, nr)
-                        else:
-                            a.set_rect(nr)
-                            a.update()
-                            if a.type[1] == 'Square':
-                                PDFUtils.apply_rounded_corners(a, self.rect_corner_radius)
-                            elif a.type[1] == 'FreeText':
-                                PDFUtils.apply_text_appearance(mw.doc, a)
+                        self._set_annot_rect(a, nr)
                         mw.mark_modified()
                         self._sel.orig_rect = fitz.Rect(nr)
                         self._sel.rect = fitz.Rect(nr)
@@ -734,7 +758,7 @@ class PDFViewerWidget(QLabel):
             fs = float(a.info.get("title") or self.text_font_size)
         except (TypeError, ValueError):
             fs = self.text_font_size
-        caja = fitz.Rect(a.rect)
+        caja = self.annot_rect(a)
         if es_nota:
             # El icono de la nota es diminuto: el cuadro se abre a su lado.
             caja = fitz.Rect(caja.x1 + 4, caja.y0, caja.x1 + 4 + 190, caja.y0 + 70)
