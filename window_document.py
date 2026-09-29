@@ -716,6 +716,7 @@ class DocumentMixin:
             return
         pno = max(0, min(int(pno), len(self.doc) - 1))
         if pno != self.current_page:
+            self._cancel_crop()    # (r99) el recuadro es de la página que se deja
             self.current_page = pno
             self.render_page()
 
@@ -816,6 +817,14 @@ class DocumentMixin:
 
     def rotate_current(self, delta: int):
         self.rotate_pages([self.current_page], delta)
+
+    def crop_page(self, pno: int, rect: fitz.Rect):
+        if self.doc is None:
+            return
+        self.checkpoint("Recortar página")
+        doc_tools.crop_page(self.doc, pno, rect)
+        self.mark_modified(structure=True)
+        self.render_page()
 
     def delete_pages(self, pages: list[int]):
         if self.doc is None or not pages:

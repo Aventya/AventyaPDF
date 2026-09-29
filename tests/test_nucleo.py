@@ -143,6 +143,30 @@ class TestPaginas(unittest.TestCase):
         with self.assertRaises(ValueError):
             doc.fullcopy_page(0, len(doc))
 
+    def test_recortar_pagina(self):
+        """(r99, petición de Ricardo) «Recortar»: el recuadro se da en
+        coordenadas de pantalla (`page.rect`, con la rotación ya aplicada) y
+        el resultado visual debe ser exactamente ese recuadro, esté la
+        página rotada o no — aunque el `cropbox` interno de PyMuPDF nunca
+        lleva rotación (se convierte con `derotation_matrix`)."""
+        doc = pdf_de_prueba(1)
+        doc_tools.crop_page(doc, 0, fitz.Rect(0, 0, 300, 400))
+        self.assertAlmostEqual(doc[0].rect.width, 300)
+        self.assertAlmostEqual(doc[0].rect.height, 400)
+
+        doc2 = pdf_de_prueba(1)
+        doc2[0].set_rotation(90)
+        doc_tools.crop_page(doc2, 0, fitz.Rect(0, 0, 400, 200))
+        self.assertAlmostEqual(doc2[0].rect.width, 400)
+        self.assertAlmostEqual(doc2[0].rect.height, 200)
+        self.assertEqual(doc2[0].rotation, 90)
+
+        # Un recuadro que se sale de la página se recorta al mediabox.
+        doc3 = pdf_de_prueba(1)
+        doc_tools.crop_page(doc3, 0, fitz.Rect(-50, -50, 9999, 9999))
+        self.assertAlmostEqual(doc3[0].rect.width, 595)
+        self.assertAlmostEqual(doc3[0].rect.height, 842)
+
 
 class TestTrazoAManoAlzada(unittest.TestCase):
     """(r59) Enderezado de los trazos de «Resaltar, subrayar o tachar» fuera

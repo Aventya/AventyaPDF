@@ -72,6 +72,20 @@ def rotate_pages(doc: fitz.Document, pages: list[int], delta: int) -> None:
         page.set_rotation((page.rotation + delta) % 360)
 
 
+def crop_page(doc: fitz.Document, pno: int, rect: fitz.Rect) -> None:
+    """(r99) `rect` en las coordenadas de pantalla de la página — las de
+    `page.rect`, que ya llevan aplicada la rotación—. `set_cropbox` exige en
+    cambio las coordenadas SIN rotar (la rotación de la página no afecta al
+    cropbox, invariante de PyMuPDF): se convierte con `derotation_matrix`
+    antes de fijarlo, y se recorta al `mediabox` por si el recuadro se
+    hubiera salido de la página."""
+    page = doc[pno]
+    r = fitz.Rect(rect) * page.derotation_matrix
+    r.normalize()
+    r.intersect(page.mediabox)
+    page.set_cropbox(r)
+
+
 def extract_pages(doc: fitz.Document, pages: list[int]) -> fitz.Document:
     new = fitz.open()
     for pno in pages:

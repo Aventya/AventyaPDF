@@ -23,7 +23,7 @@ están en [MEMORIA_EVOLUTIVA.md](../MEMORIA_EVOLUTIVA.md) §4.
 | Comentar | Notas adhesivas con aviso al pasar el ratón | Herramienta N | `viewer`, `window_document` |
 | Comentar | Rellenar formularios como Acrobat: campos resaltados, edición en el propio campo con Tab, casillas, radios, listas, **botones con JavaScript** (cálculos, validación, avisos, restablecer, enlaces, imprimir, navegar) | Clic en el campo · Ver › Resaltar campos de formulario | `form_ui.FormController` + `pdf_forms` (JavaScript de MuPDF) |
 | Comentar | Aplanar anotaciones y formularios | Comentar | `doc_tools.flatten` |
-| Organizar | Operaciones de página en el panel lateral: girar, duplicar, eliminar, insertar, extraer y reordenar arrastrando, con deshacer | Organizar | `sidebar`, `main_window._set_pages_mode` |
+| Organizar | Operaciones de página en el panel lateral: girar, duplicar, eliminar, insertar, extraer, recortar (recuadro con tiradores sobre la página mostrada) y reordenar arrastrando, con deshacer | Organizar | `sidebar`, `main_window._set_pages_mode`, `main_window._start_crop`, `doc_tools.crop_page` |
 | Organizar | Girar, extraer, eliminar por rangos; dividir; insertar PDF en posición | Organizar, menú contextual de miniaturas | `window_menus`, `doc_tools` |
 | Herramientas | Marca de agua (texto, color, opacidad, ángulo, páginas) | Herramientas | `doc_tools.add_watermark` |
 | Herramientas | Encabezado, pie, numeración «Página n de N» y Bates | Herramientas | `doc_tools.add_header_footer` |

@@ -406,6 +406,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             ("page_blank", "Insertar una página en blanco detrás de la selección", "blank"),
             ("insert_pdf", "Insertar las páginas de otro PDF detrás de la selección…", "pdf"),
             ("extract", "Extraer las páginas seleccionadas a un PDF nuevo…", "extract"),
+            ("crop", "Recortar la página mostrada en el visor…", "crop"),
         ]:
             b = self._opt_icon_btn(glyph, tip)
             b.setObjectName("side_icon_btn")
@@ -416,6 +417,23 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         g.addLayout(page_icons, g.rowCount(), 0, 1, 2)
         self._side_hint(g, "Arrastra una miniatura para moverla")
         self._side_hint(g, "Ctrl o Mayús para elegir varias")
+
+        # (r99) Aplicar/cancelar el recorte: solo visible durante el modo CROP.
+        self._crop_confirm_row = QWidget()
+        crow = QHBoxLayout(self._crop_confirm_row)
+        crow.setContentsMargins(0, 0, 0, 0)
+        crow.setSpacing(4)
+        btn_crop_apply = self._opt_icon_btn("apply", "Aplicar el recorte")
+        btn_crop_apply.setObjectName("side_icon_btn")
+        btn_crop_apply.clicked.connect(self._apply_crop)
+        btn_crop_cancel = self._opt_icon_btn("close", "Cancelar el recorte")
+        btn_crop_cancel.setObjectName("side_icon_btn")
+        btn_crop_cancel.clicked.connect(self._cancel_crop)
+        crow.addWidget(btn_crop_apply)
+        crow.addWidget(btn_crop_cancel)
+        crow.addStretch()
+        self._crop_confirm_row.setVisible(False)
+        g.addWidget(self._crop_confirm_row, g.rowCount(), 0, 1, 2)
 
         # ── Panel: Texto ─────────────────────────────────────────────────
         self._txt_panel, g = self._side_form("Añadir texto")
@@ -719,6 +737,8 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         aparecen las acciones. Sin ventana aparte. Se sale con el mismo botón,
         con Esc, eligiendo otra herramienta, zoom o compresión, o cambiando de
         panel lateral. Si el panel estaba cerrado, se vuelve a cerrar."""
+        if not on:
+            self._cancel_crop()    # (r99) cerrar el modo páginas cancela un recorte a medias
         if on and self.doc is None:
             self._btn_pages.setChecked(False)
             return
@@ -781,6 +801,45 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             self.insert_pdf_after(rows[-1])
         elif op == "extract":
             self.extract_pages(rows)
+        elif op == "crop":
+            self._start_crop()
+
+    def _start_crop(self) -> None:
+        """(r99, petición de Ricardo) «Recortar»: recuadro editable sobre la
+        página mostrada, con tiradores en las 4 esquinas y los 4 lados, que
+        cambia sus márgenes de recorte y visualización. Vive dentro del modo
+        «Operaciones de página» —no pasa por `_toggle_tool`/`_activate_tool`,
+        que lo cerrarían— y solo actúa sobre la página actual, no sobre la
+        selección de miniaturas."""
+        if self.doc is None or self.viewer.pdf_page is None:
+            return
+        self._finish_action()      # cierra cualquier otra herramienta activa
+        self.viewer.mode = "CROP"
+        self.viewer.crop_page_number = self.current_page
+        self.viewer.crop_rect = self.viewer._to_screen_rect(self.viewer.pdf_page.rect)
+        self._crop_confirm_row.setVisible(True)
+        for b in self._pages_btns:
+            b.setEnabled(False)
+        self.viewer.update()
+        self.statusBar().showMessage(
+            "Recortar: arrastra los tiradores de los bordes o las esquinas y pulsa Aplicar")
+
+    def _apply_crop(self) -> None:
+        v = self.viewer
+        if (v.mode == "CROP" and v.crop_rect is not None and self.doc is not None
+                and v.crop_page_number == self.current_page):
+            self.crop_page(self.current_page, v._to_pdf_rect(v.crop_rect))
+        self._cancel_crop()
+
+    def _cancel_crop(self) -> None:
+        if self.viewer.mode != "CROP":
+            return
+        self.viewer.mode = "NONE"
+        self.viewer.crop_rect = None
+        self.viewer.crop_page_number = None
+        self._crop_confirm_row.setVisible(False)
+        self._update_pages_panel()
+        self.viewer.update()
 
     def _finish_action(self) -> None:
         for b in self._tool_btns.values():
@@ -859,6 +918,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             self._activate_tool(mode)
 
     def _activate_tool(self, mode: str):
+        self._cancel_crop()    # (r99) cambiar de herramienta cancela un recorte a medias
         if mode != "NONE" and self._pages_mode:
             self._set_pages_mode(False)
         self.viewer.mode = mode
@@ -1601,11 +1661,13 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
 
     def prev_page(self):
         if self.doc and self.current_page > 0:
+            self._cancel_crop()    # (r99) el recuadro es de la página que se deja
             self.current_page -= 1
             self.render_page()
 
     def next_page(self):
         if self.doc and self.current_page < len(self.doc) - 1:
+            self._cancel_crop()
             self.current_page += 1
             self.render_page()
 

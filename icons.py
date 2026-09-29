@@ -94,6 +94,7 @@ ICONS = {
     "page_blank": "document_add",
     "insert_pdf": "document_pdf",
     "extract": "document_arrow_right",
+    "crop": "crop",                    # (r99) recortar la página mostrada
     "cert_change": "arrow_swap",
     "save_copy": "save_copy",
     "find_text": "document_search",

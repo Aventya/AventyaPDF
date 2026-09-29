@@ -149,6 +149,17 @@ class PDFViewerWidget(QLabel):
         self._resizing: str | None = None
         self._resize_orig_rect = None
         self._resize_keep_aspect = False
+
+        # Herramienta «Recortar» (modo CROP, r99): recuadro en coordenadas de
+        # pantalla, con 8 tiradores (4 esquinas + 4 lados) que cambian sus
+        # márgenes por separado. No se aplica al soltar el ratón —a
+        # diferencia de RECT/redimensionar anotaciones—: solo al pulsar
+        # «Aplicar» (`MainWindow._apply_crop`), para poder ajustar varias
+        # veces antes de decidir.
+        self.crop_rect: QRect | None = None
+        self.crop_page_number: int | None = None
+        self._crop_resizing: str | None = None
+        self._crop_orig_rect: QRect | None = None
         # Formularios: resaltado, edición en línea, botones (form_ui / pdf_forms).
         self.forms = form_ui.FormController(self)
         # Herramienta «Editar contenido» (edit_ui / pdf_edit).
@@ -291,6 +302,30 @@ class PDFViewerWidget(QLabel):
                 return name
         return None
 
+    def _get_crop_handle(self, pos: QPoint) -> str | None:
+        """(r99) Los 8 tiradores del recuadro de recorte: 4 esquinas y 4
+        lados (medio de cada borde), cada uno mueve solo su propio margen."""
+        if self.crop_rect is None:
+            return None
+        sr = self.crop_rect
+        H = 8
+        hit = 12
+        cx, cy = sr.center().x() - H // 2, sr.center().y() - H // 2
+        handles = {
+            "TL": (sr.left(),      sr.top()),
+            "TR": (sr.right() - H, sr.top()),
+            "BL": (sr.left(),      sr.bottom() - H),
+            "BR": (sr.right() - H, sr.bottom() - H),
+            "T":  (cx,             sr.top()),
+            "B":  (cx,             sr.bottom() - H),
+            "L":  (sr.left(),      cy),
+            "R":  (sr.right() - H, cy),
+        }
+        for name, (hx, hy) in handles.items():
+            if QRect(hx - 2, hy - 2, hit, hit).contains(pos):
+                return name
+        return None
+
     def _erase_at(self, screen_pos: QPoint) -> None:
         if not self.pdf_page:
             return
@@ -322,6 +357,12 @@ class PDFViewerWidget(QLabel):
             self.start_pos = None
             return
         pos = event.pos()
+        if self.mode == "CROP":
+            handle = self._get_crop_handle(pos)
+            if handle:
+                self._crop_resizing = handle
+                self._crop_orig_rect = QRect(self.crop_rect)
+            return
         if self.mode == "NONE":
             corner = self._get_resize_corner(pos)
             if corner and self._sel:
@@ -375,6 +416,35 @@ class PDFViewerWidget(QLabel):
     def mouseMoveEvent(self, event):
         pos = event.pos()
         left = bool(event.buttons() & Qt.MouseButton.LeftButton)
+
+        if self.mode == "CROP":
+            if self._crop_resizing and self._crop_orig_rect is not None:
+                bounds = self.rect()
+                o = self._crop_orig_rect
+                MIN = 20   # tamaño mínimo del recuadro, en píxeles de pantalla
+                x = max(0, min(pos.x(), bounds.width()))
+                y = max(0, min(pos.y(), bounds.height()))
+                left_, top_, right_, bottom_ = o.left(), o.top(), o.right(), o.bottom()
+                h = self._crop_resizing
+                if "L" in h:
+                    left_ = min(x, right_ - MIN)
+                if "R" in h:
+                    right_ = max(x, left_ + MIN)
+                if "T" in h:
+                    top_ = min(y, bottom_ - MIN)
+                if "B" in h:
+                    bottom_ = max(y, top_ + MIN)
+                self.crop_rect = QRect(QPoint(left_, top_), QPoint(right_, bottom_))
+                self.update()
+            else:
+                cursors = {
+                    "TL": Qt.CursorShape.SizeFDiagCursor, "BR": Qt.CursorShape.SizeFDiagCursor,
+                    "TR": Qt.CursorShape.SizeBDiagCursor, "BL": Qt.CursorShape.SizeBDiagCursor,
+                    "T": Qt.CursorShape.SizeVerCursor, "B": Qt.CursorShape.SizeVerCursor,
+                    "L": Qt.CursorShape.SizeHorCursor, "R": Qt.CursorShape.SizeHorCursor,
+                }
+                self.setCursor(cursors.get(self._get_crop_handle(pos), Qt.CursorShape.ArrowCursor))
+            return
 
         if self._tsel_start is not None and left and self.mode in ("NONE", "MARKUP"):
             if (pos - self._tsel_press).manhattanLength() >= 4:
@@ -475,6 +545,11 @@ class PDFViewerWidget(QLabel):
 
         if self.mode == "EDIT":
             self.content.release(event.pos())
+            return
+
+        if self.mode == "CROP":
+            self._crop_resizing = None
+            self._crop_orig_rect = None
             return
 
         if self.mode == "MARKUP" and self._stroking:
@@ -1018,7 +1093,33 @@ class PDFViewerWidget(QLabel):
                 p.setBrush(Qt.BrushStyle.NoBrush)
                 radius_px = self.rect_corner_radius * self.scale_factor
                 p.drawRoundedRect(self.current_rect, radius_px, radius_px)
+
+        if self.mode == "CROP" and self.crop_rect is not None:
+            self._paint_crop_overlay(p)
         p.end()
+
+    def _paint_crop_overlay(self, p: QPainter) -> None:
+        """(r99) Fuera del recuadro, atenuado (como recortar una imagen);
+        dentro, el recuadro en sí y sus 8 tiradores — 4 esquinas y el medio
+        de cada lado, cada uno mueve solo su propio margen."""
+        full = self.rect()
+        cr = self.crop_rect
+        dim = QColor(0, 0, 0, 120)
+        p.fillRect(QRect(0, 0, full.width(), cr.top()), dim)
+        p.fillRect(QRect(0, cr.bottom(), full.width(), full.height() - cr.bottom()), dim)
+        p.fillRect(QRect(0, cr.top(), cr.left(), cr.height()), dim)
+        p.fillRect(QRect(cr.right(), cr.top(), full.width() - cr.right(), cr.height()), dim)
+        col = QColor(0x00, 0x78, 0xD4)
+        p.setPen(QPen(col, 2, Qt.PenStyle.SolidLine))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawRect(cr)
+        h = 8
+        cx, cy = cr.center().x() - h // 2, cr.center().y() - h // 2
+        for hx, hy in [(cr.left(), cr.top()), (cr.right() - h, cr.top()),
+                       (cr.left(), cr.bottom() - h), (cr.right() - h, cr.bottom() - h),
+                       (cx, cr.top()), (cx, cr.bottom() - h),
+                       (cr.left(), cy), (cr.right() - h, cy)]:
+            p.fillRect(hx, hy, h, h, col)
 
     def _paint_hand_preview(self, p: QPainter) -> None:
         """(r68) La firma manuscrita, translúcida, donde va a quedar: en el

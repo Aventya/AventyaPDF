@@ -225,6 +225,62 @@ class TestVentanaPrincipal(unittest.TestCase):
         self.assertTrue(w._pages_panel.isHidden())
         w._toggle_tool("TEXT")
 
+    def test_recortar_pagina_desde_operaciones_de_pagina(self):
+        """(r99, petición de Ricardo) Botón «Recortar» en «Operaciones de
+        página»: recuadro editable sobre la página mostrada, con tiradores;
+        Aplicar cambia de verdad sus márgenes (con deshacer), Cancelar no
+        toca nada, y cambiar de página cancela un recorte a medias."""
+        from PyQt6.QtCore import QRect, QPoint
+        w = self.w
+        self.assertTrue(w.open_path(self._crear_pdf(2)))
+        antes = w.doc[0].rect
+        w._btn_pages.click()
+        self.app.processEvents()
+
+        w._pages_op("crop")
+        self.assertEqual(w.viewer.mode, "CROP")
+        self.assertTrue(w._crop_confirm_row.isVisible())
+        self.assertEqual(w.viewer.crop_page_number, 0)
+        self.assertEqual(w.viewer.crop_rect, w.viewer._to_screen_rect(antes))
+        for b in w._pages_btns:
+            self.assertFalse(b.isEnabled())
+
+        # Cancelar no cambia nada, y reactiva los botones de la fila.
+        w._cancel_crop()
+        self.assertEqual(w.viewer.mode, "NONE")
+        self.assertFalse(w._crop_confirm_row.isVisible())
+        self.assertEqual(w.doc[0].rect, antes)
+        self.assertTrue(w._pages_btns[0].isEnabled())
+
+        # Aplicar sí recorta de verdad, y queda en el historial de deshacer.
+        w._pages_op("crop")
+        full = w.viewer.crop_rect
+        w.viewer.crop_rect = QRect(full.topLeft(), QPoint(full.right() - 100, full.bottom() - 150))
+        w._apply_crop()
+        self.assertEqual(w.viewer.mode, "NONE")
+        self.assertFalse(w._crop_confirm_row.isVisible())
+        # (redondeo a píxel entero al ir y volver de pantalla: hasta 1 px)
+        self.assertAlmostEqual(w.doc[0].rect.width, antes.width - 100, delta=1.5)
+        self.assertAlmostEqual(w.doc[0].rect.height, antes.height - 150, delta=1.5)
+        w.undo()
+        self.assertEqual(w.doc[0].rect, antes)
+
+        # Cambiar de página cancela un recorte a medias, sin aplicarlo.
+        w._pages_op("crop")
+        full = w.viewer.crop_rect
+        w.viewer.crop_rect = QRect(full.topLeft(), QPoint(full.right() - 50, full.bottom() - 50))
+        w.next_page()
+        self.assertEqual(w.viewer.mode, "NONE")
+        w.prev_page()
+        self.assertEqual(w.doc[0].rect, antes)
+
+        # Esc también cancela (v.mode != NONE → _finish_action).
+        w._pages_op("crop")
+        w._on_escape()
+        self.assertEqual(w.viewer.mode, "NONE")
+        self.assertFalse(w._crop_confirm_row.isVisible())
+        self.assertTrue(w._pages_mode)      # Esc solo cancela el recorte, no el modo páginas
+
     def test_arrastrar_una_miniatura_la_traslada_de_verdad(self):
         """(r51, aviso de Ricardo: «al soltar no hace nada») El destino del
         arrastre nativo de Qt salía de `dropEvent`, que nunca llegaba a
