@@ -91,6 +91,7 @@ Para ajustarse a los requisitos estéticos y de claridad exigidos en España y l
 * **Recuadro de color** (`_draw_panel`): ocupa todo el recuadro de la firma, color #D1CCBD con un 75 % de transparencia (opacidad 0,25, ExtGState `/SigPanelGS`) y esquinas redondeadas de 14 pt. Se configura con `PANEL_RGB`, `PANEL_ALPHA` y `PANEL_RADIUS`; en recuadros muy pequeños el radio se limita a la mitad del lado menor.
 * El logotipo es [MOSCA.svg](../MOSCA.svg) convertido a PDF vectorial en [signature_background.pdf](../signature_background.pdf) (`BACKGROUND_PDF`). Se importa con `writer.import_page_as_xobject` como XObject de formulario, así que conserva sus degradados y transparencias.
 * Escala proporcional **siempre por el alto del recuadro** y **pegado al lado derecho** del recuadro. Si el recuadro es más estrecho que el logotipo, lo que sobresale se recorta con el mismo contorno redondeado del recuadro de color.
+* En una página girada (`/Rotate`) el sello se compone con el ancho y alto **tal como se ven** y se gira dentro del recuadro, así que se ve igual que en una página sin girar (r106).
 * Si falta `signature_background.pdf`, la firma se crea igualmente, sin fondo (aviso por consola).
 
 ### 1 bis. Regenerar el fondo

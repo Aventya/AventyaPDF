@@ -109,8 +109,27 @@ class _SpanishCertTextStamp(TextStamp):
     alto del recuadro; encima, el texto.
     """
 
+    # (r105) Giro de la página (/Rotate). El sello se compone con el ancho y
+    # alto VISTOS (`_size`) y `render` lo gira con un `cm` dentro del recuadro,
+    # que en una página girada 90° o 270° tiene ancho y alto intercambiados.
+    rotation = 0
+
+    def _size(self) -> tuple[float, float]:
+        w, h = float(self.box.width), float(self.box.height)
+        return (h, w) if self.rotation % 180 else (w, h)
+
+    def _rotation_cm(self) -> bytes:
+        """De la vista al recuadro del PDF: gira en sentido antihorario lo
+        que la página girará en sentido horario al mostrarse."""
+        w, h = self._size()
+        m = {90: f"0 1 -1 0 {h:.4f} 0", 180: f"-1 0 0 -1 {w:.4f} {h:.4f}",
+             270: f"0 -1 1 0 0 {w:.4f}"}.get(self.rotation % 360)
+        return f"{m} cm".encode() if m else b""
+
     def render(self) -> bytes:
         command_stream = [b"q"]
+        if self._rotation_cm():
+            command_stream.append(self._rotation_cm())
         inner_content = self._render_inner_content()
         command_stream.append(self._draw_panel())
         command_stream.append(self._draw_background())
@@ -121,8 +140,7 @@ class _SpanishCertTextStamp(TextStamp):
 
     def _rounded_box_path(self) -> str:
         """Trayecto del recuadro completo con esquinas redondeadas (sin pintar)."""
-        w = float(self.box.width)
-        h = float(self.box.height)
+        w, h = self._size()
         r = max(0.0, min(PANEL_RADIUS, w / 2, h / 2))
         k = r * 0.552285            # aproximación de un cuarto de círculo con Bézier
         return (f"{r:.4f} 0 m {w - r:.4f} 0 l "
@@ -159,8 +177,7 @@ class _SpanishCertTextStamp(TextStamp):
         xobj = self.writer.import_page_as_xobject(reader, page_ix=0)
         x1, y1, x2, y2 = (float(v) for v in xobj.get_object()["/BBox"])
         bw, bh = abs(x2 - x1), abs(y2 - y1)
-        w = float(self.box.width)
-        h = float(self.box.height)
+        w, h = self._size()
         s = h / bh
         tx = w - bw * s - min(x1, x2) * s
         ty = -min(y1, y2) * s
@@ -214,8 +231,7 @@ class _SpanishCertTextStamp(TextStamp):
         """(margen, ancho, alto) del hueco para el texto dentro del recuadro.
         Margen = máx(7 pt, 10 % del alto); solo en recuadros diminutos, donde
         no quedaría sitio, se reduce para dejar al menos 1 pt de texto."""
-        w = float(self.box.width)
-        h = float(self.box.height)
+        w, h = self._size()
         m = max(TEXT_MARGIN_MIN, TEXT_MARGIN_RATIO * h)
         m = max(0.0, min(m, (min(w, h) - 1) / 2))
         return m, w - 2 * m, h - 2 * m
@@ -294,11 +310,25 @@ def _text_width(text: str) -> float:
 @dataclass(frozen=True)
 class _SpanishCertStampStyle(TextStampStyle):
     """TextStampStyle que instancia _SpanishCertTextStamp en lugar de TextStamp."""
+    rotation: int = 0                     # (r105) /Rotate de la página firmada
 
     def create_stamp(self, writer, box, text_params) -> "_SpanishCertTextStamp":
-        return _SpanishCertTextStamp(
+        stamp = _SpanishCertTextStamp(
             writer=writer, style=self, box=box, text_params=text_params
         )
+        stamp.rotation = self.rotation
+        return stamp
+
+
+def _page_rotation(pdf_bytes: bytes, page_num: int, password: str = "") -> int:
+    """(r105) /Rotate de la página (heredado incluido), para girar el sello."""
+    try:
+        with fitz.open("pdf", pdf_bytes) as d:
+            if d.needs_pass:
+                d.authenticate(password)
+            return d[page_num].rotation
+    except Exception:  # noqa: BLE001 — si no se puede leer, sin girar
+        return 0
 
 
 def _build_stamp_text(cert_info: dict, reason: str = "", location: str = "") -> str:
@@ -447,6 +477,7 @@ class PAdESSigner:
             stamp_text=_build_stamp_text(cert_info, reason, location),
             timestamp_format="%d/%m/%Y %H:%M:%S",
             border_width=0,
+            rotation=_page_rotation(pdf_bytes, page_num, doc_password),
         )
 
         pdf_signer = signers.PdfSigner(

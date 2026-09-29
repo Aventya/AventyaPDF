@@ -1810,6 +1810,35 @@ class TestFirma(_ConCarpeta):
                 # `Annot.rect` no lleva el giro (invariante 35).
                 self.assertEqual(w.rect * p.rotation_matrix, objetivo)
 
+    def test_sello_derecho_en_pagina_girada(self):
+        """(r105, informado por Ricardo) En una página girada el recuadro caía
+        bien pero el sello (fondo, logotipo y texto) salía sin girar dentro de
+        él. Visto en pantalla debe ser igual que en una página sin girar."""
+        from signer_backend import PAdESSigner
+        vista = fitz.Rect(30, 100, 330, 190)
+
+        def sello(giro):
+            d = fitz.open()
+            d.new_page(width=420, height=560).set_rotation(giro)
+            box = doc_tools.page_rect_to_pdf(d[0], vista)
+            f = fitz.open("pdf", PAdESSigner.sign_pdf_bytes(
+                d.tobytes(), self.pfx, "1234", 0, box, reason="Pruebas"))
+            return f[0].get_pixmap(clip=None, alpha=False)
+
+        def zona(pix):
+            n = pix.n
+            return [pix.samples[(y * pix.width + x) * n]
+                    for y in range(int(vista.y0), int(vista.y1))
+                    for x in range(int(vista.x0), int(vista.x1))]
+
+        base = zona(sello(0))
+        for giro in (90, 180, 270):
+            with self.subTest(giro=giro):
+                otra = zona(sello(giro))
+                distintos = sum(abs(a - b) > 60 for a, b in zip(base, otra))
+                # Solo puede cambiar la hora de la firma (unos segundos).
+                self.assertLess(distintos / len(base), 0.03)
+
     def test_dos_firmas_incrementales_validas(self):
         from signer_backend import PAdESSigner
         from signature_validation import validate_signatures

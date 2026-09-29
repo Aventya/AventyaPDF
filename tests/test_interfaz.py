@@ -716,6 +716,7 @@ class TestVentanaPrincipal(unittest.TestCase):
                     doc = fitz.open()
                     pag = doc.new_page(width=600, height=800)
                     pag.insert_text((80, 120), "Palabra", fontsize=20)
+                    pag.insert_text((80, 170), "Una linea con varias palabras", fontsize=14)
                     pag.set_rotation(giro)
                     if recortar:
                         vista = doc[0].rect
@@ -770,6 +771,16 @@ class TestVentanaPrincipal(unittest.TestCase):
                     w._find_edit.setText("Palabra")
                     w.find_next()
                     cerca(w._find_hits[w._find_idx][1], caja, 1)
+
+                    # Un renglón entero (se ve en vertical a 90°/270°): un solo
+                    # cuadrilátero que sigue el renglón, no uno rechoncho por palabra.
+                    pals = {x[4]: fitz.Rect(x[:4]) for x in v._page_words()}
+                    self._arrastrar([pals["Una"].tl + (1, 1), pals["palabras"].br - (1, 1)])
+                    hl = [a for a in v.pdf_page.annots() if a.type[1] == "Highlight"][-1]
+                    q = hl.vertices
+                    self.assertEqual(len(q), 4, "un cuadrilátero por renglón")
+                    self.assertLess(abs(q[1][1] - q[0][1]), 1)     # sin girar: renglón horizontal
+                    self.assertGreater(q[1][0] - q[0][0], 150)
 
                     # Mano alzada fuera del texto: una raya horizontal.
                     b = paso(lambda: self._arrastrar(

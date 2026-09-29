@@ -985,7 +985,7 @@ class DocumentMixin:
     # ── anotaciones creadas desde el visor ─────────────────────────────── #
 
     def add_text_markup(self, rects: list, kind: str, color: tuple | None = None,
-                        opacity: float = 1.0):
+                        opacity: float = 1.0, quads: list | None = None):
         if self.doc is None or not rects:
             return
         page = self.doc[self.current_page]
@@ -997,8 +997,9 @@ class DocumentMixin:
         # (r105) `rects` como se ve la página. Se pasan como cuadriláteros sin
         # girar que conservan qué lado es «abajo» en la vista: el subrayado
         # va bajo el texto tal como se lee, también con la página girada.
-        annot = fn([fitz.Rect(r).quad * page.derotation_matrix if page.rotation
-                    else fitz.Rect(r) for r in rects])
+        # `quads` (del visor, ya sin girar y en el sentido del renglón) manda.
+        annot = fn(quads or [fitz.Rect(r).quad * page.derotation_matrix if page.rotation
+                             else fitz.Rect(r) for r in rects])
         if annot is None:
             return
         annot.set_colors(stroke=color or MARKUP_COLORS[kind])

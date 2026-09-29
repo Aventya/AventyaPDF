@@ -177,7 +177,10 @@ class PDFViewerWidget(QLabel):
         self._tsel_start: fitz.Point | None = None
         self._tsel_press = QPoint()
         self._tsel_rects: list = []
+        self._tsel_quads: list = []             # (r105) para marcar, sin girar
         self._tsel_text: str = ""
+        self._twords: list = []                 # (r105) en el «espacio del texto»
+        self._tmatrix = fitz.Identity
 
         self._erase_checkpointed = False
         self._wheel_accum = 0
@@ -282,15 +285,20 @@ class PDFViewerWidget(QLabel):
     # ── selección de texto ────────────────────────────────────────────── #
 
     def _page_words(self) -> list:
+        """Palabras como se ve la página (cursor de texto, inicio del gesto).
+        (r105) Calcula a la vez las del «espacio del texto» (`_text_words`)."""
         if self._words is None and self.pdf_page is not None:
+            page = self.pdf_page
             try:
-                self._words = self.pdf_page.get_text("words")
-                if self.pdf_page.rotation:          # (r105) como se ve la página
-                    m = self.pdf_page.rotation_matrix
-                    girar = lambda w: (*(fitz.Rect(w[:4]) * m).normalize(), *w[4:])
-                    self._words = [girar(w) for w in self._words]
+                crudas = page.get_text("words")          # sin girar
+                t = doc_tools.text_matrix(page) if crudas else fitz.Identity
+                pasar = lambda w, m: (*(fitz.Rect(w[:4]) * m).normalize(), *w[4:])
+                self._words = ([pasar(w, page.rotation_matrix) for w in crudas]
+                               if page.rotation else crudas)
+                self._twords = [pasar(w, t) for w in crudas]
+                self._tmatrix = t
             except Exception:
-                self._words = []
+                self._words, self._twords, self._tmatrix = [], [], fitz.Identity
         return self._words or []
 
     def _word_at(self, pdf_pt: fitz.Point, margin: float = 1) -> bool:
@@ -306,16 +314,27 @@ class PDFViewerWidget(QLabel):
         return self._word_at(pdf_pt, MARKUP_TEXT_MARGIN)
 
     def _update_text_selection(self, pdf_pt: fitz.Point) -> None:
+        """(r105) Se selecciona en el «espacio del texto» (las líneas en
+        horizontal, doc_tools.text_matrix), no en la vista: en una página
+        girada el renglón se ve en vertical. `_tsel_rects` vuelve a la vista
+        para pintarse; `_tsel_quads` (sin girar) conserva el sentido del
+        renglón para resaltar, subrayar o tachar."""
         if self._tsel_start is None:
             return
-        words = self._page_words()
-        self._tsel_rects, self._tsel_text = doc_tools.word_selection(
-            self.pdf_page, self._tsel_start, pdf_pt, words)
+        self._page_words()
+        page = self.pdf_page
+        a_texto = page.derotation_matrix * self._tmatrix
+        a_vista = ~self._tmatrix * page.rotation_matrix
+        rects, self._tsel_text = doc_tools.word_selection(
+            page, self._tsel_start * a_texto, pdf_pt * a_texto, self._twords)
+        self._tsel_rects = [(fitz.Rect(r) * a_vista).normalize() for r in rects]
+        self._tsel_quads = [fitz.Rect(r).quad * ~self._tmatrix for r in rects]
         self.update()
 
     def clear_text_selection(self) -> None:
         had = bool(self._tsel_rects)
         self._tsel_rects = []
+        self._tsel_quads = []
         self._tsel_text = ""
         self._tsel_start = None
         if had:
@@ -615,10 +634,11 @@ class PDFViewerWidget(QLabel):
                 if moved:
                     self._update_text_selection(self._to_pdf_pt(event.pos()))
                 rects = list(self._tsel_rects) if moved else []
+                quads = list(self._tsel_quads) if moved else []
                 self.clear_text_selection()
                 if rects:
                     mw.add_text_markup(rects, self.markup_kind, self.markup_color,
-                                       self.markup_opacity)
+                                       self.markup_opacity, quads=quads)
             return   # la herramienta sigue activa, como en Acrobat
 
         if self.mode == "NONE":
@@ -969,13 +989,14 @@ class PDFViewerWidget(QLabel):
         if chosen is None:
             return
         rects = list(self._tsel_rects)
+        quads = list(self._tsel_quads)
         if chosen == a_copy:
             mw.copy_selected_text()
         elif chosen in kinds:
             kind = kinds[chosen]
             color = self.markup_color if kind == self.markup_kind else doc_tools.MARKUP_COLORS[kind]
             self.clear_text_selection()
-            mw.add_text_markup(rects, kind, color)
+            mw.add_text_markup(rects, kind, color, quads=quads)
 
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):

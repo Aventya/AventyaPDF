@@ -9,6 +9,7 @@ Nada de este módulo toca Qt: recibe y devuelve objetos `fitz`, lo que permite
 reutilizarlo y probarlo sin arrancar la aplicación.
 """
 import functools
+import math
 import os
 import re
 from datetime import datetime
@@ -142,6 +143,27 @@ def unrotated_rect(page: fitz.Page, rect) -> fitz.Rect:
 
 def unrotated_point(page: fitz.Page, pt) -> fitz.Point:
     return fitz.Point(pt) * page.derotation_matrix if page.rotation else fitz.Point(pt)
+
+
+def text_matrix(page: fitz.Page) -> fitz.Matrix:
+    """(r105) Sin girar → «espacio del texto», donde las líneas de la página
+    corren de izquierda a derecha (giro múltiplo de 90° según el sentido que
+    predomina, pesado por la cantidad de texto). La selección de texto agrupa
+    las palabras en líneas horizontales: hecha en la vista de una página
+    girada, cada palabra caía en su propia «línea» y el resaltado salía
+    rechoncho, cruzado respecto al renglón."""
+    votos = [0, 0, 0, 0]
+    try:
+        for block in page.get_text("dict")["blocks"]:
+            for line in block.get("lines", ()):
+                dx, dy = line["dir"]
+                k = round(math.degrees(math.atan2(dy, dx)) / 90) % 4
+                votos[k] += sum(len(s["text"]) for s in line["spans"])
+    except Exception:  # noqa: BLE001
+        pass
+    k = max(range(4), key=lambda i: votos[i]) if any(votos) else 0
+    # dir girado k·90° (y hacia abajo): se deshace con Matrix(-k·90).
+    return fitz.Matrix(-90 * k)
 
 
 def orient_appearance(doc: fitz.Document, annot, rotation: int) -> None:
