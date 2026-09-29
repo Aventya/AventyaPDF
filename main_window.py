@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QGridLayout, QSizePolicy, QStyle, QStyledItemDelegate,
 )
 from PyQt6.QtGui import QPixmap, QImage, QPainter, QColor, QFont
-from PyQt6.QtCore import QEvent, Qt, QTimer, QRectF, QSize
+from PyQt6.QtCore import QEvent, Qt, QTimer, QRect, QRectF, QSize
 
 # (r36) Iconos: Fluent UI System Icons (icons.py). Mismas claves que antes.
 import icons  # noqa: E402
@@ -418,23 +418,6 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._side_hint(g, "Arrastra una miniatura para moverla")
         self._side_hint(g, "Ctrl o Mayús para elegir varias")
 
-        # (r99) Aplicar/cancelar el recorte: solo visible durante el modo CROP.
-        self._crop_confirm_row = QWidget()
-        crow = QHBoxLayout(self._crop_confirm_row)
-        crow.setContentsMargins(0, 0, 0, 0)
-        crow.setSpacing(4)
-        btn_crop_apply = self._opt_icon_btn("apply", "Aplicar el recorte")
-        btn_crop_apply.setObjectName("side_icon_btn")
-        btn_crop_apply.clicked.connect(self._apply_crop)
-        btn_crop_cancel = self._opt_icon_btn("close", "Cancelar el recorte")
-        btn_crop_cancel.setObjectName("side_icon_btn")
-        btn_crop_cancel.clicked.connect(self._cancel_crop)
-        crow.addWidget(btn_crop_apply)
-        crow.addWidget(btn_crop_cancel)
-        crow.addStretch()
-        self._crop_confirm_row.setVisible(False)
-        g.addWidget(self._crop_confirm_row, g.rowCount(), 0, 1, 2)
-
         # ── Panel: Texto ─────────────────────────────────────────────────
         self._txt_panel, g = self._side_form("Añadir texto")
         self._txt_size_spin = self._make_spin(6, 96, 12, self._on_txt_size)
@@ -639,6 +622,28 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self.viewer = PDFViewerWidget()
         self.viewer.main_window = self
         self._scroll.setWidget(self.viewer)
+
+        # (r100, petición de Ricardo: «¿pueden estar centrados en el propio
+        # recuadro?... así no se modifica la estructura de la herramienta
+        # dentro del panel lateral») Aplicar/cancelar el recorte: dos botones
+        # flotantes, hijos del visor (mismo sitio que `inplace_editor`), que
+        # `_position_crop_buttons` centra en el recuadro cada vez que cambia.
+        self._crop_apply_btn = self._opt_icon_btn("apply", "Aplicar el recorte")
+        self._crop_apply_btn.setObjectName("crop_confirm_btn")
+        self._crop_apply_btn.setParent(self.viewer)
+        self._crop_apply_btn.clicked.connect(lambda _c=False: self._apply_crop())
+        self._crop_apply_btn.hide()
+        self._crop_cancel_btn = self._opt_icon_btn("close", "Cancelar el recorte")
+        self._crop_cancel_btn.setObjectName("crop_confirm_btn")
+        self._crop_cancel_btn.setParent(self.viewer)
+        self._crop_cancel_btn.clicked.connect(lambda _c=False: self._cancel_crop())
+        self._crop_cancel_btn.hide()
+        # (r100) Si la página es más alta que el visor, desplazarla también
+        # debe mantener los botones dentro de lo visible.
+        self._scroll.horizontalScrollBar().valueChanged.connect(
+            lambda _v: self._position_crop_buttons())
+        self._scroll.verticalScrollBar().valueChanged.connect(
+            lambda _v: self._position_crop_buttons())
         # (r97) Ctrl + rueda también en la zona gris que rodea la página: sin
         # esto, el QScrollArea se quedaba el evento y desplazaba en vez de ampliar.
         self._scroll.viewport().installEventFilter(self)
@@ -817,12 +822,38 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self.viewer.mode = "CROP"
         self.viewer.crop_page_number = self.current_page
         self.viewer.crop_rect = self.viewer._to_screen_rect(self.viewer.pdf_page.rect)
-        self._crop_confirm_row.setVisible(True)
+        self._position_crop_buttons()
+        self._crop_apply_btn.show()
+        self._crop_apply_btn.raise_()
+        self._crop_cancel_btn.show()
+        self._crop_cancel_btn.raise_()
         for b in self._pages_btns:
             b.setEnabled(False)
         self.viewer.update()
         self.statusBar().showMessage(
             "Recortar: arrastra los tiradores de los bordes o las esquinas y pulsa Aplicar")
+
+    def _position_crop_buttons(self) -> None:
+        """(r100) Los centra en el recuadro de recorte — o en la parte de él
+        que quede visible, si la página es más alta que el visor y hay que
+        desplazarla para ver el resto, para que no queden fuera de la
+        pantalla."""
+        cr = self.viewer.crop_rect
+        if cr is None:
+            return
+        # (r100) La parte del propio visor que se ve de verdad, en sus
+        # coordenadas: tiene en cuenta el centrado de QScrollArea cuando la
+        # página es más estrecha que el hueco, no solo el desplazamiento.
+        visible = self.viewer.visibleRegion().boundingRect()
+        target = cr.intersected(visible)
+        if target.isEmpty():
+            target = cr
+        bw = bh = icons.CONTROL
+        gap = 6
+        x0 = target.center().x() - (bw * 2 + gap) // 2
+        y0 = target.center().y() - bh // 2
+        self._crop_apply_btn.move(x0, y0)
+        self._crop_cancel_btn.move(x0 + bw + gap, y0)
 
     def _apply_crop(self) -> None:
         v = self.viewer
@@ -837,7 +868,8 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self.viewer.mode = "NONE"
         self.viewer.crop_rect = None
         self.viewer.crop_page_number = None
-        self._crop_confirm_row.setVisible(False)
+        self._crop_apply_btn.hide()
+        self._crop_cancel_btn.hide()
         self._update_pages_panel()
         self.viewer.update()
 

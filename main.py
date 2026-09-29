@@ -126,6 +126,22 @@ QPushButton#opt_btn:hover   { background: #EBEBEB; border-color: #D2D0CE; }
 QPushButton#opt_btn:disabled { color: #C8C6C4; }
 QPushButton#opt_btn:pressed { background: #D8D8D8; }
 
+/* ── Aplicar/cancelar el recorte (r100): flotan sobre la página, centrados
+   en el recuadro — fondo sólido y borde para leerse encima de cualquier
+   contenido, esté la página en blanco o escaneada y oscura. ── */
+QPushButton#crop_confirm_btn {
+    background: #FFFFFF;
+    border: 1px solid #8A8886;
+    border-radius: 16px;
+    font-family: "FluentSystemIcons-Regular";
+    font-size: 18px;
+    min-width: 30px;  max-width: 30px;
+    min-height: 30px; max-height: 30px;
+    padding: 0;
+}
+QPushButton#crop_confirm_btn:hover   { background: #F0F0F0; border-color: #605E5C; }
+QPushButton#crop_confirm_btn:pressed { background: #E0E0E0; }
+
 /* ── Color swatch buttons (secondary toolbar) ── */
 QPushButton#color_swatch {
     min-width: 30px;  max-width: 30px;

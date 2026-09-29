@@ -435,6 +435,8 @@ class PDFViewerWidget(QLabel):
                 if "B" in h:
                     bottom_ = max(y, top_ + MIN)
                 self.crop_rect = QRect(QPoint(left_, top_), QPoint(right_, bottom_))
+                if self.main_window is not None:
+                    self.main_window._position_crop_buttons()
                 self.update()
             else:
                 cursors = {

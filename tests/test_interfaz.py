@@ -231,7 +231,16 @@ class TestVentanaPrincipal(unittest.TestCase):
         Aplicar cambia de verdad sus márgenes (con deshacer), Cancelar no
         toca nada, y cambiar de página cancela un recorte a medias."""
         from PyQt6.QtCore import QRect, QPoint
+        import main
         w = self.w
+        # (r100) El tamaño real de los botones flotantes —32×32— lo pone la
+        # hoja de estilos; sin ella (por omisión en las pruebas) Qt les da
+        # un tamaño cualquiera y la comprobación de que quedan centrados no
+        # tendría sentido.
+        anterior = self.app.styleSheet()
+        self.app.setStyleSheet(main.STYLESHEET)
+        self.addCleanup(self.app.setStyleSheet, anterior)
+
         self.assertTrue(w.open_path(self._crear_pdf(2)))
         antes = w.doc[0].rect
         w._btn_pages.click()
@@ -239,7 +248,17 @@ class TestVentanaPrincipal(unittest.TestCase):
 
         w._pages_op("crop")
         self.assertEqual(w.viewer.mode, "CROP")
-        self.assertTrue(w._crop_confirm_row.isVisible())
+        self.assertTrue(w._crop_apply_btn.isVisible())
+        self.assertTrue(w._crop_cancel_btn.isVisible())
+        # (r100) Centrados en la parte del recuadro que se ve en el visor
+        # (puede ser más alto que la ventana), uno junto al otro.
+        centro_botones = QRect(w._crop_apply_btn.geometry().topLeft(),
+                                w._crop_cancel_btn.geometry().bottomRight()).center()
+        visible = w.viewer.visibleRegion().boundingRect()
+        objetivo = w.viewer.crop_rect.intersected(visible)
+        if objetivo.isEmpty():
+            objetivo = w.viewer.crop_rect
+        self.assertLessEqual((centro_botones - objetivo.center()).manhattanLength(), 2)
         self.assertEqual(w.viewer.crop_page_number, 0)
         self.assertEqual(w.viewer.crop_rect, w.viewer._to_screen_rect(antes))
         for b in w._pages_btns:
@@ -248,7 +267,8 @@ class TestVentanaPrincipal(unittest.TestCase):
         # Cancelar no cambia nada, y reactiva los botones de la fila.
         w._cancel_crop()
         self.assertEqual(w.viewer.mode, "NONE")
-        self.assertFalse(w._crop_confirm_row.isVisible())
+        self.assertFalse(w._crop_apply_btn.isVisible())
+        self.assertFalse(w._crop_cancel_btn.isVisible())
         self.assertEqual(w.doc[0].rect, antes)
         self.assertTrue(w._pages_btns[0].isEnabled())
 
@@ -258,7 +278,8 @@ class TestVentanaPrincipal(unittest.TestCase):
         w.viewer.crop_rect = QRect(full.topLeft(), QPoint(full.right() - 100, full.bottom() - 150))
         w._apply_crop()
         self.assertEqual(w.viewer.mode, "NONE")
-        self.assertFalse(w._crop_confirm_row.isVisible())
+        self.assertFalse(w._crop_apply_btn.isVisible())
+        self.assertFalse(w._crop_cancel_btn.isVisible())
         # (redondeo a píxel entero al ir y volver de pantalla: hasta 1 px)
         self.assertAlmostEqual(w.doc[0].rect.width, antes.width - 100, delta=1.5)
         self.assertAlmostEqual(w.doc[0].rect.height, antes.height - 150, delta=1.5)
@@ -278,7 +299,8 @@ class TestVentanaPrincipal(unittest.TestCase):
         w._pages_op("crop")
         w._on_escape()
         self.assertEqual(w.viewer.mode, "NONE")
-        self.assertFalse(w._crop_confirm_row.isVisible())
+        self.assertFalse(w._crop_apply_btn.isVisible())
+        self.assertFalse(w._crop_cancel_btn.isVisible())
         self.assertTrue(w._pages_mode)      # Esc solo cancela el recorte, no el modo páginas
 
     def test_arrastrar_una_miniatura_la_traslada_de_verdad(self):
