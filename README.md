@@ -57,6 +57,15 @@ Setup).
 - [MEMORIA_EVOLUTIVA.md](MEMORIA_EVOLUTIVA.md): estado del proyecto, decisiones,
   invariantes técnicos e historial de cambios.
 
+## Firma de código
+
+Los instaladores de Windows publicados en
+[Releases](https://github.com/Aventya/AventyaPDF/releases) se firman
+gratuitamente con [SignPath.io](https://signpath.io), a través de su
+programa **SignPath Foundation** para proyectos de código abierto. Detalle
+del proceso, roles del equipo y privacidad en
+[CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md).
+
 ## Licencia
 
 AventyaPDF es software libre: puedes redistribuirlo y modificarlo según los
