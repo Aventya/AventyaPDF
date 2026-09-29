@@ -17,6 +17,7 @@ Modelo de documento (ver MEMORIA_EVOLUTIVA §4):
     otra edición (mark_modified) la descarta y se vuelve a lo normal.
 """
 import os
+import sys
 import traceback
 
 import fitz
@@ -251,7 +252,16 @@ class DocumentMixin:
     # ── abrir / cerrar ─────────────────────────────────────────────────── #
 
     def open_pdf(self):
-        start =QSettings(*SETTINGS).value("recent/dir", "")
+        start = QSettings(*SETTINGS).value("recent/dir", "")
+        if not start and getattr(sys, "frozen", False):
+            # (r103, petición de Ricardo) Antes de haber abierto nunca nada
+            # —sin carpeta reciente todavía—, que el manual salga ya
+            # seleccionado en el propio diálogo, no solo en su carpeta:
+            # pasarle la ruta del archivo, no solo la de la carpeta, hace
+            # que Qt lo abra ahí y lo deje resaltado.
+            manual = os.path.join(os.path.dirname(sys.executable), "MANUAL.pdf")
+            if os.path.isfile(manual):
+                start = manual
         path, _ = QFileDialog.getOpenFileName(
             self, "Abrir PDF", start, "Archivos PDF (*.pdf);;Todos los archivos (*)")
         if path:

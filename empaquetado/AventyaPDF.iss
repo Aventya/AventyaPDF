@@ -80,6 +80,10 @@ Name: "escritorio"; Description: "Crear un acceso directo en el escritorio"; Gro
 
 [Files]
 Source: "{#DistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; (r103, petición de Ricardo) El manual, junto al .exe (no dentro de
+; _internal): así se ve nada más abrir el diálogo «Abrir PDF» la primera
+; vez, antes de que haya una carpeta reciente — ver window_document.open_pdf.
+Source: "..\docs\MANUAL.pdf"; DestDir: "{app}"; Flags: ignoreversion
 
 [InstallDelete]
 ; Al actualizar, fuera los restos de la versión anterior (bibliotecas que ya no se usan).

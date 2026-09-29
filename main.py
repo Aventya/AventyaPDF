@@ -376,18 +376,30 @@ QPushButton#side_icon_btn:hover   { background: #EBEBEB; border-color: #D2D0CE; 
 QPushButton#side_icon_btn:pressed { background: #D8D8D8; }
 QPushButton#side_icon_btn:disabled { color: #C8C6C4; }
 /* (petición de Ricardo) Selectores circulares (nivel de Comprimir), en vez
-   de un desplegable o de botones de texto */
+   de un desplegable o de botones de texto. (r103, aviso de Ricardo: «deben
+   ser botones de radio, no el invento que has creado tú») El indicador
+   anterior, con un borde grueso de 5 px sobre un círculo de 15 px, no se
+   redondeaba bien marcado: salía un cuadrado azul, no un círculo.
+   Probado sin ningún `::indicator` propio, para que Qt dibujara el nativo
+   de Windows — pero en cuanto una aplicación tiene UNA hoja de estilos,
+   Qt deja de usar el pintor nativo también para lo que esa hoja no toca, y
+   sin `::indicator:checked` no dibuja nada: el círculo marcado desaparecía
+   del todo. Por eso hace falta un `::indicator:checked` propio — un punto
+   azul centrado con relleno, no un borde grueso, para que sea un círculo
+   limpio a cualquier tamaño. */
 QRadioButton#side_radio {
     background: transparent; font-size: 12px; color: #201F1E; spacing: 6px;
     padding: 3px 0;
 }
 QRadioButton#side_radio::indicator {
-    width: 15px; height: 15px; border-radius: 8px; border: 1px solid #8A8886;
+    width: 15px; height: 15px; border-radius: 7px; border: 1px solid #8A8886;
     background: #FFFFFF;
 }
-QRadioButton#side_radio::indicator:hover    { border-color: #0078D4; }
-QRadioButton#side_radio::indicator:checked  {
-    border: 5px solid #0078D4; background: #FFFFFF;
+QRadioButton#side_radio::indicator:hover { border-color: #0078D4; }
+QRadioButton#side_radio::indicator:checked {
+    border: 1px solid #0078D4;
+    background: qradialgradient(cx:0.5, cy:0.5, radius:0.5, fx:0.5, fy:0.5,
+        stop:0 #0078D4, stop:0.45 #0078D4, stop:0.55 #FFFFFF, stop:1 #FFFFFF);
 }
 QTreeWidget { background: #FFFFFF; color: #201F1E; border: 1px solid #E0E0E0; }
 QTreeWidget::item { padding: 3px 0; }
