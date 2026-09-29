@@ -1,3 +1,5 @@
+<p align="center"><img src="ICONO.png" width="96" alt="Icono de AventyaPDF"></p>
+
 # AventyaPDF
 
 Aplicación de escritorio para **Windows** para ver, comentar, organizar,
@@ -7,11 +9,30 @@ en español.
 **Aplicación de libre distribución** · © 2026 Aventya Asesoría Integral SL ·
 licencia [GNU AGPL-3.0](LICENSE)
 
+## Capturas
+
+<table>
+<tr>
+<td width="50%"><img src="docs/capturas/01_vista_general.png" alt="Vista general, con el panel de miniaturas"></td>
+<td width="50%"><img src="docs/capturas/09_recortar.png" alt="Comentar y recortar páginas"></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/capturas/10_formulario.png" alt="Rellenar un formulario"></td>
+<td width="50%"><img src="docs/capturas/16_ocr.png" alt="Reconocer texto (OCR)"></td>
+</tr>
+</table>
+
+Manual con todas las herramientas, cada una con su captura, en
+[docs/MANUAL.pdf](docs/MANUAL.pdf).
+
 ## Descargar
 
 El instalador para Windows (64 bits) está en
 [Releases](https://github.com/Aventya/AventyaPDF/releases). Se instala para el
-usuario, sin permisos de administrador, e incluye Tesseract OCR.
+usuario, sin permisos de administrador. La primera vez que se usa «Reconocer
+texto (OCR)» se descarga e instala Tesseract OCR (necesita internet y, si no
+estuviera ya instalado, permiso de administrador una sola vez); el resto de
+la aplicación funciona sin conexión.
 
 ## Qué hace
 

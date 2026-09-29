@@ -8,10 +8,12 @@ venv/
 *.log
 
 # Documentos de trabajo y de clientes: NUNCA al repositorio público (r71).
-# Los únicos PDF del proyecto son los recursos que usa la propia aplicación.
+# Los únicos PDF del proyecto son los recursos que usa la propia aplicación
+# y el manual (r102, generado con docs/crear_manual.py — sin datos reales).
 *.pdf
 *.PDF
 !signature_background.pdf
+!docs/MANUAL.pdf
 *.odt
 *.doc
 *.docx

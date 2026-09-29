@@ -5,22 +5,26 @@
        MISMAS versiones que el entorno de la aplicación (lo ya probado) más
        PyInstaller. Se crea solo si falta.
     2. PyInstaller → carpeta con AventyaPDF.exe (fuera del proyecto, que es una
-       carpeta compartida: %LOCALAPPDATA%\aventyapdf\build-dist).
-    3. Tesseract OCR dentro, en <app>\tesseract (preparar_tesseract.py), y
-       (r86) la extensión del menú contextual de Windows 11: DLL junto al .exe
-       y paquete firmado en <app>\menu-contextual (shell\construir_shell.ps1).
-    4. Autodiagnóstico del EJECUTABLE ya empaquetado (ventana, archivos, OCR
-       con el Tesseract incluido, firma con un certificado de pruebas). Si algo
-       falla, no se crea el instalador.
-    5. Inno Setup → empaquetado\salida\AventyaPDF-Setup-<versión>.exe
+       carpeta compartida: %LOCALAPPDATA%\aventyapdf\build-dist), y (r86) la
+       extensión del menú contextual de Windows 11: DLL junto al .exe y
+       paquete firmado en <app>\menu-contextual (shell\construir_shell.ps1).
+       (r102) Tesseract OCR NO va dentro: se descarga solo (con permiso de
+       administrador la primera vez, si hiciera falta) la primera vez que se
+       use «Reconocer texto», igual que ya pasa desde el código fuente —
+       tesseract_ui.ensure_at_startup/ensure_languages, sin cambios aquí.
+    3. Autodiagnóstico del EJECUTABLE ya empaquetado (ventana, archivos, OCR
+       con el Tesseract del equipo que compila, firma con un certificado de
+       pruebas). Si algo falla, no se crea el instalador.
+    4. Inno Setup → empaquetado\salida\AventyaPDF-Setup-<versión>.exe
 
     Uso:
         .\empaquetado\construir.ps1
         .\empaquetado\construir.ps1 -SinInstalador     # solo la carpeta de la app
 
     Requisitos: el entorno de la aplicación (.\run.ps1 una vez), Tesseract
-    instalado (la app lo instala), Inno Setup 6 (winget install JRSoftware.InnoSetup)
-    y (r86) Visual Studio con C++ y el Windows SDK, para el menú contextual.
+    instalado (la app lo instala; el autodiagnóstico lo necesita para probar
+    el OCR), Inno Setup 6 (winget install JRSoftware.InnoSetup) y (r86)
+    Visual Studio con C++ y el Windows SDK, para el menú contextual.
 #>
 [CmdletBinding()]
 param([switch]$SinInstalador)
@@ -79,17 +83,12 @@ $env:AVENTYAPDF_VERSION = $Version
     --distpath $Dist --workpath $Work (Join-Path $PSScriptRoot 'AventyaPDF.spec')
 Comprobar 'PyInstaller'
 
-# ── 3. Tesseract dentro ───────────────────────────────────────────────────── #
-Paso 'Tesseract OCR incluido'
-& $BuildPy (Join-Path $PSScriptRoot 'preparar_tesseract.py') $App
-Comprobar 'Preparar Tesseract'
-
-# ── 3b. Menú contextual de Windows 11 (r86) ───────────────────────────────── #
+# ── 2b. Menú contextual de Windows 11 (r86) ───────────────────────────────── #
 Paso 'Menú contextual del Explorador (extensión de Windows 11)'
 & (Join-Path $Raiz 'shell\construir_shell.ps1') -Version $Version -Salida (Join-Path $App 'menu-contextual')
 Move-Item -Force (Join-Path $App 'menu-contextual\AventyaPDFShell.dll') $App
 
-# ── 4. Autodiagnóstico del ejecutable ─────────────────────────────────────── #
+# ── 3. Autodiagnóstico del ejecutable ─────────────────────────────────────── #
 Paso 'Autodiagnóstico del ejecutable empaquetado'
 $pfx = Join-Path $env:TEMP 'aventyapdf-diagnostico.pfx'
 $informe = Join-Path $env:TEMP 'aventyapdf-diagnostico.json'
@@ -114,7 +113,7 @@ $mb = [math]::Round((Get-ChildItem $App -Recurse | Measure-Object Length -Sum).S
 Write-Host "  Aplicación: $App ($mb MB)" -ForegroundColor Green
 if ($SinInstalador) { exit 0 }
 
-# ── 5. Instalador ─────────────────────────────────────────────────────────── #
+# ── 4. Instalador ─────────────────────────────────────────────────────────── #
 Paso 'Instalador (Inno Setup)'
 $iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
           "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",

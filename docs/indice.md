@@ -19,7 +19,7 @@ La documentación está distribuida en los siguientes archivos temáticos interr
 6. **[Herramientas profesionales — versión 2.0 (herramientas_profesionales.md)](herramientas_profesionales.md)**
    * Mapa de las funciones tipo Acrobat Pro añadidas en la 2.0 (panel lateral, búsqueda, marcado de texto, deshacer, OCR, cifrado, sellado de tiempo, validación de firmas), decisiones de diseño, pruebas automáticas (`.\run.ps1 -Pruebas`), registro de errores y plan de pruebas manual.
 7. **[Empaquetado e instalador (empaquetado.md)](empaquetado.md)**
-   * (r62) Cómo se genera `AventyaPDF-Setup-<versión>.exe` (PyInstaller + Tesseract incluido + Inno Setup), qué instala, el autodiagnóstico del ejecutable y lo pendiente (firma de código).
+   * (r62, r102) Cómo se genera `AventyaPDF-Setup-<versión>.exe` (PyInstaller + Inno Setup; Tesseract se descarga bajo demanda, no va incluido), qué instala, el autodiagnóstico del ejecutable y lo pendiente (firma de código, OpenCV).
 8. **[Plan de migración a WinUI 3 + C++/WinRT (plan_migracion_winui3.md)](plan_migracion_winui3.md)**
    * (r63) Plan, sin empezar: arquitectura destino, qué sustituye a cada biblioteca, fases con criterios de aceptación, pruebas, esfuerzo y decisiones pendientes.
 

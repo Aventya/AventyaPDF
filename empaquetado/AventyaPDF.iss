@@ -4,8 +4,10 @@
 ; Decisiones (r62, de Ricardo):
 ;  * Solo para el usuario actual, sin permisos de administrador:
 ;    %LOCALAPPDATA%\Programs\AventyaPDF. Todo el registro va a HKCU.
-;  * Tesseract OCR va dentro ({app}\tesseract): el OCR funciona nada más
-;    instalar, sin internet.
+;  * (r102) Tesseract OCR NO va dentro: se descarga (con permiso de
+;    administrador la primera vez, si hiciera falta) la primera vez que se
+;    usa «Reconocer texto», no al instalar — antes iba en {app}\tesseract
+;    (153 MB); [InstallDelete] lo quita si una versión anterior lo dejó.
 ;  * Integración con Windows: acceso directo en el menú Inicio (siempre) y en el
 ;    escritorio (casilla), y AventyaPDF en «Abrir con» de los PDF. Windows 11
 ;    no deja que un programa se imponga como predeterminado: queda registrado
@@ -82,6 +84,9 @@ Source: "{#DistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs cr
 [InstallDelete]
 ; Al actualizar, fuera los restos de la versión anterior (bibliotecas que ya no se usan).
 Type: filesandordirs; Name: "{app}\_internal"
+; (r102) Tesseract ya no va incluido: si una versión anterior lo dejó aquí
+; (153 MB), se quita — se descargará solo la primera vez que haga falta.
+Type: filesandordirs; Name: "{app}\tesseract"
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"; AppUserModelID: "Aventya.AventyaPDF"

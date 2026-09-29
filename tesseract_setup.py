@@ -16,11 +16,10 @@ instalador de Windows no añade Tesseract al PATH. Por eso:
   (los modelos más precisos); los que no llevan la marca «.best» se sustituyen.
 * configure_environment() fija TESSDATA_PREFIX y añade Tesseract al PATH del
   proceso.
-* (r62) En la aplicación instalada (AventyaPDF.exe, PyInstaller) Tesseract va
-  DENTRO, en {app}\tesseract, con los idiomas «best» de español, inglés y osd
-  en su tessdata: se usa ese antes que ninguno y los idiomas se copian de ahí en
-  vez de descargarse. El OCR funciona nada más instalar, sin internet ni
-  permisos de administrador.
+* (r102) En la aplicación instalada (AventyaPDF.exe, PyInstaller) Tesseract
+  NO va dentro —antes sí, r62, pero pesaba 153 MB del instalador—: se instala
+  y se descargan los idiomas exactamente igual que desde el código fuente, la
+  primera vez que hacen falta.
 
 Desde consola (run.ps1):   python tesseract_setup.py
 """
@@ -42,12 +41,6 @@ MODEL_MARKER = ".best"          # junto a cada modelo: «spa.traineddata.best»
 TESSDATA_DIR = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"),
                             "aventyapdf", "tessdata")
 CORE_LANGS = ("spa", "eng", "osd")
-# (r62) Tesseract incluido en la aplicación instalada (junto a AventyaPDF.exe).
-# Desde el código fuente no existe y todo sigue como siempre.
-APP_DIR = (os.path.dirname(sys.executable) if getattr(sys, "frozen", False)
-           else os.path.dirname(os.path.abspath(__file__)))
-BUNDLED_EXE = os.path.join(APP_DIR, "tesseract", "tesseract.exe")
-BUNDLED_TESSDATA = os.path.join(APP_DIR, "tesseract", "tessdata")
 PDF_FONT = "pdf.ttf"            # letra invisible de la capa de texto de Tesseract
 INSTALL_TIMEOUT = 30 * 60
 _CREATE_NO_WINDOW = 0x08000000
@@ -90,8 +83,6 @@ def _candidates():
 
 
 def find_tesseract() -> str | None:
-    if os.path.isfile(BUNDLED_EXE):          # (r62) el incluido, antes que ninguno
-        return BUNDLED_EXE
     exe = shutil.which("tesseract")
     if exe:
         return exe
@@ -212,14 +203,7 @@ def download_langs(langs, report=None) -> None:
     os.makedirs(TESSDATA_DIR, exist_ok=True)
     for lang in missing_langs(langs):
         dest = os.path.join(TESSDATA_DIR, f"{lang}.traineddata")
-        incluido = os.path.join(BUNDLED_TESSDATA, f"{lang}.traineddata")
-        if os.path.isfile(incluido) and os.path.isfile(incluido + MODEL_MARKER):
-            # (r62) El instalador lo trae: se copia, sin descargar nada.
-            report(f"Preparando el idioma «{lang}»…")
-            shutil.copyfile(incluido, dest)
-            shutil.copyfile(incluido + MODEL_MARKER, dest + MODEL_MARKER)
-            continue
-        # Siempre «best» (no se copian los de la instalación, que son «fast»).
+        # Siempre «best» (no los de la instalación, que son «fast»).
         _download(TESSDATA_URL.format(lang=lang), dest, report, f"el idioma «{lang}» (máxima precisión)")
         with open(dest + MODEL_MARKER, "w", encoding="utf-8") as fh:
             fh.write(TESSDATA_URL.format(lang=lang))
