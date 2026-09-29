@@ -167,6 +167,78 @@ class TestPaginas(unittest.TestCase):
         self.assertAlmostEqual(doc3[0].rect.width, 595)
         self.assertAlmostEqual(doc3[0].rect.height, 842)
 
+        # (r104) No es solo visual: la MediaBox pasa a ser la del recorte y
+        # la TrimBox se ajusta dentro de ella.
+        doc4 = pdf_de_prueba(1)
+        doc4.xref_set_key(doc4[0].xref, "TrimBox", "[0 0 595 842]")
+        doc_tools.crop_page(doc4, 0, fitz.Rect(60, 100, 360, 500))
+        x = doc4[0].xref
+        self.assertEqual(doc4.xref_get_key(x, "MediaBox"), doc4.xref_get_key(x, "CropBox"))
+        self.assertEqual(doc4.xref_get_key(x, "MediaBox")[1], "[60 342 360 742]")
+        self.assertEqual(doc4.xref_get_key(x, "TrimBox")[1], "[60 342 360 742]")
+        doc4 = fitz.open("pdf", doc4.tobytes())
+        self.assertAlmostEqual(doc4[0].rect.width, 300)
+        self.assertAlmostEqual(doc4[0].rect.height, 400)
+
+    def test_recuadro_de_pantalla_a_coordenadas_pdf(self):
+        """(r104, informado por Ricardo) Tras recortar, la firma aparecía en
+        otro sitio: el volteo usaba solo el alto de la página y no el origen
+        de la CropBox ni el giro. Se comprueba pintando en coordenadas PDF el
+        recuadro convertido y buscándolo en la imagen de la página."""
+        def pintado(page):
+            pix = page.get_pixmap(alpha=False)
+            xs, ys = [], []
+            for y in range(pix.height):
+                for x in range(pix.width):
+                    if pix.pixel(x, y)[0] < 128:
+                        xs.append(x); ys.append(y)
+            return (min(xs), min(ys), max(xs) + 1, max(ys) + 1)
+
+        objetivo = fitz.Rect(20, 30, 170, 90)
+        for mediabox in ("[0 0 600 800]", "[10 -20 610 780]"):
+            for recorte in (None, "nuevo", "solo_cropbox"):
+                for giro in (0, 90, 180, 270):
+                    with self.subTest(mediabox=mediabox, recorte=recorte, giro=giro):
+                        d = fitz.open()
+                        p = d.new_page(width=600, height=800)
+                        d.xref_set_key(p.xref, "MediaBox", mediabox)
+                        p = d.reload_page(p)
+                        p.set_rotation(giro)
+                        if recorte == "nuevo":
+                            doc_tools.crop_page(d, 0, fitz.Rect(50, 120, 350, 520))
+                        elif recorte == "solo_cropbox":    # recortado antes de r104
+                            p.set_cropbox(fitz.Rect(50, 120, 450, 420))
+                        p = d[0]
+                        x0, y0, x1, y1 = doc_tools.page_rect_to_pdf(p, objetivo)
+                        c = d.get_new_xref()
+                        d.update_object(c, "<<>>")
+                        d.update_stream(c, (f"0 g {x0:g} {y0:g} {x1 - x0:g} {y1 - y0:g} re f").encode())
+                        d.xref_set_key(p.xref, "Contents", f"{c} 0 R")
+                        self.assertEqual(pintado(d.reload_page(p)), (20, 30, 170, 90))
+
+    def test_emoji_en_pagina_recortada_y_girada(self):
+        """(r104) `emoji_font.write_rect` (emojis y firma manuscrita) usaba
+        `~page.transformation_matrix`, que en una página recortada y girada no
+        lleva el origen de la CropBox: el emoji caía fuera de la página. El
+        /Rect escrito debe volver tal cual en `Annot.rect`."""
+        import emoji_font
+        from PyQt6.QtWidgets import QApplication
+        self.app = QApplication.instance() or QApplication(["aventyapdf"])
+        for giro in (0, 90, 180, 270):
+            for recortar in (False, True):
+                with self.subTest(giro=giro, recortar=recortar):
+                    d = fitz.open()
+                    d.new_page(width=600, height=800).set_rotation(giro)
+                    if recortar:
+                        doc_tools.crop_page(d, 0, fitz.Rect(50, 120, 350, 520))
+                    emoji_font.add_emoji_annot(d, 0, fitz.Point(40, 60), "📌", 40)
+                    w, h = emoji_font.box_size("📌", 40)
+                    esperado = fitz.Rect(40, 60, 40 + w, 60 + h)
+                    p2 = fitz.open("pdf", d.tobytes())[0]  # la anotación guarda una referencia débil a la página
+                    r = next(p2.annots()).rect
+                    for v, e in zip(r, esperado):
+                        self.assertAlmostEqual(v, e, places=2)
+
 
 class TestTrazoAManoAlzada(unittest.TestCase):
     """(r59) Enderezado de los trazos de «Resaltar, subrayar o tachar» fuera
@@ -1705,6 +1777,25 @@ class TestFirma(_ConCarpeta):
         self.pfx = os.path.join(self.tmp, "prueba.pfx")
         with open(self.pfx, "wb") as f:
             f.write(self.pfx_data)
+
+    def test_firma_en_pagina_recortada_y_girada(self):
+        """(r104, informado por Ricardo) Tras recortar una página, el
+        recuadro de la firma se veía bien al dibujarlo pero el sello salía
+        en otro sitio. Debe quedar donde se dibujó, gire o no la página."""
+        from signer_backend import PAdESSigner
+        objetivo = fitz.Rect(40, 250, 240, 330)
+        for giro in (0, 90, 180, 270):
+            with self.subTest(giro=giro):
+                d = fitz.open()
+                d.new_page(width=595, height=842).set_rotation(giro)
+                doc_tools.crop_page(d, 0, fitz.Rect(60, 100, 360, 500))
+                box = doc_tools.page_rect_to_pdf(d[0], objetivo)
+                firmado = fitz.open("pdf", PAdESSigner.sign_pdf_bytes(
+                    d.tobytes(), self.pfx, "1234", 0, box))
+                p = firmado[0]
+                w = next(p.widgets())
+                # `Annot.rect` no lleva el giro (invariante 35).
+                self.assertEqual(w.rect * p.rotation_matrix, objetivo)
 
     def test_dos_firmas_incrementales_validas(self):
         from signer_backend import PAdESSigner

@@ -84,6 +84,46 @@ def crop_page(doc: fitz.Document, pno: int, rect: fitz.Rect) -> None:
     r.normalize()
     r.intersect(page.mediabox)
     page.set_cropbox(r)
+    # (r104) El recorte no es solo visual: la MediaBox pasa a ser la misma
+    # caja y Trim/Bleed/ArtBox se ajustan a ella, así que ningún programa
+    # (ni pyHanko al firmar) ve ya la página original.
+    kind, caja = doc.xref_get_key(page.xref, "CropBox")
+    if kind == "array":
+        doc.xref_set_key(page.xref, "MediaBox", caja)
+        nueva = fitz.Rect([float(v) for v in caja.strip("[]").split()])
+        for clave in ("TrimBox", "BleedBox", "ArtBox"):
+            kind, val = doc.xref_get_key(page.xref, clave)
+            if kind != "array":
+                continue
+            b = fitz.Rect([float(v) for v in val.strip("[]").split()])
+            b.normalize()
+            b.intersect(nueva)
+            if b.is_empty:
+                doc.xref_set_key(page.xref, clave, "null")
+            else:
+                doc.xref_set_key(page.xref, clave,
+                                 "[%g %g %g %g]" % (b.x0, b.y0, b.x1, b.y1))
+
+
+def page_rect_to_pdf(page: fitz.Page, rect: fitz.Rect) -> tuple:
+    """(r104) Recuadro en coordenadas de pantalla de la página (`page.rect`:
+    origen arriba-izquierda de la CropBox, con la rotación aplicada) →
+    coordenadas PDF nativas (x0, y0, x1, y1), origen abajo-izquierda.
+    Tiene en cuenta el giro, el origen de la CropBox (páginas recortadas) y
+    una MediaBox que no empiece en 0,0. Ojo: `page.transformation_matrix`
+    NO sirve — en una página girada y recortada no lleva el desplazamiento
+    de la CropBox (comprobado en PyMuPDF 1.28)."""
+    return unrotated_rect_to_pdf(page, fitz.Rect(rect) * page.derotation_matrix)
+
+
+def unrotated_rect_to_pdf(page: fitz.Page, rect: fitz.Rect) -> tuple:
+    """(r104) Como `page_rect_to_pdf`, pero desde coordenadas de página SIN
+    girar (las de `Annot.rect`, invariante 35)."""
+    r = fitz.Rect(rect)
+    r.normalize()
+    cp = page.cropbox_position        # x absoluta PDF; y desde el borde superior de la MediaBox
+    top = page.mediabox.y1
+    return (r.x0 + cp.x, top - (r.y1 + cp.y), r.x1 + cp.x, top - (r.y0 + cp.y))
 
 
 def extract_pages(doc: fitz.Document, pages: list[int]) -> fitz.Document:

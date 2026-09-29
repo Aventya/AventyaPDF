@@ -189,10 +189,13 @@ def is_sized(subject: str) -> bool:
 
 def write_rect(page: fitz.Page, annot: fitz.Annot, rect: fitz.Rect) -> None:
     """Escribe /Rect sin marcar la anotación como modificada (ver el docstring
-    del módulo). `rect` va en coordenadas de página de PyMuPDF."""
-    r = fitz.Rect(rect) * ~page.transformation_matrix
-    r.normalize()
-    page.parent.xref_set_key(annot.xref, "Rect", f"[{r.x0:.4f} {r.y0:.4f} {r.x1:.4f} {r.y1:.4f}]")
+    del módulo). `rect` va en coordenadas de página de PyMuPDF (sin girar,
+    como `Annot.rect`). (r104) No con `~page.transformation_matrix`: en una
+    página recortada y girada no lleva el origen de la CropBox y el emoji
+    caía fuera de la página."""
+    import doc_tools
+    x0, y0, x1, y1 = doc_tools.unrotated_rect_to_pdf(page, rect)
+    page.parent.xref_set_key(annot.xref, "Rect", f"[{x0:.4f} {y0:.4f} {x1:.4f} {y1:.4f}]")
 
 
 def add_emoji_annot(doc: fitz.Document, page_num: int, point: fitz.Point,

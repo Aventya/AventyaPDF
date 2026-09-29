@@ -1129,10 +1129,10 @@ class DocumentMixin:
                 return
             opts = dlg.values()
 
-        # Invariante 1: único volteo a coordenadas PDF nativas (origen abajo).
-        page_h = self.doc[self.current_page].rect.height
-        box = (rect.x0, page_h - rect.y1, rect.x1, page_h - rect.y0)
+        # Invariante 1: único volteo a coordenadas PDF nativas (origen abajo),
+        # con el giro y el origen de la CropBox (r104: páginas recortadas).
         page = self.current_page
+        box = doc_tools.page_rect_to_pdf(self.doc[page], rect)
 
         base = (os.path.splitext(self.pdf_path)[0] if self.pdf_path else
                 os.path.join(QSettings(*SETTINGS).value("recent/dir", ""), "documento"))
