@@ -1,4 +1,4 @@
-<#
+﻿<#
     construir.ps1 — Empaqueta AventyaPDF y crea su instalador (r62)
     ----------------------------------------------------------------
     1. Entorno de compilación en %LOCALAPPDATA%\aventyapdf\build-venv, con las
@@ -79,6 +79,11 @@ VSVersionInfo(
 )
 '@ -f $v, $Version | Set-Content -Encoding utf8 (Join-Path $PSScriptRoot 'version_info.txt')
 $env:AVENTYAPDF_VERSION = $Version
+# (r107) Salida vacía antes de compilar: PyInstaller no borra lo que no es
+# suyo, y un `tesseract\` de 153 MB de antes de r102 seguía en la carpeta y
+# acababa dentro del instalador (el [InstallDelete] del .iss borra ANTES de
+# copiar, así que lo volvía a instalar).
+if (Test-Path $App) { Remove-Item $App -Recurse -Force }
 & $BuildPy -m PyInstaller --noconfirm --clean --log-level WARN `
     --distpath $Dist --workpath $Work (Join-Path $PSScriptRoot 'AventyaPDF.spec')
 Comprobar 'PyInstaller'
