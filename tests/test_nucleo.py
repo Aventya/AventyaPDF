@@ -435,6 +435,38 @@ class TestDependencias(unittest.TestCase):
             instalar.assert_not_called()
 
 
+class TestAutodiagnostico(unittest.TestCase):
+    def test_no_toca_la_configuracion_del_usuario(self):
+        """(r111) Abrir su PDF de prueba dejaba «prueba.pdf» en los recientes y
+        su carpeta temporal como la de «Abrir» del equipo que compila."""
+        from PyQt6.QtCore import QSettings
+        import autodiagnostico
+        s = QSettings("aventyapdf", "config")
+        claves = ("recent/files", "recent/dir", "prueba_autodiagnostico")
+        previo = {k: s.value(k) for k in claves if s.contains(k)}
+        self.addCleanup(lambda: ([s.remove(k) for k in claves],
+                                 [s.setValue(k, v) for k, v in previo.items()], s.sync()))
+        resto = os.path.join(tempfile.gettempdir(), "agpdf_diag_x", "prueba.pdf")
+        s.setValue("recent/files", [resto, r"C:\documento.pdf"])
+        s.setValue("recent/dir", os.path.dirname(resto))
+        s.sync()
+
+        def diagnostico(args, carpeta):
+            self.assertTrue(os.path.isdir(carpeta))
+            t = QSettings("aventyapdf", "config")
+            t.setValue("recent/files", [os.path.join(carpeta, "prueba.pdf")])
+            t.setValue("recent/dir", carpeta)
+            t.setValue("prueba_autodiagnostico", 1)
+            return 0
+        with mock.patch.object(autodiagnostico, "_run", diagnostico):
+            self.assertEqual(autodiagnostico.run([]), 0)
+        s = QSettings("aventyapdf", "config")
+        recientes = s.value("recent/files")
+        self.assertEqual([recientes] if isinstance(recientes, str) else recientes, [r"C:\documento.pdf"])
+        self.assertFalse(s.contains("recent/dir"))
+        self.assertFalse(s.contains("prueba_autodiagnostico"))
+
+
 class TestActualizaciones(unittest.TestCase):
     """(petición de Ricardo) Ayuda › Buscar actualizaciones: versión y enlace
     directo al instalador sacados de la última publicación de GitHub."""

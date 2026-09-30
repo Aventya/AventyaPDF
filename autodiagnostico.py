@@ -10,8 +10,10 @@ Escribe en `resultado.json` una lista de comprobaciones {nombre, ok, detalle}
 y sale con código 0 si todas han ido bien y 1 si no. Con un certificado de
 pruebas, además firma, verifica y quita la firma de un PDF.
 """
+import glob
 import json
 import os
+import shutil
 import sys
 import tempfile
 import time
@@ -32,8 +34,52 @@ def _comprobar(resultados: list, nombre: str, fn) -> None:
                                segundos=round(time.time() - t, 1)))
 
 
+def _configuracion():
+    from PyQt6.QtCore import QSettings
+    return QSettings("aventyapdf", "config")
+
+
+def _limpiar_restos() -> None:
+    """(r111) Hasta r110 el autodiagnóstico dejaba sus «prueba.pdf» en los
+    recientes y su carpeta temporal como última carpeta de «Abrir», en la
+    configuración real del equipo que compila: se quitan, y sus carpetas."""
+    s = _configuracion()
+    recientes = s.value("recent/files", []) or []
+    if isinstance(recientes, str):
+        recientes = [recientes]
+    limpios = [r for r in recientes if "agpdf_diag_" not in r]
+    if limpios != recientes:
+        s.setValue("recent/files", limpios)
+    if "agpdf_diag_" in (s.value("recent/dir", "") or ""):
+        s.remove("recent/dir")
+    s.sync()
+    for d in glob.glob(os.path.join(tempfile.gettempdir(), "agpdf_diag_*")):
+        shutil.rmtree(d, ignore_errors=True)
+
+
 def run(args: list[str]) -> int:
-    """`args` = lo que va detrás de --autodiagnostico."""
+    """`args` = lo que va detrás de --autodiagnostico. (r111) La configuración
+    del usuario (recientes, última carpeta…) queda exactamente como estaba:
+    abrir el PDF de prueba la cambiaría."""
+    _limpiar_restos()
+    s = _configuracion()
+    guardada = {k: s.value(k) for k in s.allKeys()}
+    carpeta = tempfile.mkdtemp(prefix="agpdf_diag_")
+    try:
+        return _run(args, carpeta)
+    finally:
+        s = _configuracion()
+        for k in s.allKeys():
+            if k not in guardada:
+                s.remove(k)
+        for k, v in guardada.items():
+            if s.value(k) != v:
+                s.setValue(k, v)
+        s.sync()
+        shutil.rmtree(carpeta, ignore_errors=True)
+
+
+def _run(args: list[str], carpeta: str) -> int:
     os.environ["QT_QPA_PLATFORM"] = "offscreen"
     salida = args[0] if args else os.path.join(tempfile.gettempdir(), "aventyapdf-diagnostico.json")
     pfx, clave = (args[1], args[2]) if len(args) >= 3 else (None, None)
@@ -77,7 +123,7 @@ def run(args: list[str]) -> int:
         import fitz
         doc = fitz.open()
         doc.new_page().insert_text((72, 100), "Prueba", fontsize=20)
-        ruta = os.path.join(tempfile.mkdtemp(prefix="agpdf_diag_"), "prueba.pdf")
+        ruta = os.path.join(carpeta, "prueba.pdf")
         doc.save(ruta)
         if not w.open_path(ruta):
             raise RuntimeError("no abre un PDF")
@@ -100,7 +146,7 @@ def run(args: list[str]) -> int:
         for p in ("platforms/qwindows.dll", "styles/qmodernwindowsstyle.dll", "iconengines/qsvgicon.dll"):
             if not os.path.isfile(os.path.join(plugins, p)):
                 raise FileNotFoundError(p)
-        svg = os.path.join(tempfile.mkdtemp(prefix="agpdf_diag_"), "i.svg")
+        svg = os.path.join(carpeta, "i.svg")
         with open(svg, "w", encoding="ascii") as fh:
             fh.write('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8">'
                      '<rect width="8" height="8"/></svg>')
