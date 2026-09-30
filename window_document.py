@@ -16,6 +16,7 @@ Modelo de documento (ver MEMORIA_EVOLUTIVA §4):
     última firma). Guardar y firmar la usan tal cual, sin reescribir; cualquier
     otra edición (mark_modified) la descarta y se vuelve a lo normal.
 """
+import hashlib
 import os
 import traceback
 
@@ -88,7 +89,15 @@ class ValidateWorker(QThread):
 # de la ventana; los demás, en MainWindow._sessions. El zoom es de la ventana.
 _SESSION_ATTRS = ("doc", "pdf_path", "current_page", "_history", "_modified",
                   "_password", "_orig_encrypted", "_encrypt_opts", "_clean_bytes",
-                  "_pending_bytes")
+                  "_pending_bytes", "_disk_stat", "_disk_ignored")
+
+
+def _file_stat(path: str) -> tuple | None:
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    return (st.st_size, st.st_mtime_ns)
 
 
 class DocumentMixin:
@@ -103,6 +112,19 @@ class DocumentMixin:
         self._encrypt_opts: dict | None = None
         self._clean_bytes: bytes | None = None
         self._pending_bytes: bytes | None = None
+        # (r115) Cambios del archivo hechos desde otra aplicación: tamaño y
+        # fecha del disco la última vez que se miró, y el resumen de una
+        # versión del disco que el usuario ya decidió no cargar.
+        self._disk_stat: tuple | None = None
+        self._disk_ignored: str | None = None
+        self._checking_disk = False
+        QApplication.instance().applicationStateChanged.connect(self._on_app_state)
+        # Con la ventana a la vista pero sin foco (al lado de la otra
+        # aplicación), se mira cada poco sin pedirle nada al usuario.
+        self._disk_timer = QTimer(self)
+        self._disk_timer.setInterval(1500)
+        self._disk_timer.timeout.connect(self._poll_disk)
+        self._disk_timer.start()
         self._find_hits: list = []
         self._find_idx = -1
         self._find_text = ""
@@ -158,6 +180,8 @@ class DocumentMixin:
         self._encrypt_opts = None
         self._clean_bytes = None
         self._pending_bytes = None
+        self._disk_stat = None
+        self._disk_ignored = None
 
     def _session(self, index: int) -> dict:
         """Estado del documento `index` (el activo, leído en vivo)."""
@@ -206,6 +230,7 @@ class DocumentMixin:
             return
         self._stash_active()
         self._restore_session(index)
+        self.check_disk_changes()
 
     def _restore_session(self, index: int):
         s = self._sessions[index]
@@ -273,6 +298,8 @@ class DocumentMixin:
         already = self._session_index_for(path)
         if already is not None:                 # ya estaba abierto: se pasa a su pestaña
             self.switch_document(already)
+            # (r115) …y si el archivo cambió desde otra aplicación, se lee de nuevo.
+            self.check_disk_changes(force=True)
             return True
         name = os.path.basename(path)
         try:
@@ -283,29 +310,129 @@ class DocumentMixin:
             QMessageBox.warning(self, "No se pudo abrir",
                                 f"«{name}» no es un PDF válido o está dañado.\n\n{e}")
             return False
-        password = ""
-        if doc.needs_pass:
-            while True:
-                pw, ok = QInputDialog.getText(
-                    self, "Documento protegido",
-                    f"«{name}» está protegido con contraseña.\nContraseña:",
-                    QLineEdit.EchoMode.Password)
-                if not ok:
-                    doc.close()
-                    return False
-                if doc.authenticate(pw):
-                    password = pw
-                    break
-                QMessageBox.warning(self, "Documento protegido", "Contraseña incorrecta.")
+        password = self._ask_password(doc, name)
+        if password is None:
+            doc.close()
+            return False
         if len(doc) == 0:
             doc.close()
             QMessageBox.warning(self, "No se pudo abrir", f"«{name}» no contiene páginas.")
             return False
         self._begin_new_session()
         self._set_document(doc, path, data, password)
+        self._disk_stat = _file_stat(path)
         self._add_recent(path)
         self.statusBar().showMessage(f"Abierto: {name}  ·  {len(doc)} páginas")
         return True
+
+    def _ask_password(self, doc, name: str, known: str = "") -> str | None:
+        """Contraseña del PDF («» si no tiene); None si el usuario cancela."""
+        if not doc.needs_pass:
+            return ""
+        if known and doc.authenticate(known):
+            return known
+        while True:
+            pw, ok = QInputDialog.getText(
+                self, "Documento protegido",
+                f"«{name}» está protegido con contraseña.\nContraseña:",
+                QLineEdit.EchoMode.Password)
+            if not ok:
+                return None
+            if doc.authenticate(pw):
+                return pw
+            QMessageBox.warning(self, "Documento protegido", "Contraseña incorrecta.")
+
+    # ── cambios del archivo desde otra aplicación (r115) ───────────────── #
+
+    def _on_app_state(self, state):
+        if state == Qt.ApplicationState.ApplicationActive:
+            QTimer.singleShot(0, self.check_disk_changes)
+
+    def _poll_disk(self):
+        if QApplication.applicationState() != Qt.ApplicationState.ApplicationActive:
+            self.check_disk_changes(ask=False)
+
+    def check_disk_changes(self, force: bool = False, ask: bool = True):
+        """(r115, petición de Ricardo: «cuando se tiene un PDF abierto y se
+        modifica desde otra aplicación… ni te actualiza la vista… debe leer
+        que tiene otros bytes») Si el archivo del documento activo tiene en el
+        disco otros bytes que los que se leyeron, se vuelve a leer en la misma
+        pestaña; con cambios sin guardar, se pregunta antes. Se mira al volver
+        a la ventana, al cambiar de pestaña y al abrir otra vez el mismo
+        archivo. El tamaño y la fecha evitan leerlo entero cada vez: si no han
+        cambiado (y no es `force`), no se lee. Sin `ask` (mientras se usa otra
+        aplicación) solo se recarga lo que no necesita preguntar nada: con
+        cambios sin guardar se espera a que se vuelva a la ventana."""
+        if not ask and (self._modified or self._pending_bytes is not None):
+            return
+        if (self._checking_disk or self.doc is None or not self.pdf_path
+                or self._clean_bytes is None
+                or (self._sign_worker is not None and self._sign_worker.isRunning())):
+            return
+        st = _file_stat(self.pdf_path)
+        if st is None or (st == self._disk_stat and not force):
+            return
+        try:
+            with open(self.pdf_path, "rb") as f:
+                data = f.read()
+        except OSError:
+            return
+        self._disk_stat = st
+        firma = hashlib.sha256(data).hexdigest()
+        if data == self._clean_bytes or firma == self._disk_ignored:
+            return
+        self._checking_disk = True
+        try:
+            self._reload_changed(data, firma, ask)
+        finally:
+            self._checking_disk = False
+
+    def _reload_changed(self, data: bytes, firma: str, ask: bool = True):
+        name = os.path.basename(self.pdf_path)
+        # Lo que se esté escribiendo en un campo o en un cuadro de texto
+        # cuenta como cambio sin guardar.
+        self.viewer.forms.close_editor(commit=True)
+        self.viewer.close_text_editor(commit=True)
+        if (self._modified or self._pending_bytes is not None) \
+                and not self._ask_reload_over_changes(name):
+            self._disk_ignored = firma
+            self.statusBar().showMessage(
+                f"«{name}» ha cambiado en otra aplicación: se mantienen tus cambios")
+            return
+        try:
+            doc = fitz.open("pdf", data)
+        except Exception:
+            # A medio escribir por la otra aplicación: se reintenta la próxima vez.
+            self._disk_stat = None
+            return
+        if not ask and doc.needs_pass and not doc.authenticate(self._password):
+            doc.close()                         # ya se pedirá la contraseña al volver
+            self._disk_stat = None
+            return
+        password = self._ask_password(doc, name, self._password)
+        if password is None or len(doc) == 0:
+            doc.close()
+            self._disk_ignored = firma
+            return
+        page = self.current_page
+        stat = self._disk_stat
+        self._set_document(doc, self.pdf_path, data, password)
+        self._disk_stat = stat
+        self.go_to_page(min(page, len(doc) - 1))
+        self.statusBar().showMessage(
+            f"«{name}» ha cambiado en otra aplicación: se muestra la versión nueva")
+
+    def _ask_reload_over_changes(self, name: str) -> bool:
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle("El archivo ha cambiado")
+        box.setText(f"«{name}» se ha modificado en otra aplicación, y aquí tiene "
+                    "cambios sin guardar.")
+        box.setInformativeText("¿Cargar la versión nueva del archivo? Se perderán tus cambios.")
+        b_load = box.addButton("Cargar la versión nueva", QMessageBox.ButtonRole.DestructiveRole)
+        box.addButton("Mantener mis cambios", QMessageBox.ButtonRole.RejectRole)
+        box.exec()
+        return box.clickedButton() is b_load
 
     def _set_document(self, doc, path: str, clean_bytes: bytes | None,
                       password: str = "", modified: bool = False,
@@ -323,6 +450,8 @@ class DocumentMixin:
         self.pdf_path = path or ""
         self._clean_bytes = clean_bytes
         self._pending_bytes = pending
+        self._disk_stat = None
+        self._disk_ignored = None
         self._password = password
         self._orig_encrypted = bool((doc.metadata or {}).get("encryption"))
         self._encrypt_opts = None
@@ -545,6 +674,7 @@ class DocumentMixin:
             self._clean_bytes = data
             self._pending_bytes = None
             self._modified = False
+            self._disk_stat = _file_stat(path)
         self._add_recent(path)
         self._update_title()
         self.statusBar().showMessage(f"Guardado: {os.path.basename(path)}")
