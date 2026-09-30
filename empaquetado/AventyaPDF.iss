@@ -95,6 +95,12 @@ AppMutex=Local\AventyaPDF-instancia
 ; Descomprimir el .zip de Python y los wheels (que también son zip).
 ArchiveExtraction=full
 ExtraDiskSpaceRequired={#ComponentesBytes}
+#ifdef TamanoInstalado
+; (r112) Lo que se ve en Configuración › Aplicaciones. Sin esto, Inno suma los
+; archivos descargados (que se borran tras descomprimirlos) a lo instalado.
+; Lo mide construir.ps1 sobre la copia completa ya precompilada.
+UninstallDisplaySize={#TamanoInstalado}
+#endif
 
 [Languages]
 Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl"

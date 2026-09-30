@@ -360,7 +360,7 @@ def main() -> None:
         fh.write("\n".join(lineas) + "\n")
     total = sum(e[4] for e in entradas)
     print(f"  descargas al instalar: {len(entradas)} archivos, {total / 1e6:.0f} MB "
-          f"({descomprimido / 1e6:.0f} MB instalados); Python {pyver}, {len(pins)} paquetes")
+          f"({descomprimido / 1e6:.0f} MB descomprimidos); Python {pyver}, {len(pins)} paquetes")
 
 
 if __name__ == "__main__":

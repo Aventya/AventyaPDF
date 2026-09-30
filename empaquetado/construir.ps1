@@ -95,6 +95,17 @@ Paso 'Autodiagnóstico (copia idéntica a la instalación)'
 Autodiagnostico (Join-Path $Completo 'AventyaPDF.exe')
 $mb = [math]::Round((Get-ChildItem $Propios -Recurse | Measure-Object Length -Sum).Sum / 1MB, 1)
 Write-Host "  Lo propio, lo único que va dentro del instalador: $mb MB" -ForegroundColor Green
+
+# (r112) Tamaño real instalado, para «Aplicaciones» de Windows: sin esto, Inno
+# Setup suma los archivos descargados (que se borran tras descomprimirlos) a lo
+# descomprimido y registraba ~494 MB para ~336 reales. Se mide la copia
+# completa ya precompilada como en la instalación ([Run] compileall), más el
+# manual y el desinstalador (unins000.exe/.dat, ~5,3 MB).
+& (Join-Path $Completo 'runtime\python.exe') -m compileall -q -j 0 `
+    (Join-Path $Completo 'app') (Join-Path $Completo 'runtime\Lib\site-packages') | Out-Null
+$Tamano = (Get-ChildItem $Completo -Recurse -File | Measure-Object Length -Sum).Sum +
+          (Get-Item (Join-Path $Raiz 'docs\MANUAL.pdf')).Length + [long](5.3 * 1MB)
+Write-Host ("  Tamaño instalado: {0:N0} MB" -f ($Tamano / 1MB)) -ForegroundColor Green
 if ($SinInstalador) { exit 0 }
 
 # ── 4. Instalador ─────────────────────────────────────────────────────────── #
@@ -103,7 +114,7 @@ $iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
           "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
           "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $iscc) { throw 'Falta Inno Setup 6: winget install JRSoftware.InnoSetup --scope user' }
-& $iscc /Qp "/DAppVersion=$Version" "/DDistDir=$Propios" $Iss
+& $iscc /Qp "/DAppVersion=$Version" "/DDistDir=$Propios" "/DTamanoInstalado=$Tamano" $Iss
 Comprobar 'Inno Setup'
 $setup = Join-Path $Salida "AventyaPDF-Setup-$Version.exe"
 $mb = [math]::Round((Get-Item $setup).Length / 1MB, 1)
@@ -115,7 +126,7 @@ Paso 'Instalación de prueba (descarga todo de Internet)'
 $pruebaSalida = Join-Path $env:TEMP 'aventyapdf-prueba-setup'
 $destino = Join-Path $env:TEMP 'aventyapdf-prueba-instalacion'
 $log = Join-Path $env:TEMP 'aventyapdf-prueba-instalacion.log'
-& $iscc /Qp "/DAppVersion=$Version" "/DDistDir=$Propios" '/DPrueba' "/O$pruebaSalida" $Iss
+& $iscc /Qp "/DAppVersion=$Version" "/DDistDir=$Propios" "/DTamanoInstalado=$Tamano" '/DPrueba' "/O$pruebaSalida" $Iss
 Comprobar 'Inno Setup (variante de prueba)'
 if (Test-Path $destino) { Remove-Item $destino -Recurse -Force }
 $t = Get-Date
@@ -138,6 +149,10 @@ try {
         throw "La instalación de prueba no coincide con la copia probada ($(@($dif).Count) diferencias)."
     }
     Write-Host '  Los archivos instalados coinciden con la copia probada.' -ForegroundColor Green
+    $real = (Get-ChildItem $destino -Recurse -File | Measure-Object Length -Sum).Sum
+    $registrado = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{5C0B3F49-6D0E-4C47-9A51-0B7D1D2B3E61}_is1').EstimatedSize * 1KB
+    Write-Host ("  Ocupa {0:N0} MB; Windows muestra {1:N0} MB." -f ($real / 1MB), ($registrado / 1MB)) -ForegroundColor Green
+    if ([math]::Abs($registrado - $real) -gt 10MB) { throw 'El tamaño que muestra Windows no coincide con lo que ocupa la instalación.' }
     Autodiagnostico (Join-Path $destino 'AventyaPDF.exe')
 }
 finally {

@@ -19,14 +19,22 @@ iba todo dentro de un ejecutable de PyInstaller (instalador de ~82 MB).
 | :-- | :-- |
 | **Dónde** | `%LOCALAPPDATA%\Programs\AventyaPDF`, solo para el usuario actual (sin administrador). Todo el registro va a `HKEY_CURRENT_USER`. |
 | **Programa** | `AventyaPDF.exe`: un lanzador de C++ propio (`empaquetado\lanzador\`, ~200 KB, sin dependencias) que arranca `runtime\pythonw.exe app\main.py` con los mismos argumentos y devuelve su código de salida. Conserva el nombre porque lo usan los accesos directos, «Abrir con», el menú contextual y su paquete MSIX. `app\`: el código de la aplicación. |
-| **Descargado al instalar** | `runtime\`: Python **embeddable** oficial de python.org (la misma versión que el entorno probado, hoy 3.13.13) y en `runtime\Lib\site-packages` cada paquete de Python en su **versión exacta** probada, como wheel de PyPI descomprimido (un wheel es un zip: no hace falta pip). `app\vendor\fonts\`: Noto Sans/Serif/Sans Mono (repositorio oficial de Noto, a un commit fijo), Noto Emoji (Google Fonts, URL versionada v65) y Fluent UI System Icons (repositorio de Microsoft, a un commit fijo), con sus licencias. En total, ~200 MB de descarga y ~310 MB instalados: (r110) lo que la aplicación no usa de dentro de los paquetes no se descomprime (ver «Recorte» abajo). |
+| **Descargado al instalar** | `runtime\`: Python **embeddable** oficial de python.org (la misma versión que el entorno probado, hoy 3.13.13) y en `runtime\Lib\site-packages` cada paquete de Python en su **versión exacta** probada, como wheel de PyPI descomprimido (un wheel es un zip: no hace falta pip). `app\vendor\fonts\`: Noto Sans/Serif/Sans Mono (repositorio oficial de Noto, a un commit fijo), Noto Emoji (Google Fonts, URL versionada v65) y Fluent UI System Icons (repositorio de Microsoft, a un commit fijo), con sus licencias. En total, ~200 MB de descarga y **~336 MB instalados** (311 MB descomprimidos, 31 MB del código precompilado y el desinstalador; es también lo que muestra Configuración › Aplicaciones, r112): (r110) lo que la aplicación no usa de dentro de los paquetes no se descomprime (ver «Recorte» abajo). |
 | **OCR** | (r102) Tesseract OCR **no** va dentro: `tesseract_ui.ensure_at_startup`/`ensure_languages` lo descargan e instalan solos —con permiso de administrador la primera vez, si hiciera falta— la primera vez que se usa «Reconocer texto», igual que desde el código fuente. |
 | **Accesos directos** | Menú Inicio (siempre) y escritorio (casilla del asistente). |
 | **«Abrir con»** | AventyaPDF aparece en «Abrir con» de los `.pdf` y en Configuración › Aplicaciones predeterminadas. Windows 11 no deja que un programa se imponga como predeterminado: lo elige el usuario. |
 | **Menú contextual** | (r86) Submenú «AventyaPDF» con su icono al pulsar con el botón derecho sobre PDF, imágenes o documentos de Word: **Firmar digitalmente**, **Combinar en un PDF**, **Convertir a PDF**. En Windows 11 sale en el menú **principal** gracias a un paquete MSIX disperso firmado (`menu-contextual\`) con la extensión `AventyaPDFShell.dll`; la primera vez el instalador pide permiso de administrador para que el equipo confíe en su certificado. También está en «Mostrar más opciones» (claves de `HKCU`). Ver `shell\` y la sección [Code] de `AventyaPDF.iss`. |
 
 Al terminar de copiar, el instalador precompila el código de Python
-(`python -m compileall`) para que el primer arranque no sea lento.
+(`python -m compileall`, ~31 MB de `.pyc`) para que el primer arranque no sea
+lento.
+
+(r112) El tamaño que muestra Configuración › Aplicaciones lo fija
+`UninstallDisplaySize`, que `construir.ps1` mide sobre la copia completa ya
+precompilada (más el manual y el desinstalador). Sin él, Inno Setup sumaba
+los archivos descargados —que se borran tras descomprimirlos— a lo
+instalado, y Windows mostraba ~494 MB para 336 reales. `-ProbarInstalacion`
+comprueba que lo registrado y lo instalado no difieren en más de 10 MB.
 
 El Python embeddable funciona en modo `._pth` (`runtime\python313._pth`, propio,
 sustituye al que trae la descarga): solo ve su propia biblioteca,
@@ -116,7 +124,8 @@ Inno Setup no descomprime lo que la aplicación no usa. `componentes.py` lo
   compilar extensiones).
 * **OpenCV**: el códec de vídeo `opencv_videoio_ffmpeg*.dll` (~30 MB).
 
-Resultado: ~195 MB menos instalados (~310 MB en vez de ~510). Comprobado con
+Resultado: ~195 MB menos descomprimidos (311 MB en vez de 506; con el código
+precompilado y el desinstalador, 336 MB instalados). Comprobado con
 la plataforma real de Windows: la app carga exactamente las DLL de Qt que
 calcula el recorte (ni `d3dcompiler_47` ni `opengl32sw`, que Qt solo carga
 para OpenGL/Direct3D). Si el código empieza a importar otro módulo de PyQt6,
