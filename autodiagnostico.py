@@ -86,6 +86,37 @@ def run(args: list[str]) -> int:
         return "ventana, estilo y apertura de PDF"
     _comprobar(res, "Ventana principal", ventana)
 
+    def qt_partes():
+        # (r110) El instalador no descomprime las partes de Qt que la app no
+        # usa: que siga lo que Qt carga por su cuenta, no por importación.
+        from PyQt6.QtCore import QLibraryInfo, QRectF
+        from PyQt6.QtGui import QIcon, QImageReader, QPainter
+        from PyQt6.QtPrintSupport import QPrinter, QPrinterInfo
+        faltan = {"png", "jpg", "gif", "bmp", "tiff", "webp", "svg", "ico"} - {
+            bytes(f).decode() for f in QImageReader.supportedImageFormats()}
+        if faltan:
+            raise RuntimeError(f"formatos de imagen sin plugin: {sorted(faltan)}")
+        plugins = QLibraryInfo.path(QLibraryInfo.LibraryPath.PluginsPath)
+        for p in ("platforms/qwindows.dll", "styles/qmodernwindowsstyle.dll", "iconengines/qsvgicon.dll"):
+            if not os.path.isfile(os.path.join(plugins, p)):
+                raise FileNotFoundError(p)
+        svg = os.path.join(tempfile.mkdtemp(prefix="agpdf_diag_"), "i.svg")
+        with open(svg, "w", encoding="ascii") as fh:
+            fh.write('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8">'
+                     '<rect width="8" height="8"/></svg>')
+        if QIcon(svg).pixmap(16, 16).isNull():
+            raise RuntimeError("no se pintan iconos SVG")
+        impresora = QPrinter(QPrinter.PrinterMode.HighResolution)
+        impresora.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
+        impresora.setOutputFileName(svg[:-4] + ".pdf")
+        pintor = QPainter(impresora)
+        pintor.drawText(QRectF(10, 10, 200, 50), "Prueba")
+        pintor.end()
+        if not os.path.getsize(svg[:-4] + ".pdf"):
+            raise RuntimeError("la impresión no produce nada")
+        return f"impresión ({len(QPrinterInfo.availablePrinters())} impresoras), imágenes, SVG"
+    _comprobar(res, "Qt: impresión, formatos de imagen, iconos SVG", qt_partes)
+
     def ocr():
         import tesseract_setup
         st = tesseract_setup.ensure(tesseract_setup.CORE_LANGS)

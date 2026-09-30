@@ -123,7 +123,23 @@ $p = Start-Process (Join-Path $pruebaSalida "AventyaPDF-Setup-$Version.exe") -Wa
         -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$destino`"", "/LOG=`"$log`"")
 if ($p.ExitCode -ne 0) { throw "La instalación de prueba falló (código $($p.ExitCode)); registro: $log" }
 Write-Host ("  Instalada en {0:N0} s en $destino" -f ((Get-Date) - $t).TotalSeconds) -ForegroundColor Green
-try { Autodiagnostico (Join-Path $destino 'AventyaPDF.exe') }
+try {
+    # (r110) Lo instalado tiene que ser exactamente lo que se ha probado: mismos
+    # archivos que la copia completa (salvo lo que crean Python y el instalador).
+    $lista = {
+        param($dir)
+        Get-ChildItem $dir -Recurse -File | ForEach-Object { $_.FullName.Substring($dir.Length + 1) } |
+            Where-Object { $_ -notmatch '__pycache__|\.pyc$|^unins000\.|^MANUAL\.pdf$' }
+    }
+    $dif = Compare-Object @(& $lista $Completo) @(& $lista (Resolve-Path $destino).Path)
+    if ($dif) {
+        $dif | Select-Object -First 20 | ForEach-Object {
+            Write-Host ("  {0} {1}" -f $(if ($_.SideIndicator -eq '<=') { 'falta en la instalación:' } else { 'sobra en la instalación:' }), $_.InputObject) -ForegroundColor Red }
+        throw "La instalación de prueba no coincide con la copia probada ($(@($dif).Count) diferencias)."
+    }
+    Write-Host '  Los archivos instalados coinciden con la copia probada.' -ForegroundColor Green
+    Autodiagnostico (Join-Path $destino 'AventyaPDF.exe')
+}
 finally {
     $unins = Join-Path $destino 'unins000.exe'
     if (Test-Path $unins) { Start-Process $unins -Wait -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') }

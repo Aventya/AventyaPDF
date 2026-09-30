@@ -35,6 +35,7 @@ import os
 import platform
 import re
 import shutil
+import struct
 import sys
 import urllib.request
 import zipfile
@@ -70,6 +71,12 @@ FUENTES = [
 
 # Recursos propios que van dentro del instalador (además del código).
 PROPIOS = ["vendor/icono", "vendor/trust", "vendor/emoji", "signature_background.pdf"]
+# Plugins de Qt que se conservan (r110). Qt los carga por su cuenta, no por
+# importación: ventana (windows; offscreen para el autodiagnóstico), estilo,
+# formatos de imagen, iconos SVG, entrada de texto, red/TLS. El resto (QML,
+# multimedia, 3D, SQL, sensores…) no lo usa una aplicación de QtWidgets.
+PLUGINS_QT = {"platforms", "styles", "imageformats", "iconengines", "platforminputcontexts",
+              "generic", "tls", "networkinformation"}
 ENTRADAS = ["main.py", "autodiagnostico.py"]
 
 
@@ -114,6 +121,84 @@ def _modulos() -> list[str]:
                        else [])
             pendientes += [n.split(".")[0] for n in nombres if n.split(".")[0] in propios]
     return sorted(m + ".py" for m in vistos)
+
+
+def _qt_usados(modulos: list[str]) -> set[str]:
+    """Módulos de PyQt6 que importa el código (QtCore, QtGui…)."""
+    usados = set()
+    for m in modulos:
+        with open(os.path.join(RAIZ, m), encoding="utf-8") as fh:
+            for nodo in ast.walk(ast.parse(fh.read())):
+                nombres = ([a.name for a in nodo.names] if isinstance(nodo, ast.Import) else
+                           [nodo.module] if isinstance(nodo, ast.ImportFrom) and nodo.module else [])
+                usados |= {n.split(".")[1] for n in nombres if n.startswith("PyQt6.")}
+    return usados
+
+
+def _importa(ruta: str) -> list[str]:
+    """DLL que importa un binario PE (tabla de importación y de carga diferida)."""
+    with open(ruta, "rb") as fh:
+        d = fh.read()
+    pe = struct.unpack_from("<I", d, 0x3C)[0]
+    nsec, optsz = struct.unpack_from("<H", d, pe + 6)[0], struct.unpack_from("<H", d, pe + 20)[0]
+    opt = pe + 24
+    ddir = opt + (112 if struct.unpack_from("<H", d, opt)[0] == 0x20B else 96)
+    secciones = []
+    for i in range(nsec):
+        o = opt + optsz + 40 * i
+        vsize, va, rawsize, raw = struct.unpack_from("<IIII", d, o + 8)
+        secciones.append((va, max(vsize, rawsize), raw))
+
+    def desp(rva):
+        return next(rva - va + raw for va, tam, raw in secciones if va <= rva < va + tam)
+    out = []
+    for idx, paso, campo in ((1, 20, 12), (13, 32, 4)):
+        rva = struct.unpack_from("<I", d, ddir + 8 * idx)[0]
+        if not rva:
+            continue
+        p = desp(rva)
+        while (n := struct.unpack_from("<I", d, p + campo)[0]):
+            s = desp(n)
+            out.append(d[s:d.index(b"\0", s)].decode("ascii").lower())
+            p += paso
+    return out
+
+
+def _sobrantes(site: str, qt_usados: set[str]) -> tuple[set[str], set[str]]:
+    """(r110) Lo que la aplicación no usa dentro de los paquetes: (carpetas,
+    archivos), rutas relativas a site-packages con «/». Los paquetes se
+    descargan enteros (su SHA-256 es del archivo completo) pero esto no se
+    descomprime. Se calcula, no se escribe a mano: los módulos de PyQt6 que
+    importa el código y, de las DLL de Qt, solo las que esos módulos y los
+    plugins que se conservan importan (directa o indirectamente)."""
+    qt = os.path.join(site, "PyQt6")
+    carpetas = {"PyQt6/bindings/", "PyQt6/Qt6/qml/", "PyQt6/Qt6/qsci/", "PyQt6/Qt6/translations/"}
+    archivos = set()
+    raices = []
+    for f in os.listdir(qt):
+        m = re.match(r"^(Qt\w+)\.pyd$", f)
+        if m and m.group(1) not in qt_usados:
+            archivos.add(f"PyQt6/{f}")
+        elif f.endswith(".pyd"):
+            raices.append(os.path.join(qt, f))
+    plugins = os.path.join(qt, "Qt6", "plugins")
+    for sub in os.listdir(plugins):
+        if sub in PLUGINS_QT:
+            raices += [os.path.join(plugins, sub, f) for f in os.listdir(os.path.join(plugins, sub))]
+        else:
+            carpetas.add(f"PyQt6/Qt6/plugins/{sub}/")
+    binqt = os.path.join(qt, "Qt6", "bin")
+    dlls = {f.lower(): f for f in os.listdir(binqt) if f.lower().endswith(".dll")}
+    necesarias, pendientes = set(), list(raices)
+    while pendientes:
+        for dll in _importa(pendientes.pop()):
+            if dll in dlls and dll not in necesarias:
+                necesarias.add(dll)
+                pendientes.append(os.path.join(binqt, dlls[dll]))
+    archivos |= {f"PyQt6/Qt6/bin/{dlls[k]}" for k in set(dlls) - necesarias}
+    cv2 = os.path.join(site, "cv2")
+    archivos |= {f"cv2/{f}" for f in os.listdir(cv2) if f.startswith("opencv_videoio_ffmpeg")}
+    return carpetas, archivos
 
 
 def _wheel(nombre: str, version: str) -> dict:
@@ -186,12 +271,13 @@ def main() -> None:
     py_nombre = f"python-{pyver}-embed-amd64.zip"
     py_url = f"https://www.python.org/ftp/python/{pyver}/{py_nombre}"
     py_zip = _bajar(py_url, py_nombre)
-    entradas.append((py_url, py_nombre, r"{app}\runtime", _sha256(py_zip), os.path.getsize(py_zip), True))
+    entradas.append((py_url, py_nombre, r"{app}\runtime", _sha256(py_zip), os.path.getsize(py_zip), True, []))
     descomprimido += _extraer(py_zip, os.path.join(a.completo, "runtime"))
 
     site = os.path.join(a.completo, "runtime", "Lib", "site-packages")
     with open(a.versiones, encoding="utf-8-sig") as fh:
         pins = [l.strip() for l in fh if re.match(r"^[A-Za-z0-9_.\-]+==", l.strip())]
+    wheels = []     # (índice en entradas, ruta del wheel)
     for pin in pins:
         nombre, version = pin.split("==", 1)
         w = _wheel(nombre, version)
@@ -206,9 +292,35 @@ def main() -> None:
             raise SystemExit(f"{w['nombre']} trae {data}: no se puede instalar descomprimiéndolo.")
         # El 7-Zip de Inno Setup elige el formato por la extensión y no conoce
         # «.whl» (que es un zip): el archivo temporal se llama «….whl.zip».
+        wheels.append((len(entradas), ruta))
         entradas.append((w["url"], w["nombre"] + ".zip", r"{app}\runtime\Lib\site-packages",
-                         w["sha256"], w["tam"], True))
+                         w["sha256"], w["tam"], True, []))
         descomprimido += _extraer(ruta, site)
+
+    # (r110) Lo que no se usa de dentro de los paquetes no se descomprime.
+    carpetas, archivos = _sobrantes(site, _qt_usados(modulos))
+    quitado = 0
+    for i, ruta in wheels:
+        with zipfile.ZipFile(ruta) as z:
+            fuera = [x for x in z.infolist() if not x.is_dir() and
+                     (x.filename in archivos or any(x.filename.startswith(c) for c in carpetas))]
+        if not fuera:
+            continue
+        quitado += sum(x.file_size for x in fuera)
+        nombres = {x.filename for x in fuera}
+        # Inno Setup: «carpeta\*» excluye lo que hay en esa carpeta, pero no en
+        # sus subcarpetas: un patrón por cada carpeta con algo que excluir.
+        patrones = sorted({n.rsplit("/", 1)[0].replace("/", "\\") + "\\*" for n in nombres - archivos}
+                          | {n.replace("/", "\\") for n in nombres & archivos})
+        entradas[i][6].extend(patrones)
+    for c in carpetas:
+        shutil.rmtree(os.path.join(site, c), ignore_errors=True)
+    for f in archivos:
+        if os.path.isfile(os.path.join(site, f)):
+            os.remove(os.path.join(site, f))
+    descomprimido -= quitado
+    print(f"  no se descomprime lo que no se usa: {quitado / 1e6:.0f} MB "
+          f"({len(carpetas)} carpetas y {len(archivos)} archivos)")
 
     fuentes = os.path.join(a.completo, "app", "vendor", "fonts")
     for sub, archivo, url in FUENTES:
@@ -220,7 +332,7 @@ def main() -> None:
                              "actualiza el archivo del repositorio o la URL, y vuelve a probar.")
         os.makedirs(os.path.join(fuentes, sub), exist_ok=True)
         shutil.copy2(ruta, os.path.join(fuentes, sub, archivo))
-        entradas.append((url, archivo, rf"{{app}}\app\vendor\fonts\{sub}", sha, os.path.getsize(ruta), False))
+        entradas.append((url, archivo, rf"{{app}}\app\vendor\fonts\{sub}", sha, os.path.getsize(ruta), False, []))
         descomprimido += os.path.getsize(ruta)
 
     # Encima, lo propio (como en el instalador, que lo copia después).
@@ -235,11 +347,15 @@ def main() -> None:
         f"#define ComponentesMB \"{round(sum(e[4] for e in entradas) / 1e6)}\"",
         "[Files]",
     ]
-    for url, nombre, destino, sha, tam, extraer in entradas:
+    for url, nombre, destino, sha, tam, extraer, excluir in entradas:
         flags = ("external download extractarchive recursesubdirs createallsubdirs ignoreversion"
                  if extraer else "external download ignoreversion")
-        lineas.append(f'Source: "{url}"; DestName: "{nombre}"; DestDir: "{destino}"; '
-                      f'Hash: "{sha}"; ExternalSize: {tam}; Flags: {flags}')
+        linea = (f'Source: "{url}"; DestName: "{nombre}"; DestDir: "{destino}"; '
+                 f'Hash: "{sha}"; ExternalSize: {tam}; Flags: {flags}')
+        if excluir:
+            # Una línea por patrón, unidas con « \» (continuación de Inno Setup).
+            linea += '; \\\n  Excludes: "' + ", \\\n    ".join(excluir) + '"'
+        lineas.append(linea)
     with open(a.iss, "w", encoding="utf-8-sig") as fh:
         fh.write("\n".join(lineas) + "\n")
     total = sum(e[4] for e in entradas)

@@ -19,7 +19,7 @@ iba todo dentro de un ejecutable de PyInstaller (instalador de ~82 MB).
 | :-- | :-- |
 | **Dónde** | `%LOCALAPPDATA%\Programs\AventyaPDF`, solo para el usuario actual (sin administrador). Todo el registro va a `HKEY_CURRENT_USER`. |
 | **Programa** | `AventyaPDF.exe`: un lanzador de C++ propio (`empaquetado\lanzador\`, ~200 KB, sin dependencias) que arranca `runtime\pythonw.exe app\main.py` con los mismos argumentos y devuelve su código de salida. Conserva el nombre porque lo usan los accesos directos, «Abrir con», el menú contextual y su paquete MSIX. `app\`: el código de la aplicación. |
-| **Descargado al instalar** | `runtime\`: Python **embeddable** oficial de python.org (la misma versión que el entorno probado, hoy 3.13.13) y en `runtime\Lib\site-packages` cada paquete de Python en su **versión exacta** probada, como wheel de PyPI descomprimido (un wheel es un zip: no hace falta pip). `app\vendor\fonts\`: Noto Sans/Serif/Sans Mono (repositorio oficial de Noto, a un commit fijo), Noto Emoji (Google Fonts, URL versionada v65) y Fluent UI System Icons (repositorio de Microsoft, a un commit fijo), con sus licencias. En total, ~200 MB de descarga, ~510 MB instalados. |
+| **Descargado al instalar** | `runtime\`: Python **embeddable** oficial de python.org (la misma versión que el entorno probado, hoy 3.13.13) y en `runtime\Lib\site-packages` cada paquete de Python en su **versión exacta** probada, como wheel de PyPI descomprimido (un wheel es un zip: no hace falta pip). `app\vendor\fonts\`: Noto Sans/Serif/Sans Mono (repositorio oficial de Noto, a un commit fijo), Noto Emoji (Google Fonts, URL versionada v65) y Fluent UI System Icons (repositorio de Microsoft, a un commit fijo), con sus licencias. En total, ~200 MB de descarga y ~310 MB instalados: (r110) lo que la aplicación no usa de dentro de los paquetes no se descomprime (ver «Recorte» abajo). |
 | **OCR** | (r102) Tesseract OCR **no** va dentro: `tesseract_ui.ensure_at_startup`/`ensure_languages` lo descargan e instalan solos —con permiso de administrador la primera vez, si hiciera falta— la primera vez que se usa «Reconocer texto», igual que desde el código fuente. |
 | **Accesos directos** | Menú Inicio (siempre) y escritorio (casilla del asistente). |
 | **«Abrir con»** | AventyaPDF aparece en «Abrir con» de los `.pdf` y en Configuración › Aplicaciones predeterminadas. Windows 11 no deja que un programa se imponga como predeterminado: lo elige el usuario. |
@@ -68,9 +68,11 @@ Pasos de `construir.ps1`:
      URL, SHA-256 y tamaño publicados; comprueba que cada fuente descargable es
      **idéntica** a la del repositorio (si no, se para: hay que actualizar el
      archivo o la URL y volver a probar);
+   * calcula lo que la aplicación no usa de dentro de los paquetes (ver
+     «Recorte» abajo);
    * escribe `empaquetado\componentes.iss` (no se sube: se genera) con una
      entrada `[Files]` por descarga (`external download [extractarchive]`,
-     `Hash:` SHA-256);
+     `Hash:` SHA-256 y, si hay que dejar algo sin descomprimir, `Excludes:`);
    * monta en `build-dist\AventyaPDF-completo` una copia idéntica a la
      instalación, con las descargas guardadas en
      `%LOCALAPPDATA%\aventyapdf\build-cache` (solo se bajan una vez).
@@ -79,7 +81,9 @@ Pasos de `construir.ps1`:
    `autodiagnostico.py`): archivos, ventana, OCR (con el Tesseract que ya
    tenga el equipo que compila), exportar a Word/OpenCV, sellado de tiempo,
    acceso al almacén de certificados de Windows y firma (firmar, verificar y
-   quitar la última firma con un certificado de pruebas). Si algo falla,
+   quitar la última firma con un certificado de pruebas) y (r110) lo que Qt
+   carga por su cuenta y el recorte podría quitar: impresión, formatos de
+   imagen, iconos SVG y el plugin de ventana de Windows. Si algo falla,
    **no se crea el instalador**.
 4. **Inno Setup 6.5 o posterior** con `empaquetado\AventyaPDF.iss`
    (`ArchiveExtraction=full` para descomprimir los zip). El icono del
@@ -88,10 +92,41 @@ Pasos de `construir.ps1`:
    icono, `python create_app_icon.py` antes de construir (r64).
 5. Con **`-ProbarInstalacion`**: compila una variante (`/DPrueba`: otro
    `AppId`, sin accesos directos, registro ni menú contextual), la instala de
-   verdad en `%TEMP%` —descargando todo de Internet, como un usuario—, le pasa
-   el autodiagnóstico y la desinstala comprobando que no quede nada. Conviene
-   hacerlo antes de cada publicación: es lo único que prueba las URL, los
-   hashes y la descompresión de Inno Setup.
+   verdad en `%TEMP%` —descargando todo de Internet, como un usuario—,
+   comprueba que los archivos instalados son **exactamente** los de la copia
+   probada, le pasa el autodiagnóstico y la desinstala comprobando que no
+   quede nada. Conviene hacerlo antes de cada publicación: es lo único que
+   prueba las URL, los hashes, la descompresión y los `Excludes` de Inno Setup.
+
+## Recorte: lo que no se descomprime (r110)
+
+Cada paquete se descarga entero (su SHA-256 es el del archivo completo), pero
+Inno Setup no descomprime lo que la aplicación no usa. `componentes.py` lo
+**calcula** en cada compilación, no es una lista escrita a mano:
+
+* **PyQt6**: de sus módulos (`QtCore.pyd`, `QtQuick.pyd`…), solo los que
+  importa el código de la app (hoy QtCore, QtGui, QtWidgets y
+  QtPrintSupport). De las DLL de `Qt6\bin`, solo las que esos módulos y los
+  plugins que se conservan importan, directa o indirectamente (se leen las
+  tablas de importación de cada binario). Plugins: se conservan `platforms`,
+  `styles`, `imageformats`, `iconengines`, `platforminputcontexts`,
+  `generic`, `tls` y `networkinformation` (`PLUGINS_QT`); fuera QML,
+  multimedia, 3D, SQL, sensores, etc. Fuera también `qml\`, `translations\`
+  (la app no carga traducciones de Qt), `qsci\` y `bindings\` (solo para
+  compilar extensiones).
+* **OpenCV**: el códec de vídeo `opencv_videoio_ffmpeg*.dll` (~30 MB).
+
+Resultado: ~195 MB menos instalados (~310 MB en vez de ~510). Comprobado con
+la plataforma real de Windows: la app carga exactamente las DLL de Qt que
+calcula el recorte (ni `d3dcompiler_47` ni `opengl32sw`, que Qt solo carga
+para OpenGL/Direct3D). Si el código empieza a importar otro módulo de PyQt6,
+entra solo en la siguiente compilación; si hace falta otro tipo de plugin, hay
+que añadirlo a `PLUGINS_QT`.
+
+Trampa de Inno Setup: en `Excludes`, `carpeta\*` excluye los archivos de esa
+carpeta pero **no** los de sus subcarpetas; por eso se escribe un patrón por
+cada carpeta afectada. La comparación de archivos de `-ProbarInstalacion` es
+la que lo detectó.
 
 Herramientas necesarias (una vez): el entorno de la app (`.\run.ps1`),
 Tesseract (la app lo instala), Inno Setup 6
@@ -117,12 +152,12 @@ Visual Studio con C++ y el Windows SDK.
   runners de GitHub Actions, no un equipo personal — requisito del programa
   gratuito), SmartScreen seguirá avisando («Windows protegió su PC» → «Más
   información» → «Ejecutar de todas formas»).
-* **Tamaño instalado** (r109): los paquetes van completos, tal como los publica
-  PyPI (~510 MB instalados, frente a ~280 MB con PyInstaller, que dejaba fuera
-  lo que no se usaba: por ejemplo el códec de vídeo de OpenCV, ~30 MB, o
-  módulos de Qt sin usar). Lo más pesado sigue siendo **OpenCV**, que solo se
-  usa para enderezar páginas de OCR torcidas (`pdf_ocr.py`); sustituirlo toca
-  la precisión del OCR, con pruebas dedicadas, y merece su propia sesión.
+* **Tamaño**: lo más pesado sigue siendo **OpenCV** (`cv2.pyd`, 82 MB
+  instalados, ~40 MB de descarga), que solo se usa para enderezar páginas de
+  OCR torcidas (`pdf_ocr.py`) y en la exportación a Word; sustituirlo toca la
+  precisión del OCR, con pruebas dedicadas, y merece su propia sesión. Es la
+  única manera de que la **descarga** baje de forma apreciable: el recorte
+  solo reduce lo instalado.
 * El `AppId` del `.iss` no debe cambiar nunca: es lo que permite actualizar
   encima de una versión anterior. Para publicar una versión nueva, subir
   `APP_VERSION` y volver a ejecutar `construir.ps1`.
