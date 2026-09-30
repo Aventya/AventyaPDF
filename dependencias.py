@@ -28,6 +28,17 @@ class DependenciasError(RuntimeError):
     pass
 
 
+def carpeta_instalada() -> str | None:
+    """(r109) Carpeta de la aplicación instalada —AventyaPDF.exe, runtime\\
+    (Python y paquetes, descargados por el instalador) y app\\ (este código)—,
+    o None si se ejecuta desde el código fuente."""
+    base = os.path.dirname(RAIZ)
+    if (os.path.isfile(os.path.join(base, "AventyaPDF.exe"))
+            and os.path.isdir(os.path.join(base, "runtime"))):
+        return base
+    return None
+
+
 def _version(texto: str) -> tuple:
     """«6.5.0» → (6, 5, 0). Los sufijos (rc1, .post1…) no cuentan."""
     partes = []
@@ -119,9 +130,9 @@ def _aviso_grafico(texto: str) -> None:
 def asegurar_o_salir() -> None:
     """Para main.py: si no se pueden instalar, avisa y termina (sin PyQt6 ni
     PyMuPDF la aplicación no puede arrancar)."""
-    if getattr(sys, "frozen", False):
-        # (r62) Aplicación instalada (PyInstaller): los paquetes van dentro del
-        # ejecutable y no hay pip ni requirements.txt con los que instalar.
+    if carpeta_instalada():
+        # (r109) Aplicación instalada: el instalador ya descargó las versiones
+        # exactas probadas, y su Python no lleva pip.
         return
     try:
         asegurar(report=(print if sys.stdout is not None else (lambda _t: None)))

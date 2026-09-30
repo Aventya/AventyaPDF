@@ -40,7 +40,8 @@ def run(args: list[str]) -> int:
     res: list = []
 
     def entorno():
-        return dict(ejecutable=sys.executable, empaquetada=bool(getattr(sys, "frozen", False)),
+        import dependencias
+        return dict(ejecutable=sys.executable, instalada=dependencias.carpeta_instalada(),
                     python=sys.version.split()[0])
     _comprobar(res, "Entorno", entorno)
 
@@ -104,6 +105,16 @@ def run(args: list[str]) -> int:
         HTTPTimeStamper("https://freetsa.org/tsr", timeout=5)
         return "cliente HTTP del sellado de tiempo"
     _comprobar(res, "Sellado de tiempo (módulos)", sellado)
+
+    def almacen_windows():
+        # (r108) Firma con el almacén de Windows (ctypes: crypt32, ncrypt).
+        from windows_signer import WindowsStoreError, WindowsStoreSigner
+        try:
+            WindowsStoreSigner("00" * 20)
+        except WindowsStoreError:
+            return "acceso al almacén personal de Windows"
+        raise RuntimeError("encontró un certificado que no existe")
+    _comprobar(res, "Firma con el almacén de Windows (módulos)", almacen_windows)
 
     if pfx:
         def firma():

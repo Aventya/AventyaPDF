@@ -17,7 +17,6 @@ Modelo de documento (ver MEMORIA_EVOLUTIVA §4):
     otra edición (mark_modified) la descarta y se vuelve a lo normal.
 """
 import os
-import sys
 import traceback
 
 import fitz
@@ -28,6 +27,7 @@ from PyQt6.QtWidgets import (
     QProgressDialog,
 )
 
+import dependencias
 import dialogs
 import doc_tools
 import icons
@@ -253,13 +253,14 @@ class DocumentMixin:
 
     def open_pdf(self):
         start = QSettings(*SETTINGS).value("recent/dir", "")
-        if not start and getattr(sys, "frozen", False):
+        instalada = dependencias.carpeta_instalada()
+        if not start and instalada:
             # (r103, petición de Ricardo) Antes de haber abierto nunca nada
             # —sin carpeta reciente todavía—, que el manual salga ya
             # seleccionado en el propio diálogo, no solo en su carpeta:
             # pasarle la ruta del archivo, no solo la de la carpeta, hace
             # que Qt lo abra ahí y lo deje resaltado.
-            manual = os.path.join(os.path.dirname(sys.executable), "MANUAL.pdf")
+            manual = os.path.join(instalada, "MANUAL.pdf")
             if os.path.isfile(manual):
                 start = manual
         path, _ = QFileDialog.getOpenFileName(

@@ -36,7 +36,7 @@ firme.
 ## Cómo se compila y se firma
 
 1. El código fuente vive en este repositorio, público, bajo licencia AGPL-3.0.
-2. Cada versión publicada se compila desde cero (PyInstaller + Inno Setup)
+2. Cada versión publicada se compila desde cero (lanzador propio + Inno Setup)
    en un sistema de compilación de confianza («trusted build system» de
    SignPath), no en un equipo personal, para que la firma dé fe de que el
    binario sale de verdad de este código fuente.

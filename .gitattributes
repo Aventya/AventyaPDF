@@ -1,0 +1,4 @@
+# (r109) Fuentes y licencias tal cual, sin convertir saltos de línea:
+# empaquetado/componentes.py exige que sean idénticas byte a byte a las que
+# descarga el instalador de su origen.
+vendor/fonts/** -text

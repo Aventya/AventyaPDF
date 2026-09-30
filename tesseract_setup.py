@@ -16,7 +16,7 @@ instalador de Windows no añade Tesseract al PATH. Por eso:
   (los modelos más precisos); los que no llevan la marca «.best» se sustituyen.
 * configure_environment() fija TESSDATA_PREFIX y añade Tesseract al PATH del
   proceso.
-* (r102) En la aplicación instalada (AventyaPDF.exe, PyInstaller) Tesseract
+* (r102) En la aplicación instalada (AventyaPDF.exe) Tesseract
   NO va dentro —antes sí, r62, pero pesaba 153 MB del instalador—: se instala
   y se descargan los idiomas exactamente igual que desde el código fuente, la
   primera vez que hacen falta.

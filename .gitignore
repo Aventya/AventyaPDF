@@ -28,6 +28,7 @@ venv/
 # Empaquetado: salidas y archivos generados por construir.ps1
 empaquetado/salida/
 empaquetado/version_info.txt
+empaquetado/componentes.iss
 build/
 dist/
 

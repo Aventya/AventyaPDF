@@ -29,10 +29,13 @@ Manual con todas las herramientas, cada una con su captura, en
 
 El instalador para Windows (64 bits) está en
 [Releases](https://github.com/Aventya/AventyaPDF/releases). Se instala para el
-usuario, sin permisos de administrador. La primera vez que se usa «Reconocer
-texto (OCR)» se descarga e instala Tesseract OCR (necesita internet y, si no
-estuviera ya instalado, permiso de administrador una sola vez); el resto de
-la aplicación funciona sin conexión.
+usuario, sin permisos de administrador, y **necesita conexión a Internet**: el
+instalador solo lleva el código de AventyaPDF y descarga de sus sitios
+oficiales, comprobando cada archivo, Python, los componentes de Python y las
+fuentes tipográficas (unos 200 MB). La primera vez que se usa «Reconocer texto
+(OCR)» se descarga e instala Tesseract OCR (si no estuviera ya instalado,
+pide permiso de administrador una sola vez); el resto de la aplicación
+funciona sin conexión.
 
 ## Qué hace
 
@@ -68,8 +71,9 @@ Requisitos: Windows 10/11 y Python 3.11–3.13.
 
 `run.ps1` instala los paquetes de [requirements.txt](requirements.txt) y
 Tesseract OCR si faltan. El instalador se genera con
-[empaquetado/construir.ps1](empaquetado/construir.ps1) (PyInstaller + Inno
-Setup).
+[empaquetado/construir.ps1](empaquetado/construir.ps1) (lanzador propio +
+Inno Setup, que descarga Python y los paquetes al instalar; ver
+[docs/empaquetado.md](docs/empaquetado.md)).
 
 ## Documentación
 

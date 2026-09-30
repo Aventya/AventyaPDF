@@ -4,10 +4,21 @@
 ; Decisiones (r62, de Ricardo):
 ;  * Solo para el usuario actual, sin permisos de administrador:
 ;    %LOCALAPPDATA%\Programs\AventyaPDF. Todo el registro va a HKCU.
+;  * (r109, petición de Ricardo: «el instalador no lleve partes que se
+;    mantengan fuera de este proyecto») El instalador solo lleva lo propio:
+;    el lanzador AventyaPDF.exe, el código (app\), la lista de confianza, los
+;    iconos, el menú contextual y el manual. Python oficial, los paquetes de
+;    Python (la versión exacta probada) y las fuentes Noto/Fluent se
+;    descargan al instalar, de su origen, comprobando su SHA-256: las
+;    entradas las genera componentes.py en componentes.iss. Sin Internet no
+;    se puede instalar. Hasta r108 iba todo dentro (PyInstaller).
 ;  * (r102) Tesseract OCR NO va dentro: se descarga (con permiso de
 ;    administrador la primera vez, si hiciera falta) la primera vez que se
 ;    usa «Reconocer texto», no al instalar — antes iba en {app}\tesseract
 ;    (153 MB); [InstallDelete] lo quita si una versión anterior lo dejó.
+;  * (r109) /DPrueba compila una variante para construir.ps1
+;    -ProbarInstalacion: otro AppId y solo archivos (sin accesos directos,
+;    registro, menú contextual ni «Abrir AventyaPDF» al acabar).
 ;  * Integración con Windows: acceso directo en el menú Inicio (siempre) y en el
 ;    escritorio (casilla), y AventyaPDF en «Abrir con» de los PDF. Windows 11
 ;    no deja que un programa se imponga como predeterminado: queda registrado
@@ -29,8 +40,7 @@
 #ifndef AppVersion
   #define AppVersion "0.0.0"
 #endif
-; Carpeta de la aplicación ya compilada (construir.ps1 la deja fuera del
-; proyecto, que es una carpeta compartida: son unos 400 MB).
+; Lo propio que lleva el instalador (construir.ps1 lo deja fuera del proyecto).
 #ifndef DistDir
   #define DistDir "dist\AventyaPDF"
 #endif
@@ -38,9 +48,17 @@
 #define AppExe "AventyaPDF.exe"
 #define ProgId "AventyaPDF.Document"
 
+; Descargas de terceros ([Files] y el tamaño que ocupan): componentes.py.
+#include "componentes.iss"
+
 [Setup]
+#ifdef Prueba
+AppId={{5C0B3F49-6D0E-4C47-9A51-0B7D1D2B3E61}
+AppName={#AppName} (prueba)
+#else
 AppId={{7AE55FB3-3E78-4243-9BEE-CA4E080DFFC2}
 AppName={#AppName}
+#endif
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher=Aventya Asesoría Integral SL
@@ -71,14 +89,27 @@ ChangesAssociations=yes
 ; Si la aplicación está abierta al actualizar o desinstalar, se ofrece cerrarla.
 CloseApplications=yes
 RestartApplications=no
+; (r109) Si la aplicación está abierta, que se cierre antes de sustituir su
+; Python (el mutex de instancia única de menu_contextual.py).
+AppMutex=Local\AventyaPDF-instancia
+; Descomprimir el .zip de Python y los wheels (que también son zip).
+ArchiveExtraction=full
+ExtraDiskSpaceRequired={#ComponentesBytes}
 
 [Languages]
 Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl"
 
+[Messages]
+WelcomeLabel2=Se instalará [name/ver] en este equipo.%n%nDurante la instalación se descargarán de sus sitios oficiales Python, los componentes de Python y las fuentes tipográficas (unos {#ComponentesMB} MB): hace falta conexión a Internet.%n%nSe recomienda cerrar AventyaPDF antes de continuar.
+
+#ifndef Prueba
 [Tasks]
 Name: "escritorio"; Description: "Crear un acceso directo en el escritorio"; GroupDescription: "Accesos directos:"
+#endif
 
 [Files]
+; Lo propio va DESPUÉS de las descargas (componentes.iss): así su
+; runtime\python3XX._pth sustituye al que trae el Python descargado.
 Source: "{#DistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; (r103, petición de Ricardo) El manual, junto al .exe (no dentro de
 ; _internal): así se ve nada más abrir el diálogo «Abrir PDF» la primera
@@ -91,7 +122,17 @@ Type: filesandordirs; Name: "{app}\_internal"
 ; (r102) Tesseract ya no va incluido: si una versión anterior lo dejó aquí
 ; (153 MB), se quita — se descargará solo la primera vez que haga falta.
 Type: filesandordirs; Name: "{app}\tesseract"
+; (r109) Python, paquetes y código: siempre desde cero, sin restos de la versión anterior.
+Type: filesandordirs; Name: "{app}\runtime"
+Type: filesandordirs; Name: "{app}\app"
 
+[Run]
+; (r109) Precompila el código de Python ahora y no en el primer arranque, que
+; si no tardaría bastante más. Algunos paquetes traen archivos de prueba que
+; no compilan: no importa, por eso no se mira el código de salida.
+Filename: "{app}\runtime\python.exe"; Parameters: "-m compileall -q -j 0 ""{app}\app"" ""{app}\runtime\Lib\site-packages"""; StatusMsg: "Preparando AventyaPDF para el primer arranque…"; Flags: runhidden
+
+#ifndef Prueba
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"; AppUserModelID: "Aventya.AventyaPDF"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; AppUserModelID: "Aventya.AventyaPDF"; Tasks: escritorio
@@ -120,10 +161,15 @@ Root: HKA; Subkey: "Software\RegisteredApplications"; ValueType: string; ValueNa
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Abrir {#AppName}"; Flags: nowait postinstall skipifsilent
+#endif
 
 [UninstallDelete]
 Type: files; Name: "{app}\menu-contextual\registro.txt"
+; (r109) Lo que crea Python al funcionar (__pycache__ y .pyc de compileall).
+Type: filesandordirs; Name: "{app}\runtime"
+Type: filesandordirs; Name: "{app}\app"
 
+#ifndef Prueba
 [Code]
 // ── (r86) Menú contextual del Explorador ─────────────────────────────────── //
 const
@@ -338,3 +384,4 @@ begin
     QuitarMenuClasico;
   end;
 end;
+#endif

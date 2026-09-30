@@ -1,121 +1,100 @@
 ﻿<#
-    construir.ps1 — Empaqueta AventyaPDF y crea su instalador (r62)
-    ----------------------------------------------------------------
-    1. Entorno de compilación en %LOCALAPPDATA%\aventyapdf\build-venv, con las
-       MISMAS versiones que el entorno de la aplicación (lo ya probado) más
-       PyInstaller. Se crea solo si falta.
-    2. PyInstaller → carpeta con AventyaPDF.exe (fuera del proyecto, que es una
-       carpeta compartida: %LOCALAPPDATA%\aventyapdf\build-dist), y (r86) la
-       extensión del menú contextual de Windows 11: DLL junto al .exe y
-       paquete firmado en <app>\menu-contextual (shell\construir_shell.ps1).
-       (r102) Tesseract OCR NO va dentro: se descarga solo (con permiso de
-       administrador la primera vez, si hiciera falta) la primera vez que se
-       use «Reconocer texto», igual que ya pasa desde el código fuente —
-       tesseract_ui.ensure_at_startup/ensure_languages, sin cambios aquí.
-    3. Autodiagnóstico del EJECUTABLE ya empaquetado (ventana, archivos, OCR
-       con el Tesseract del equipo que compila, firma con un certificado de
+    construir.ps1 — Crea el instalador de AventyaPDF (r62; r109 sin PyInstaller)
+    ---------------------------------------------------------------------------
+    (r109, petición de Ricardo: «el instalador no lleve partes que se mantengan
+    fuera de este proyecto») El instalador solo lleva lo propio; Python, los
+    paquetes y las fuentes los descarga él mismo al instalar, de su origen
+    oficial y comprobando el SHA-256 (ver componentes.py).
+
+    1. Lanzador AventyaPDF.exe (lanzador\) y extensión del menú contextual de
+       Windows 11 (shell\) → carpeta de lo propio
+       (%LOCALAPPDATA%\aventyapdf\build-dist\AventyaPDF).
+    2. componentes.py, con las versiones EXACTAS del entorno de la aplicación
+       (lo ya probado): copia el código a app\, escribe las descargas para Inno
+       Setup (componentes.iss) y monta en build-dist\AventyaPDF-completo una
+       copia idéntica a la instalación.
+    3. Autodiagnóstico de esa copia a través del lanzador (ventana, archivos,
+       OCR con el Tesseract del equipo que compila, firma con un certificado de
        pruebas). Si algo falla, no se crea el instalador.
     4. Inno Setup → empaquetado\salida\AventyaPDF-Setup-<versión>.exe
+    5. (-ProbarInstalacion) Instala de verdad una variante de prueba (otro
+       AppId, en %TEMP%, sin accesos directos, registro ni menú contextual),
+       que descarga todo de Internet, le pasa el autodiagnóstico y la
+       desinstala. Comprueba las URL, los hashes y la descompresión.
 
     Uso:
         .\empaquetado\construir.ps1
-        .\empaquetado\construir.ps1 -SinInstalador     # solo la carpeta de la app
+        .\empaquetado\construir.ps1 -ProbarInstalacion
+        .\empaquetado\construir.ps1 -SinInstalador     # solo hasta el autodiagnóstico
 
     Requisitos: el entorno de la aplicación (.\run.ps1 una vez), Tesseract
     instalado (la app lo instala; el autodiagnóstico lo necesita para probar
-    el OCR), Inno Setup 6 (winget install JRSoftware.InnoSetup) y (r86)
-    Visual Studio con C++ y el Windows SDK, para el menú contextual.
+    el OCR), Inno Setup 6.5 o posterior (winget install JRSoftware.InnoSetup)
+    y Visual Studio con C++ y el Windows SDK.
 #>
 [CmdletBinding()]
-param([switch]$SinInstalador)
+param([switch]$SinInstalador, [switch]$ProbarInstalacion)
 
 $ErrorActionPreference = 'Stop'
-$Raiz      = Split-Path $PSScriptRoot -Parent
-$Base      = Join-Path $env:LOCALAPPDATA 'aventyapdf'
-$AppPy     = Join-Path $Base 'venv\Scripts\python.exe'
-$BuildVenv = Join-Path $Base 'build-venv'
-$BuildPy   = Join-Path $BuildVenv 'Scripts\python.exe'
-$Dist      = Join-Path $Base 'build-dist'
-$Work      = Join-Path $Base 'build-work'
-$App       = Join-Path $Dist 'AventyaPDF'
-$Salida    = Join-Path $PSScriptRoot 'salida'
+$Raiz     = Split-Path $PSScriptRoot -Parent
+$Base     = Join-Path $env:LOCALAPPDATA 'aventyapdf'
+$AppPy    = Join-Path $Base 'venv\Scripts\python.exe'
+$Propios  = Join-Path $Base 'build-dist\AventyaPDF'
+$Completo = Join-Path $Base 'build-dist\AventyaPDF-completo'
+$Salida   = Join-Path $PSScriptRoot 'salida'
+$Iss      = Join-Path $PSScriptRoot 'AventyaPDF.iss'
 
 function Paso([string]$t) { Write-Host "`n── $t" -ForegroundColor Cyan }
 function Comprobar([string]$que) { if ($LASTEXITCODE -ne 0) { throw "$que falló (código $LASTEXITCODE)." } }
 
 if (-not (Test-Path $AppPy)) { throw "No existe el entorno de la aplicación: ejecuta antes .\run.ps1" }
-
-# ── 1. Entorno de compilación ─────────────────────────────────────────────── #
-Paso 'Entorno de compilación'
-$congelado = Join-Path $env:TEMP 'aventyapdf-versiones.txt'
-& $AppPy -m pip freeze --disable-pip-version-check | Set-Content -Encoding utf8 $congelado
-Comprobar 'Leer las versiones del entorno de la aplicación'
-if (-not (Test-Path $BuildPy)) {
-    $pyBase = & $AppPy -c "import sys; print(sys._base_executable)"
-    & $pyBase -m venv $BuildVenv
-    Comprobar 'Crear el entorno de compilación'
-}
-& $BuildPy -m pip install --disable-pip-version-check -q -r $congelado pyinstaller
-Comprobar 'Instalar los paquetes de compilación'
-
-# ── 2. PyInstaller ────────────────────────────────────────────────────────── #
 $Version = (Select-String -Path (Join-Path $Raiz 'window_menus.py') -Pattern 'APP_VERSION = "(.+?)"').Matches[0].Groups[1].Value
 if (-not $Version) { throw 'No se encuentra APP_VERSION en window_menus.py' }
-Paso "PyInstaller — AventyaPDF $Version"
-$v = ($Version.Split('.') + @('0', '0', '0', '0'))[0..3] -join ', '
-@'
-VSVersionInfo(
-  ffi=FixedFileInfo(filevers=({0}), prodvers=({0})),
-  kids=[StringFileInfo([StringTable('0C0A04B0', [
-    StringStruct('CompanyName', 'Aventya Asesoría Integral SL'),
-    StringStruct('LegalCopyright', 'Aventya Asesoría Integral SL - AGPL-3.0'),
-    StringStruct('FileDescription', 'AventyaPDF'),
-    StringStruct('FileVersion', '{1}'),
-    StringStruct('InternalName', 'AventyaPDF'),
-    StringStruct('OriginalFilename', 'AventyaPDF.exe'),
-    StringStruct('ProductName', 'AventyaPDF'),
-    StringStruct('ProductVersion', '{1}')])]),
-    VarFileInfo([VarStruct('Translation', [0x0C0A, 1200])])]
-)
-'@ -f $v, $Version | Set-Content -Encoding utf8 (Join-Path $PSScriptRoot 'version_info.txt')
-$env:AVENTYAPDF_VERSION = $Version
-# (r107) Salida vacía antes de compilar: PyInstaller no borra lo que no es
-# suyo, y un `tesseract\` de 153 MB de antes de r102 seguía en la carpeta y
-# acababa dentro del instalador (el [InstallDelete] del .iss borra ANTES de
-# copiar, así que lo volvía a instalar).
-if (Test-Path $App) { Remove-Item $App -Recurse -Force }
-& $BuildPy -m PyInstaller --noconfirm --clean --log-level WARN `
-    --distpath $Dist --workpath $Work (Join-Path $PSScriptRoot 'AventyaPDF.spec')
-Comprobar 'PyInstaller'
 
-# ── 2b. Menú contextual de Windows 11 (r86) ───────────────────────────────── #
-Paso 'Menú contextual del Explorador (extensión de Windows 11)'
-& (Join-Path $Raiz 'shell\construir_shell.ps1') -Version $Version -Salida (Join-Path $App 'menu-contextual')
-Move-Item -Force (Join-Path $App 'menu-contextual\AventyaPDFShell.dll') $App
-
-# ── 3. Autodiagnóstico del ejecutable ─────────────────────────────────────── #
-Paso 'Autodiagnóstico del ejecutable empaquetado'
-$pfx = Join-Path $env:TEMP 'aventyapdf-diagnostico.pfx'
-$informe = Join-Path $env:TEMP 'aventyapdf-diagnostico.json'
-Remove-Item $informe -ErrorAction SilentlyContinue
-Push-Location $Raiz
-try { & $BuildPy -c "from create_test_cert import build_test_pfx; open(r'$pfx','wb').write(build_test_pfx(b'1234'))" }
-finally { Pop-Location }
-Comprobar 'Crear el certificado de pruebas'
-$p = Start-Process -FilePath (Join-Path $App 'AventyaPDF.exe') -Wait -PassThru `
-        -ArgumentList @('--autodiagnostico', "`"$informe`"", "`"$pfx`"", '1234')
-Remove-Item $pfx -ErrorAction SilentlyContinue
-if (-not (Test-Path $informe)) { throw "El ejecutable no llegó a escribir el autodiagnóstico (código $($p.ExitCode))." }
-$diag = Get-Content $informe -Raw -Encoding utf8 | ConvertFrom-Json
-foreach ($c in $diag.comprobaciones) {
-    $marca = if ($c.ok) { 'OK   ' } else { 'FALLO' }
-    $color = if ($c.ok) { 'Green' } else { 'Red' }
-    Write-Host ("  {0} {1} ({2} s)" -f $marca, $c.nombre, $c.segundos) -ForegroundColor $color
-    if (-not $c.ok) { Write-Host $c.detalle -ForegroundColor Red }
+function Autodiagnostico([string]$exe) {
+    $pfx = Join-Path $env:TEMP 'aventyapdf-diagnostico.pfx'
+    $informe = Join-Path $env:TEMP 'aventyapdf-diagnostico.json'
+    Remove-Item $informe -ErrorAction SilentlyContinue
+    Push-Location $Raiz
+    try { & $AppPy -c "from create_test_cert import build_test_pfx; open(r'$pfx','wb').write(build_test_pfx(b'1234'))" }
+    finally { Pop-Location }
+    Comprobar 'Crear el certificado de pruebas'
+    $p = Start-Process -FilePath $exe -Wait -PassThru `
+            -ArgumentList @('--autodiagnostico', "`"$informe`"", "`"$pfx`"", '1234')
+    Remove-Item $pfx -ErrorAction SilentlyContinue
+    if (-not (Test-Path $informe)) { throw "La aplicación no llegó a escribir el autodiagnóstico (código $($p.ExitCode))." }
+    $diag = Get-Content $informe -Raw -Encoding utf8 | ConvertFrom-Json
+    foreach ($c in $diag.comprobaciones) {
+        $marca = if ($c.ok) { 'OK   ' } else { 'FALLO' }
+        $color = if ($c.ok) { 'Green' } else { 'Red' }
+        Write-Host ("  {0} {1} ({2} s)" -f $marca, $c.nombre, $c.segundos) -ForegroundColor $color
+        if (-not $c.ok) { Write-Host $c.detalle -ForegroundColor Red }
+    }
+    if (-not $diag.ok) { throw "El autodiagnóstico de $exe ha fallado: no se crea el instalador." }
 }
-if (-not $diag.ok) { throw 'El autodiagnóstico del ejecutable ha fallado: no se crea el instalador.' }
-$mb = [math]::Round((Get-ChildItem $App -Recurse | Measure-Object Length -Sum).Sum / 1MB)
-Write-Host "  Aplicación: $App ($mb MB)" -ForegroundColor Green
+
+# ── 1. Lanzador y menú contextual ─────────────────────────────────────────── #
+Paso "Lanzador y menú contextual — AventyaPDF $Version"
+if (Test-Path $Propios) { Remove-Item $Propios -Recurse -Force }
+& (Join-Path $PSScriptRoot 'lanzador\construir_lanzador.ps1') -Version $Version -Salida $Propios
+& (Join-Path $Raiz 'shell\construir_shell.ps1') -Version $Version -Salida (Join-Path $Propios 'menu-contextual')
+Move-Item -Force (Join-Path $Propios 'menu-contextual\AventyaPDFShell.dll') $Propios
+
+# ── 2. Código y componentes descargables ──────────────────────────────────── #
+Paso 'Código de la aplicación y componentes que se descargan al instalar'
+$versiones = Join-Path $env:TEMP 'aventyapdf-versiones.txt'
+& $AppPy -m pip freeze --disable-pip-version-check | Set-Content -Encoding utf8 $versiones
+Comprobar 'Leer las versiones del entorno de la aplicación'
+$env:PYTHONIOENCODING = 'utf-8'
+& $AppPy (Join-Path $PSScriptRoot 'componentes.py') --versiones $versiones `
+    --propios $Propios --completo $Completo --iss (Join-Path $PSScriptRoot 'componentes.iss')
+Comprobar 'componentes.py'
+
+# ── 3. Autodiagnóstico ────────────────────────────────────────────────────── #
+Paso 'Autodiagnóstico (copia idéntica a la instalación)'
+Autodiagnostico (Join-Path $Completo 'AventyaPDF.exe')
+$mb = [math]::Round((Get-ChildItem $Propios -Recurse | Measure-Object Length -Sum).Sum / 1MB, 1)
+Write-Host "  Lo propio, lo único que va dentro del instalador: $mb MB" -ForegroundColor Green
 if ($SinInstalador) { exit 0 }
 
 # ── 4. Instalador ─────────────────────────────────────────────────────────── #
@@ -124,8 +103,32 @@ $iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
           "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
           "$env:ProgramFiles\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $iscc) { throw 'Falta Inno Setup 6: winget install JRSoftware.InnoSetup --scope user' }
-& $iscc /Qp "/DAppVersion=$Version" "/DDistDir=$App" (Join-Path $PSScriptRoot 'AventyaPDF.iss')
+& $iscc /Qp "/DAppVersion=$Version" "/DDistDir=$Propios" $Iss
 Comprobar 'Inno Setup'
 $setup = Join-Path $Salida "AventyaPDF-Setup-$Version.exe"
-$mb = [math]::Round((Get-Item $setup).Length / 1MB)
+$mb = [math]::Round((Get-Item $setup).Length / 1MB, 1)
 Write-Host "`nInstalador listo: $setup ($mb MB)" -ForegroundColor Green
+if (-not $ProbarInstalacion) { exit 0 }
+
+# ── 5. Instalación de prueba ──────────────────────────────────────────────── #
+Paso 'Instalación de prueba (descarga todo de Internet)'
+$pruebaSalida = Join-Path $env:TEMP 'aventyapdf-prueba-setup'
+$destino = Join-Path $env:TEMP 'aventyapdf-prueba-instalacion'
+$log = Join-Path $env:TEMP 'aventyapdf-prueba-instalacion.log'
+& $iscc /Qp "/DAppVersion=$Version" "/DDistDir=$Propios" '/DPrueba' "/O$pruebaSalida" $Iss
+Comprobar 'Inno Setup (variante de prueba)'
+if (Test-Path $destino) { Remove-Item $destino -Recurse -Force }
+$t = Get-Date
+$p = Start-Process (Join-Path $pruebaSalida "AventyaPDF-Setup-$Version.exe") -Wait -PassThru `
+        -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$destino`"", "/LOG=`"$log`"")
+if ($p.ExitCode -ne 0) { throw "La instalación de prueba falló (código $($p.ExitCode)); registro: $log" }
+Write-Host ("  Instalada en {0:N0} s en $destino" -f ((Get-Date) - $t).TotalSeconds) -ForegroundColor Green
+try { Autodiagnostico (Join-Path $destino 'AventyaPDF.exe') }
+finally {
+    $unins = Join-Path $destino 'unins000.exe'
+    if (Test-Path $unins) { Start-Process $unins -Wait -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') }
+    Remove-Item -Recurse -Force $pruebaSalida -ErrorAction SilentlyContinue
+}
+$quedan = if (Test-Path $destino) { @(Get-ChildItem $destino -Recurse -File).Count } else { 0 }
+if ($quedan) { throw "La desinstalación de prueba dejó $quedan archivos en $destino" }
+Write-Host '  Desinstalada sin dejar archivos.' -ForegroundColor Green
