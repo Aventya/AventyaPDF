@@ -28,7 +28,9 @@ Manual con todas las herramientas, cada una con su captura, en
 ## Descargar
 
 El instalador para Windows (64 bits) está en
-[Releases](https://github.com/Aventya/AventyaPDF/releases). Se instala para el
+[Releases](https://github.com/Aventya/AventyaPDF/releases/latest). **Solo se
+mantiene la última versión**: las anteriores se desechan y se retiran de GitHub
+(qué trajo cada una, en [docs/historial_versiones.md](docs/historial_versiones.md)). Se instala para el
 usuario, sin permisos de administrador, y **necesita conexión a Internet**: el
 instalador solo lleva el código de AventyaPDF y descarga de sus sitios
 oficiales, comprobando cada archivo, Python, los componentes de Python y las
