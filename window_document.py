@@ -31,7 +31,7 @@ from PyQt6.QtWidgets import (
 import dialogs
 import doc_tools
 import icons
-from cert_manager import CertPickerDialog, export_windows_cert_to_pfx, load_saved_cert
+from cert_manager import CertPickerDialog, load_saved_cert
 from history import Snapshot, UndoStack
 from signer_backend import PAdESSigner, SigningError, TSA_PRESETS, remove_last_signature
 
@@ -1154,20 +1154,12 @@ class DocumentMixin:
         if not out_path.lower().endswith(".pdf"):
             out_path += ".pdf"
 
-        temp_pfx = None
+        # (r108) Del almacén de Windows se firma con la clave donde está, sin
+        # exportarla: vale también si no es exportable o está en un DNIe.
         if cert["type"] == "windows":
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
-            try:
-                pfx_path, pfx_pass = export_windows_cert_to_pfx(cert["thumbprint"])
-                temp_pfx = pfx_path
-            except RuntimeError as e:
-                QApplication.restoreOverrideCursor()
-                QMessageBox.critical(self, "Error de exportación", str(e))
-                self._finish_action()
-                return
-            QApplication.restoreOverrideCursor()
+            pfx_path, pfx_pass, thumb = "", "", cert["thumbprint"]
         else:
-            pfx_path, pfx_pass = cert["path"], cert["password"]
+            pfx_path, pfx_pass, thumb = cert["path"], cert["password"], ""
 
         # Sin cambios: se firman los bytes de disco (firma incremental pura,
         # conserva las firmas previas). (r61) Con una versión exacta pendiente
@@ -1191,17 +1183,13 @@ class DocumentMixin:
             pdf_bytes=data, pfx_path=pfx_path, pfx_password=pfx_pass,
             page_num=page, box=box, reason=opts["reason"], location=opts["location"],
             contact=opts["contact"], tsa_url=opts["tsa_url"], certify=opts["certify"],
-            doc_password=self._password, field_name=field_name), self)
+            doc_password=self._password, field_name=field_name,
+            windows_thumbprint=thumb), self)
         self._sign_worker = worker
         password = self._password
 
         def _cleanup():
             progress.close()
-            if temp_pfx and os.path.exists(temp_pfx):
-                try:
-                    os.remove(temp_pfx)
-                except Exception:
-                    pass
 
         def _finished():
             # Las señales succeeded/failed se emiten DENTRO de run(): el hilo

@@ -85,7 +85,10 @@ def extract_cert_info(pfx_path: str, pfx_password: str) -> dict:
 
     passphrase = pfx_password.encode("utf-8") if pfx_password else None
     _, cert, _ = crypto_pkcs12.load_key_and_certificates(pfx_data, passphrase)
+    return cert_info_from_x509(cert)
 
+
+def cert_info_from_x509(cert) -> dict:
     def _get(oid, fallback=""):
         try:
             return cert.subject.get_attributes_for_oid(oid)[0].value
@@ -416,9 +419,13 @@ class PAdESSigner:
         tsa_url: str = "",
         certify: bool = False,
         doc_password: str = "",
+        windows_thumbprint: str = "",
     ) -> bytes:
         """
         Firma PAdES visible e incremental (no invalida firmas previas).
+        windows_thumbprint: (r108) si se indica, se firma con ese certificado
+                 del almacén de Windows sin exportar su clave, y pfx_path y
+                 pfx_password no se usan.
         box: (x1, y1, x2, y2) en coordenadas PDF nativas (origen abajo-izquierda).
         field_name: (r38) si el documento ya trae un campo de firma vacío con ese
                  nombre (el recuadro de firma de un formulario), se firma DENTRO
@@ -429,18 +436,28 @@ class PAdESSigner:
         Devuelve los bytes del PDF firmado; lanza SigningError con un mensaje
         legible si algo falla.
         """
-        try:
-            cert_info = extract_cert_info(pfx_path, pfx_password)
-        except ValueError as e:
-            raise SigningError(
-                "No se pudo abrir el certificado: la contraseña es incorrecta "
-                "o el archivo PKCS#12 está dañado.") from e
+        if windows_thumbprint:
+            from cryptography import x509 as crypto_x509
+            from windows_signer import WindowsStoreError, WindowsStoreSigner
+            try:
+                cms_signer = WindowsStoreSigner(windows_thumbprint)
+            except WindowsStoreError as e:
+                raise SigningError(str(e)) from e
+            cert_info = cert_info_from_x509(
+                crypto_x509.load_der_x509_certificate(cms_signer.cert_der))
+        else:
+            try:
+                cert_info = extract_cert_info(pfx_path, pfx_password)
+            except ValueError as e:
+                raise SigningError(
+                    "No se pudo abrir el certificado: la contraseña es incorrecta "
+                    "o el archivo PKCS#12 está dañado.") from e
 
-        cms_signer = signers.SimpleSigner.load_pkcs12(
-            pfx_path, passphrase=pfx_password.encode("utf-8") if pfx_password else None
-        )
-        if cms_signer is None:   # pyHanko devuelve None en lugar de lanzar
-            raise SigningError("No se pudo cargar la clave privada del certificado.")
+            cms_signer = signers.SimpleSigner.load_pkcs12(
+                pfx_path, passphrase=pfx_password.encode("utf-8") if pfx_password else None
+            )
+            if cms_signer is None:   # pyHanko devuelve None en lugar de lanzar
+                raise SigningError("No se pudo cargar la clave privada del certificado.")
 
         try:
             w = IncrementalPdfFileWriter(BytesIO(pdf_bytes))

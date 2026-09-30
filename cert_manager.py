@@ -4,11 +4,7 @@ Gestión de certificados de firma: almacén de Windows y archivos PKCS#12.
 """
 import os
 import re
-import secrets
 import ssl
-import string
-import subprocess
-import tempfile
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -115,64 +111,6 @@ def list_windows_certs() -> list[dict]:
         })
 
     return results
-
-
-def export_windows_cert_to_pfx(thumbprint: str) -> tuple[str, str]:
-    """
-    Exporta un certificado del almacén Personal de Windows a un PKCS#12 temporal.
-    Usa la clase .NET X509Store directamente (no requiere la unidad Cert: de
-    PowerShell ni el módulo PKI). Devuelve (ruta_pfx, contraseña_temporal).
-
-    Lanza RuntimeError si la clave privada no es exportable o no se encuentra.
-    """
-    alphabet = string.ascii_letters + string.digits
-    temp_pass = "".join(secrets.choice(alphabet) for _ in range(24))
-    pfx_path = os.path.join(tempfile.gettempdir(), f"_agpdf_{thumbprint[:12]}.pfx")
-
-    if os.path.exists(pfx_path):
-        try:
-            os.remove(pfx_path)
-        except Exception:
-            pass
-
-    # Escapar comillas simples en la ruta (poco probable pero seguro)
-    safe_path = pfx_path.replace("'", "''")
-    thumb_upper = thumbprint.upper()
-
-    # Usamos X509Store/.NET puro: no depende de la unidad Cert: ni del módulo PKI.
-    # $c.Export([X509ContentType]::Pfx, password) exporta cert + clave privada.
-    ps = f"""
-$ErrorActionPreference = 'Stop'
-Add-Type -AssemblyName System.Security
-$store = [System.Security.Cryptography.X509Certificates.X509Store]::new(
-    [System.Security.Cryptography.X509Certificates.StoreName]::My,
-    [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser)
-$store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
-$cert = ($store.Certificates | Where-Object {{ $_.Thumbprint -eq '{thumb_upper}' }}) | Select-Object -First 1
-$store.Close()
-if (-not $cert) {{ throw "Certificado no encontrado: {thumb_upper}" }}
-$bytes = $cert.Export(
-    [System.Security.Cryptography.X509Certificates.X509ContentType]::Pfx,
-    '{temp_pass}')
-[System.IO.File]::WriteAllBytes('{safe_path}', $bytes)
-"""
-
-    result = subprocess.run(
-        ["powershell", "-Command", ps],
-        capture_output=True, text=True, timeout=30,
-    )
-
-    if result.returncode != 0 or not os.path.exists(pfx_path):
-        detail = (result.stderr or result.stdout).strip()
-        raise RuntimeError(
-            "No se pudo exportar el certificado del almacén de Windows.\n\n"
-            "Causas habituales:\n"
-            "• La clave privada no está marcada como exportable.\n"
-            "• El certificado usa una tarjeta criptográfica o token USB (DNIe).\n\n"
-            + (detail or "Sin detalles adicionales.")
-        )
-
-    return pfx_path, temp_pass
 
 
 # ── Persistencia de certificado activo ───────────────────────────────────── #

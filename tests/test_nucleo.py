@@ -2122,6 +2122,46 @@ class TestFirma(_ConCarpeta):
             PAdESSigner.sign_pdf_bytes(pdf_de_prueba(1).tobytes(), self.pfx, "mala", 0,
                                        (72, 600, 272, 680))
 
+    def test_almacen_windows_certificado_inexistente(self):
+        from signer_backend import PAdESSigner, SigningError
+        with self.assertRaisesRegex(SigningError, "ya no está en el almacén"):
+            PAdESSigner.sign_pdf_bytes(pdf_de_prueba(1).tobytes(), "", "", 0,
+                                       (72, 600, 272, 680), windows_thumbprint="00" * 20)
+
+    @unittest.skipUnless(os.environ.get("AVENTYAPDF_PRUEBAS_ALMACEN"),
+                         "crea y borra certificados en el almacén personal de Windows")
+    def test_almacen_windows_clave_no_exportable(self):
+        """(r108) Se firma con la clave donde está, sin exportarla: vale para
+        claves no exportables, CNG o de un proveedor antiguo, RSA o EC."""
+        import subprocess
+        from io import BytesIO
+        from pyhanko.pdf_utils.reader import PdfFileReader
+        from pyhanko.sign.validation import validate_pdf_signature
+        from signer_backend import PAdESSigner
+
+        def ps(cmd):
+            return subprocess.run(["powershell", "-NoProfile", "-Command", cmd],
+                                  capture_output=True, text=True, check=True).stdout.strip()
+        variantes = [
+            "-KeyAlgorithm RSA -KeyLength 2048 -Provider 'Microsoft Software Key Storage Provider'",
+            "-KeyAlgorithm RSA -KeyLength 2048 -KeySpec Signature "
+            "-Provider 'Microsoft Enhanced RSA and AES Cryptographic Provider'",
+            "-KeyAlgorithm ECDSA_nistP256 -Provider 'Microsoft Software Key Storage Provider'",
+        ]
+        for extra in variantes:
+            with self.subTest(extra):
+                t = ps("(New-SelfSignedCertificate -Subject 'CN=AventyaPDF prueba temporal' "
+                       "-CertStoreLocation Cert:\\CurrentUser\\My -KeyExportPolicy NonExportable "
+                       "-KeyUsage DigitalSignature " + extra + ").Thumbprint")
+                try:
+                    firmado = PAdESSigner.sign_pdf_bytes(
+                        pdf_de_prueba(1).tobytes(), "", "", 0, (72, 600, 272, 680),
+                        windows_thumbprint=t)
+                finally:
+                    ps(f"Remove-Item Cert:\\CurrentUser\\My\\{t} -DeleteKey")
+                st = validate_pdf_signature(PdfFileReader(BytesIO(firmado)).embedded_signatures[0])
+                self.assertTrue(st.intact and st.valid)
+
     def test_sello_de_tiempo_de_documento_se_valida(self):
         """(r45) Un campo de firma puede ser una firma normal (/Sig) o un
         sello de tiempo de documento (/DocTimeStamp, sin firmante: solo

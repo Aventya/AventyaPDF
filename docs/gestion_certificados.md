@@ -4,7 +4,7 @@ Este documento detalla la lógica de consulta, exportación y almacenamiento seg
 
 ## Índice del Documento
 1. [El Almacén Personal de Windows](#el-almacén-personal-de-windows)
-2. [Exportación Segura de Certificados de Windows](#exportación-segura-de-certificados-de-windows)
+2. [Firma con Certificados de Windows sin Exportar la Clave](#firma-con-certificados-de-windows-sin-exportar-la-clave-r108)
 3. [Certificados PKCS#12 (PFX/P12) y Almacenamiento Seguro](#certificados-pkcs12-pfxp12-y-almacenamiento-seguro)
 4. [Persistencia de la Configuración](#persistencia-de-la-configuración)
 5. [Interfaz del Selector de Certificados (CertPickerDialog)](#interfaz-del-selector-de-certificados-certpickerdialog)
@@ -25,16 +25,19 @@ La aplicación permite firmar directamente utilizando certificados instalados en
 
 ---
 
-## Exportación Segura de Certificados de Windows
+## Firma con Certificados de Windows sin Exportar la Clave (r108)
 
-Debido a que el motor criptográfico `pyHanko` requiere acceso a la clave privada en formato PKCS#12 para firmar localmente, la aplicación implementa el método [export_windows_cert_to_pfx(thumbprint)](file:///a:/CARPETA%20IA/RICARDO/AVENTYAPDF/cert_manager.py#L120):
+Hasta r107 la aplicación exportaba el certificado y su clave a un `.pfx` temporal con PowerShell para que `pyHanko` firmase con él; eso fallaba con claves **no exportables** («Clave no válida para utilizar en el estado especificado») y con tarjetas o DNIe, y además dejaba la clave privada un momento en un archivo temporal.
 
-* **Procedimiento**: Lanza un subproceso asíncrono de **PowerShell** que ejecuta directamente código **.NET** (`System.Security.Cryptography.X509Certificates.X509Store`). Esto evita depender de módulos de PowerShell externos o de permisos administrativos.
-* **Seguridad de la Clave**: 
-  1. Genera una contraseña segura y aleatoria de 24 caracteres alfanuméricos mediante `secrets.choice`.
-  2. Solicita al motor .NET exportar el certificado y su clave asociada a un array de bytes cifrado con dicha contraseña temporal.
-  3. Escribe el array en un archivo temporal `.pfx` en el directorio temporal del usuario.
-* **Restricción**: Si la clave privada del certificado del almacén de Windows se marcó en su instalación como "no exportable" (o se encuentra en una tarjeta inteligente / DNIe), el proceso de exportación de .NET fallará de forma segura y la aplicación capturará la excepción para notificar el problema detalladamente al usuario.
+Ahora [windows_signer.py](../windows_signer.py) define `WindowsStoreSigner`, un firmante de `pyHanko` que **pide a Windows que firme** con la clave donde está:
+
+* Busca el certificado en el almacén `MY` del usuario por su huella SHA-1 (`CertFindCertificateInStore`).
+* Obtiene la clave con `CryptAcquireCertificatePrivateKey` (CNG preferente) y firma el resumen SHA-256 con `NCryptSignHash`; si la clave es de un proveedor antiguo (CSP de CryptoAPI), con `CryptSignHashW`.
+* Admite RSA (PKCS#1 v1.5) y curva elíptica (ECDSA, la firma cruda `r‖s` de CNG se pasa a DER).
+* Si la clave está en una tarjeta o DNIe, es Windows —o el controlador de la tarjeta— quien pide el PIN; si el usuario lo cancela, se avisa con «Firma cancelada».
+* Incluye en la firma los certificados intermedios del emisor que encuentre en los almacenes `CA`/`ROOT` de Windows (no la raíz).
+
+La clave nunca sale del almacén ni se escribe en disco. `PAdESSigner.sign_pdf_bytes(..., windows_thumbprint=…)` usa este firmante; los `.pfx` de archivo siguen yendo por `SimpleSigner.load_pkcs12`.
 
 ---
 
