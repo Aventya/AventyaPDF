@@ -4,6 +4,18 @@
 
 Las publicadas como 1.0.0-1.3.0 se renumeraron 0.9.6-0.9.6.7 al publicarse la 0.9.7, y las 2.0.3-2.0.5 como 0.9.3-0.9.5 al publicarse la que fue 1.0.0: la **1.0.0** queda reservada para la primera versión con el instalador firmado.
 
+## 0.9.8 — 2026-09-30
+
+Commit `9024536`.
+
+Correcciones del instalador.
+
+#### Novedades respecto a la 0.9.7
+- **Tamaño correcto en Configuración › Aplicaciones**: la 0.9.7 registraba unos 494 MB porque contaba también los archivos descargados, que se borran al terminar. Ahora muestra lo que ocupa de verdad (unos 336 MB).
+- **El diálogo «Abrir» ya no muestra un «prueba.pdf»** en los equipos donde se compila AventyaPDF: la comprobación automática que se hace al generar el instalador ya no toca la configuración del usuario (recientes y última carpeta), y limpia lo que dejaron las anteriores.
+
+203 pruebas automáticas OK. Autodiagnóstico 9/9, también en una instalación real de prueba descargándolo todo de Internet.
+
 ## 0.9.7 — 2026-09-30
 
 Commit `0b9d64a`.
