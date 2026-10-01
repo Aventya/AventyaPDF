@@ -99,6 +99,82 @@ class TestVentanaPrincipal(unittest.TestCase):
         doc.close()
         return path
 
+    def test_archivo_cambiado_desde_otra_aplicacion(self):
+        """(r115) Si otra aplicación cambia los bytes del PDF abierto, se lee
+        de nuevo en la misma pestaña (al volver a la ventana, al cambiar de
+        pestaña o al abrirlo otra vez); con cambios sin guardar, se pregunta."""
+        from PyQt6.QtCore import Qt
+        w = self.w
+        path = os.path.join(self.tmp, "externo.pdf")
+
+        def escribir(paginas, texto):
+            d = fitz.open()
+            for i in range(paginas):
+                d.new_page().insert_text((72, 100), f"{texto} {i + 1}", fontsize=14)
+            d.save(path)
+            d.close()
+            st = os.stat(path)       # otra fecha aunque sea en el mismo instante
+            os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns + 1_000_000_000 * (paginas + 1)))
+
+        escribir(2, "Primera")
+        self.assertTrue(w.open_path(path))
+        w.go_to_page(1)
+        doc = w.doc
+        w.check_disk_changes()
+        self.assertIs(w.doc, doc)                           # nada cambió
+
+        st = os.stat(path)                                  # mismos bytes, otra fecha
+        os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns + 5_000_000_000))
+        w.check_disk_changes()
+        self.assertIs(w.doc, doc)
+
+        escribir(3, "Segunda")                              # otros bytes
+        w._on_app_state(Qt.ApplicationState.ApplicationActive)
+        for _ in range(3):
+            self.app.processEvents()
+        self.assertEqual(len(w.doc), 3)
+        self.assertIn("Segunda", w.doc[0].get_text())
+        self.assertEqual(w.current_page, 1)                 # sigue en su página
+        self.assertEqual(len(w._sessions), 1)
+
+        escribir(4, "Tercera")                              # abrirlo otra vez
+        self.assertTrue(w.open_path(path))
+        self.assertEqual(len(w.doc), 4)
+        self.assertEqual(len(w._sessions), 1)
+
+        w.mark_modified()                                   # con cambios sin guardar
+        escribir(5, "Cuarta")
+        with mock.patch.object(w, "_ask_reload_over_changes", return_value=False) as preg:
+            w.check_disk_changes()
+            w.check_disk_changes(force=True)
+        self.assertEqual(preg.call_count, 1)                # esa versión ya no se vuelve a ofrecer
+        self.assertEqual(len(w.doc), 4)
+        self.assertTrue(w._modified)
+        escribir(6, "Quinta")
+        with mock.patch.object(w, "_ask_reload_over_changes", return_value=True):
+            w.check_disk_changes()
+        self.assertEqual(len(w.doc), 6)
+        self.assertFalse(w._modified)
+
+        # Ventana a la vista pero sin foco: se actualiza sola, sin preguntar nada.
+        from PyQt6.QtWidgets import QApplication
+        inactiva = mock.patch.object(QApplication, "applicationState",
+                                     return_value=Qt.ApplicationState.ApplicationInactive)
+        escribir(7, "Sexta")
+        with inactiva, mock.patch.object(w, "_ask_reload_over_changes") as preg:
+            w._poll_disk()
+            self.assertEqual(len(w.doc), 7)
+            w.mark_modified()
+            escribir(8, "Septima")
+            w._poll_disk()
+            self.assertEqual(len(w.doc), 7)                 # con cambios: espera a que vuelva
+            preg.assert_not_called()
+        with mock.patch.object(w, "_ask_reload_over_changes", return_value=True):
+            w._on_app_state(Qt.ApplicationState.ApplicationActive)
+            for _ in range(3):
+                self.app.processEvents()
+        self.assertEqual(len(w.doc), 8)
+
     def test_operaciones_de_pagina_en_el_panel_lateral(self):
         """(r27) Sin ventana de organizar: el botón pone las miniaturas del panel
         lateral en modo organizar y las acciones encima; todo con deshacer."""

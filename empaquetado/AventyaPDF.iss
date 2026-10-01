@@ -91,7 +91,11 @@ CloseApplications=yes
 RestartApplications=no
 ; (r109) Si la aplicación está abierta, que se cierre antes de sustituir su
 ; Python (el mutex de instancia única de menu_contextual.py).
+; La variante de prueba se instala aparte: no debe pararse porque la
+; aplicación real esté abierta en el equipo que compila.
+#ifndef Prueba
 AppMutex=Local\AventyaPDF-instancia
+#endif
 ; Descomprimir el .zip de Python y los wheels (que también son zip).
 ArchiveExtraction=full
 ExtraDiskSpaceRequired={#ComponentesBytes}

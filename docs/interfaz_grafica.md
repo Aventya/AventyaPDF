@@ -165,6 +165,14 @@ Todos los cambios de estilo de una anotación de texto pasan por **`_apply_text_
 ### Trazos rectos a mano alzada (`straighten_stroke()`, r59)
 Al marcar a mano alzada, un gesto **rápido** y más o menos recto sale como una recta (y se ajusta a horizontal o vertical si está a menos de 8°); un gesto lento se respeta tal cual salvo el temblor del pulso. Sustituye a `_maybe_straighten`, que enderezaba cualquier trazo casi horizontal aunque fuera lento. Detalle y umbrales en `edicion_pdf.md` §2.
 
+### Archivo cambiado desde otra aplicación (`check_disk_changes()`, r115)
+La app lee el PDF entero a memoria al abrirlo (no bloquea el archivo), así que otra aplicación puede reescribirlo. Si en el disco hay **otros bytes** que los que se leyeron (`_clean_bytes`), el documento se vuelve a leer **en la misma pestaña**, en la misma página, con un aviso en la barra de estado. Se comprueba:
+* al volver a la ventana (`applicationStateChanged` → activa);
+* cada 1,5 s mientras la ventana está sin foco —p. ej., a la vista junto a la otra aplicación— (`_poll_disk`), pero solo si no hay cambios sin guardar y sin mostrar ningún diálogo;
+* al cambiar de pestaña, y al abrir otra vez un archivo que ya está abierto (antes solo se cambiaba a su pestaña, aunque hubiera cambiado).
+
+Para no leer el archivo entero cada vez se guarda su tamaño y fecha (`_disk_stat`): solo si cambian se leen y comparan los bytes (volver a guardar el mismo contenido no recarga nada). Con **cambios sin guardar** (o un campo/cuadro de texto a medio escribir, que se confirma antes) se pregunta «Cargar la versión nueva» / «Mantener mis cambios»; si se mantienen, esa versión del disco (`_disk_ignored`, su SHA-256) no se vuelve a ofrecer. Si el archivo está a medio escribir y no se puede leer como PDF, se reintenta en la siguiente comprobación. Los guardados de la propia app actualizan `_disk_stat` y no cuentan como cambio externo.
+
 ---
 
 ## Relación con otros Documentos
