@@ -33,8 +33,16 @@ propia identidad de la barra de tareas (la da el paquete).
 
 Unos 190 MB el paquete, unos 510 MB instalado (Tesseract incluido).
 
+## Estado (1-oct-2026)
+
+**En espera del número D-U-N-S** de Aventya Asesoría Integral SL, que Microsoft
+pide para verificar las cuentas de empresa. En cuanto llegue, se siguen estos
+pasos en orden.
+
 ## Pasos (los que tiene que hacer Ricardo están marcados ★)
 
+0. ★ **Número D-U-N-S** de la empresa (Dun & Bradstreet, gratuito; tarda
+   unos días). Hace falta para la cuenta **Company**.
 1. ★ **Crear la cuenta**: entrar en **storedeveloper.microsoft.com** (es la
    única entrada sin cuota de registro) → «Get started for free» → **Company**
    (a nombre de Aventya Asesoría Integral SL) → verificación de identidad con
