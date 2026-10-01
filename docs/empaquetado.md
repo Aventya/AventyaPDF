@@ -154,13 +154,16 @@ Visual Studio con C++ y el Windows SDK.
 
 ## Pendiente
 
-* **Firma de código**: solicitud enviada a SignPath Foundation (código
-  abierto, gratuita — ver [CODE_SIGNING_POLICY.md](../CODE_SIGNING_POLICY.md))
-  para que el instalador no dispare el aviso de Windows SmartScreen. Mientras
-  no esté aprobada y conectada a un sistema de compilación de confianza (los
-  runners de GitHub Actions, no un equipo personal — requisito del programa
-  gratuito), SmartScreen seguirá avisando («Windows protegió su PC» → «Más
-  información» → «Ejecutar de todas formas»).
+* **Firma** (r116): SignPath Foundation no concede su certificado
+  Authenticode a proyectos tan recientes. Los instaladores se firman con
+  **Sigstore** desde GitHub Actions al publicar
+  (`.github/workflows/firmar-publicacion.yml`; ver
+  [verificar_instalador.md](verificar_instalador.md)): prueba que el
+  instalador es el publicado aquí, pero **no** quita el aviso de Windows
+  SmartScreen («Más información» → «Ejecutar de todas formas»), que solo
+  quita un certificado Authenticode. Más adelante se puede compilar el
+  instalador en GitHub Actions en vez de en los equipos de Ricardo, para que
+  la firma acredite también que salió de este código fuente.
 * **Tamaño**: lo más pesado sigue siendo **OpenCV** (`cv2.pyd`, 82 MB
   instalados, ~40 MB de descarga), que solo se usa para enderezar páginas de
   OCR torcidas (`pdf_ocr.py`) y en la exportación a Word; sustituirlo toca la

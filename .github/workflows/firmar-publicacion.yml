@@ -1,0 +1,56 @@
+# Firma con Sigstore el instalador de cada publicación (r116).
+#
+# Al publicar una versión en GitHub, este flujo descarga su instalador
+# (AventyaPDF-Setup-<versión>.exe), lo firma con Sigstore sin claves ni
+# certificados que guardar —la identidad es este flujo de este repositorio,
+# acreditada por GitHub— y sube la firma (….exe.sigstore.json) a la misma
+# publicación. La firma queda además en el registro público de transparencia
+# de Sigstore (Rekor). Cómo se comprueba: docs/verificar_instalador.md.
+#
+# También se puede lanzar a mano (Actions › «Firmar la publicación» › Run
+# workflow) para firmar una publicación que ya existía.
+name: Firmar la publicación
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      etiqueta:
+        description: "Etiqueta de la publicación que se firma (p. ej. v0.9.8)"
+        required: true
+
+permissions:
+  contents: write   # subir la firma a la publicación
+  id-token: write   # identidad del flujo para Sigstore (sin claves guardadas)
+
+jobs:
+  firmar:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ETIQUETA: ${{ github.event.release.tag_name || inputs.etiqueta }}
+    steps:
+      - name: Descargar el instalador de la publicación
+        run: |
+          gh release download "$ETIQUETA" -R "$GITHUB_REPOSITORY" \
+            --pattern 'AventyaPDF-Setup-*.exe' --dir firma
+          sha256sum firma/*.exe
+
+      - name: Instalar Sigstore
+        run: |
+          python3 -m venv /tmp/sigstore
+          /tmp/sigstore/bin/pip install --quiet --disable-pip-version-check sigstore==4.5.0
+
+      - name: Firmar
+        run: /tmp/sigstore/bin/sigstore sign --overwrite firma/AventyaPDF-Setup-*.exe
+
+      - name: Comprobar la firma como lo hará un usuario
+        run: |
+          for exe in firma/AventyaPDF-Setup-*.exe; do
+            /tmp/sigstore/bin/sigstore verify github "$exe" \
+              --bundle "$exe.sigstore.json" --repository "$GITHUB_REPOSITORY"
+          done
+
+      - name: Subir la firma a la publicación
+        run: gh release upload "$ETIQUETA" -R "$GITHUB_REPOSITORY" --clobber firma/*.sigstore.json

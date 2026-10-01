@@ -20,9 +20,11 @@ La documentación está distribuida en los siguientes archivos temáticos interr
    * Mapa de las funciones tipo Acrobat Pro añadidas en la 2.0 (panel lateral, búsqueda, marcado de texto, deshacer, OCR, cifrado, sellado de tiempo, validación de firmas), decisiones de diseño, pruebas automáticas (`.\run.ps1 -Pruebas`), registro de errores y plan de pruebas manual.
 7. **[Historial de versiones (historial_versiones.md)](historial_versiones.md)**
    * (r114) Solo se mantiene la última versión publicada; aquí queda la mención de las anteriores (ya retiradas de GitHub) y de su commit.
-8. **[Empaquetado e instalador (empaquetado.md)](empaquetado.md)**
+8. **[Comprobar que el instalador es auténtico (verificar_instalador.md)](verificar_instalador.md)**
+   * (r116) Firma con Sigstore de cada instalador publicado: cómo se comprueba (sigstore o cosign), qué demuestra y qué no (no quita el aviso de SmartScreen).
+9. **[Empaquetado e instalador (empaquetado.md)](empaquetado.md)**
    * (r62, r102, r109) Cómo se genera `AventyaPDF-Setup-<versión>.exe` (lanzador propio + Inno Setup: el instalador solo lleva el código propio y descarga al instalar Python, los paquetes y las fuentes, con SHA-256; Tesseract, bajo demanda), qué instala, el autodiagnóstico, la instalación de prueba y lo pendiente (firma de código, tamaño/OpenCV).
-9. **[Plan de migración a WinUI 3 + C++/WinRT (plan_migracion_winui3.md)](plan_migracion_winui3.md)**
+10. **[Plan de migración a WinUI 3 + C++/WinRT (plan_migracion_winui3.md)](plan_migracion_winui3.md)**
    * (r63) Plan, sin empezar: arquitectura destino, qué sustituye a cada biblioteca, fases con criterios de aceptación, pruebas, esfuerzo y decisiones pendientes.
 
 > Los documentos 1–5 describen la versión 1 (antes de la división de `main_window.py` en módulos). La composición actual de archivos está en [MEMORIA_EVOLUTIVA.md](../MEMORIA_EVOLUTIVA.md) §2.
