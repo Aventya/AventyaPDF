@@ -196,6 +196,9 @@ def _sobrantes(site: str, qt_usados: set[str]) -> tuple[set[str], set[str]]:
                 necesarias.add(dll)
                 pendientes.append(os.path.join(binqt, dlls[dll]))
     archivos |= {f"PyQt6/Qt6/bin/{dlls[k]}" for k in set(dlls) - necesarias}
+    # (r119) Plantilla de python-docx en carpeta: no se usa (abre default.docx)
+    # y su «[Content_Types].xml» no puede ir en un paquete MSIX (corchetes).
+    carpetas.add("docx/templates/default-docx-template/")
     cv2 = os.path.join(site, "cv2")
     archivos |= {f"cv2/{f}" for f in os.listdir(cv2) if f.startswith("opencv_videoio_ffmpeg")}
     return carpetas, archivos

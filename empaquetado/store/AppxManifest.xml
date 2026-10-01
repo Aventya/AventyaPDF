@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Paquete MSIX de AventyaPDF para la Microsoft Store (r119). La Store lo firma
+  con el certificado de Microsoft, gratis, y así no sale el aviso de Windows
+  SmartScreen. Lleva todo dentro (Python, paquetes, fuentes y Tesseract): un
+  paquete de la Store no descarga ni instala nada por su cuenta.
+
+  Plantilla: preparar_store.py sustituye @NAME@, @PUBLISHER@,
+  @PUBLISHERNAME@ y @VERSION@. Name y Publisher tienen que ser EXACTAMENTE
+  los que da Partner Center (Identidad del producto); para probarlo en este
+  equipo se usan los del certificado del menú contextual.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
+  xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap3 desktop desktop4 desktop5 com rescap">
+
+  <Identity Name="@NAME@" Publisher="@PUBLISHER@" Version="@VERSION@" ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>AventyaPDF</DisplayName>
+    <PublisherDisplayName>@PUBLISHERNAME@</PublisherDisplayName>
+    <Logo>imagenes-store\StoreLogo.png</Logo>
+    <Description>Visor y editor de PDF con firma digital y OCR</Description>
+  </Properties>
+
+  <Resources>
+    <Resource Language="es-es" />
+  </Resources>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+
+  <Applications>
+    <Application Id="AventyaPDF" Executable="AventyaPDF.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="AventyaPDF"
+                          Description="Visor y editor de PDF con firma digital y OCR"
+                          BackgroundColor="transparent"
+                          Square150x150Logo="imagenes-store\Square150x150Logo.png"
+                          Square44x44Logo="imagenes-store\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="imagenes-store\Wide310x150Logo.png"
+                         Square71x71Logo="imagenes-store\Square71x71Logo.png" />
+      </uap:VisualElements>
+      <Extensions>
+        <!-- «Abrir con» de los PDF y Aplicaciones predeterminadas. -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="pdf">
+            <uap:DisplayName>Documento PDF</uap:DisplayName>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.pdf</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+        <!-- «aventyapdf» desde la consola (y para el autodiagnóstico del paquete). -->
+        <uap3:Extension Category="windows.appExecutionAlias" Executable="AventyaPDF.exe"
+                        EntryPoint="Windows.FullTrustApplication">
+          <uap3:AppExecutionAlias>
+            <desktop:ExecutionAlias Alias="aventyapdf.exe" />
+          </uap3:AppExecutionAlias>
+        </uap3:Extension>
+        <!-- Menú contextual de Windows 11: la misma extensión que el instalador
+             de GitHub (shell\AventyaPDFShell.cpp), aquí sin certificado propio. -->
+        <desktop4:Extension Category="windows.fileExplorerContextMenus">
+          <desktop4:FileExplorerContextMenus>
+@MENU@
+          </desktop4:FileExplorerContextMenus>
+        </desktop4:Extension>
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:SurrogateServer DisplayName="AventyaPDF - menú contextual">
+              <com:Class Id="CFCBA067-9C58-4229-95F8-2F5912C3611F" Path="AventyaPDFShell.dll" ThreadingModel="STA" />
+            </com:SurrogateServer>
+          </com:ComServer>
+        </com:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+</Package>

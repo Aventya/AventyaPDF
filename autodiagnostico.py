@@ -88,6 +88,7 @@ def _run(args: list[str], carpeta: str) -> int:
     def entorno():
         import dependencias
         return dict(ejecutable=sys.executable, instalada=dependencias.carpeta_instalada(),
+                    paquete_store=dependencias.en_paquete_msix(),
                     python=sys.version.split()[0])
     _comprobar(res, "Entorno", entorno)
 

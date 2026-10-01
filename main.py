@@ -545,8 +545,8 @@ def _set_app_user_model_id() -> None:
     """(r57) Da a la ventana su propia identidad en la barra de tareas de
     Windows, para que muestre el icono de AventyaPDF y no el de python.exe.
     Tiene que hacerse antes de crear la primera ventana."""
-    if sys.platform != "win32":
-        return
+    if sys.platform != "win32" or dependencias.en_paquete_msix():
+        return              # (r119) en el paquete de la Store, su identidad es la del paquete
     try:
         import ctypes
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(icons.APP_USER_MODEL_ID)

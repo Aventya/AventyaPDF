@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
 
 import actualizaciones
 import conversion_office
+import dependencias
 import dialogs
 import doc_tools
 import icons
@@ -192,13 +193,16 @@ class MenusMixin:
         A(m, "Atajos de teclado", lambda: dialogs.show_shortcuts(self), "F1", needs_doc=False)
         A(m, "Presentación de AventyaPDF", self.show_welcome, needs_doc=False)
         m.addSeparator()
-        A(m, "Buscar actualizaciones…", self.check_updates, needs_doc=False)
-        # (petición de Ricardo) Aviso automático al iniciar, activado de entrada.
-        self._act_auto_update = QAction("Avisar de actualizaciones al iniciar", self)
-        self._act_auto_update.setCheckable(True)
-        self._act_auto_update.setChecked(self._auto_update_enabled())
-        self._act_auto_update.toggled.connect(self._set_auto_update)
-        m.addAction(self._act_auto_update)
+        if not dependencias.en_paquete_msix():
+            # (r119) En la versión de la Microsoft Store las actualizaciones
+            # las instala la propia Store: ni menú ni aviso al iniciar.
+            A(m, "Buscar actualizaciones…", self.check_updates, needs_doc=False)
+            # (petición de Ricardo) Aviso automático al iniciar, activado de entrada.
+            self._act_auto_update = QAction("Avisar de actualizaciones al iniciar", self)
+            self._act_auto_update.setCheckable(True)
+            self._act_auto_update.setChecked(self._auto_update_enabled())
+            self._act_auto_update.toggled.connect(self._set_auto_update)
+            m.addAction(self._act_auto_update)
         A(m, "Acerca de AventyaPDF", self.show_about, needs_doc=False)
 
         self._esc_shortcut = QShortcut(QKeySequence("Escape"), self)
@@ -895,6 +899,8 @@ class MenusMixin:
 
     @staticmethod
     def _auto_update_enabled() -> bool:
+        if dependencias.en_paquete_msix():
+            return False
         return QSettings(*SETTINGS).value(_KEY_AUTO_UPDATE, "true") == "true"
 
     def _set_auto_update(self, on: bool) -> None:

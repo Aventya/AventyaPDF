@@ -28,6 +28,21 @@ class DependenciasError(RuntimeError):
     pass
 
 
+def en_paquete_msix() -> bool:
+    """(r119) True si la aplicación se ejecuta desde su paquete MSIX (la
+    versión de la Microsoft Store): tiene identidad de paquete."""
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+        n = ctypes.c_uint32(0)
+        # Sin identidad devuelve APPMODEL_ERROR_NO_PACKAGE (15700); con ella,
+        # ERROR_INSUFFICIENT_BUFFER (122) al no darle dónde escribir el nombre.
+        return ctypes.windll.kernel32.GetCurrentPackageFullName(ctypes.byref(n), None) != 15700
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def carpeta_instalada() -> str | None:
     """(r109) Carpeta de la aplicación instalada —AventyaPDF.exe, runtime\\
     (Python y paquetes, descargados por el instalador) y app\\ (este código)—,

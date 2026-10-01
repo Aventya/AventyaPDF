@@ -82,7 +82,19 @@ def _candidates():
                 continue
 
 
+def _incluido() -> str | None:
+    """(r119) Carpeta de Tesseract incluido en la aplicación (solo en el
+    paquete de la Microsoft Store, que no puede instalar otros programas)."""
+    import dependencias
+    base = dependencias.carpeta_instalada()
+    carpeta = os.path.join(base, "tesseract") if base else ""
+    return carpeta if os.path.isfile(os.path.join(carpeta, "tesseract.exe")) else None
+
+
 def find_tesseract() -> str | None:
+    incluido = _incluido()
+    if incluido:
+        return os.path.join(incluido, "tesseract.exe")
     exe = shutil.which("tesseract")
     if exe:
         return exe
@@ -201,8 +213,14 @@ def install_tesseract(report=None) -> str:
 def download_langs(langs, report=None) -> None:
     report = report or (lambda _msg: None)
     os.makedirs(TESSDATA_DIR, exist_ok=True)
+    incluido = _incluido()
     for lang in missing_langs(langs):
         dest = os.path.join(TESSDATA_DIR, f"{lang}.traineddata")
+        origen = os.path.join(incluido, "tessdata", f"{lang}.traineddata") if incluido else ""
+        if origen and os.path.isfile(origen + MODEL_MARKER):
+            shutil.copyfile(origen, dest)               # (r119) el incluido, sin descargar
+            shutil.copyfile(origen + MODEL_MARKER, dest + MODEL_MARKER)
+            continue
         # Siempre «best» (no los de la instalación, que son «fast»).
         _download(TESSDATA_URL.format(lang=lang), dest, report, f"el idioma «{lang}» (máxima precisión)")
         with open(dest + MODEL_MARKER, "w", encoding="utf-8") as fh:

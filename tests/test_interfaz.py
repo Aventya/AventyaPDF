@@ -99,6 +99,25 @@ class TestVentanaPrincipal(unittest.TestCase):
         doc.close()
         return path
 
+    def test_en_la_store_no_hay_avisos_de_actualizacion(self):
+        """(r119) Dentro del paquete de la Microsoft Store las actualizaciones
+        las pone la Store: ni «Buscar actualizaciones…» ni aviso al iniciar."""
+        import dependencias
+        from PyQt6.QtGui import QAction
+        from main_window import MainWindow
+        textos = lambda v: {a.text() for a in v.findChildren(QAction)}
+        self.assertIn("Buscar actualizaciones…", textos(self.w))
+        self.assertFalse(dependencias.en_paquete_msix())
+        with mock.patch.object(dependencias, "en_paquete_msix", return_value=True):
+            v = MainWindow()
+            try:
+                self.assertNotIn("Buscar actualizaciones…", textos(v))
+                self.assertNotIn("Avisar de actualizaciones al iniciar", textos(v))
+                self.assertFalse(v._auto_update_enabled())
+            finally:
+                v.close()
+                v.deleteLater()
+
     def test_ctrl_rueda_cambia_el_tamano_de_las_miniaturas(self):
         """(r118) Ctrl + rueda sobre las miniaturas (normal y en «Operaciones
         de página»): del 75 % al 200 % del tamaño de siempre; la cuadrícula se
