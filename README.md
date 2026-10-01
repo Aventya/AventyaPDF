@@ -86,11 +86,14 @@ Inno Setup, que descarga Python y los paquetes al instalar; ver
 
 ## Firma de código
 
-Los instaladores de Windows publicados en
-[Releases](https://github.com/Aventya/AventyaPDF/releases) se firman
-gratuitamente con [SignPath.io](https://signpath.io), a través de su
-programa **SignPath Foundation** para proyectos de código abierto. Detalle
-del proceso, roles del equipo y privacidad en
+Cada instalador publicado en
+[Releases](https://github.com/Aventya/AventyaPDF/releases/latest) va firmado
+con [Sigstore](https://www.sigstore.dev) por el propio repositorio (su firma
+es el archivo `….exe.sigstore.json` de la publicación): cualquiera puede
+comprobar que es exactamente el que se publicó aquí, sin modificaciones —
+cómo, en [docs/verificar_instalador.md](docs/verificar_instalador.md). No es
+una firma Authenticode: Windows SmartScreen sigue avisando de «editor
+desconocido». Detalle del proceso, roles y privacidad en
 [CODE_SIGNING_POLICY.md](CODE_SIGNING_POLICY.md).
 
 ## Licencia
