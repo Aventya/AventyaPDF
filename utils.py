@@ -65,18 +65,31 @@ class PDFUtils:
             apx = int(ap.split()[0])
             x0, y0, x1, y1 = (float(v) for v in _re.findall(
                 r"[-\d.]+", doc.xref_get_key(apx, "BBox")[1]))
-            giro = int(annot.rotation or 0) % 360
-            if giro:
+            # (r118) Sin /Rotate, PyMuPDF da -1 (no 0): «-1 % 360» eran 359° y
+            # el texto quedaba torcido 1° al salir del cuadro.
+            giro = max(0, int(annot.rotation or 0)) % 360
+            angulo = st["angle"] % 360
+            if giro or angulo:
                 # (r105) Cuadro de una página girada (/Rotate del FreeText =
                 # giro de la página): se compone en el ancho y alto VISTOS y
-                # la /Matrix lo gira para que se lea derecho.
-                ancho_r, alto_r = annot.rect.width, annot.rect.height
-                if giro in (90, 270):
-                    ancho_r, alto_r = alto_r, ancho_r
+                # la /Matrix lo gira para que se lea derecho. (r118) Con giro
+                # propio del cuadro (tirador de girar), el ancho y alto son
+                # los guardados del cuadro sin girar, la /Matrix suma ese giro
+                # y /Rect pasa a ser lo que ocupa el cuadro girado, con el
+                # mismo centro.
+                if st["size"]:
+                    ancho_r, alto_r = st["size"]
+                else:
+                    ancho_r, alto_r = annot.rect.width, annot.rect.height
+                    if giro in (90, 270):
+                        ancho_r, alto_r = alto_r, ancho_r
                 x0, y0, x1, y1 = 0.0, 0.0, ancho_r, alto_r
                 doc.xref_set_key(apx, "BBox", f"[0 0 {ancho_r:.4f} {alto_r:.4f}]")
-                m = fitz.Matrix(giro)
+                m = fitz.Matrix(giro - angulo)     # ángulo: horario, como se ve
                 doc.xref_set_key(apx, "Matrix", f"[{m.a:g} {m.b:g} {m.c:g} {m.d:g} 0 0]")
+                if angulo:
+                    caja = fitz.Rect(0, 0, ancho_r, alto_r).quad.transform(m).rect
+                    PDFUtils._set_raw_rect_size(doc, annot, caja.width, caja.height)
             pad = PDFUtils.TEXT_PAD
             ancho = max(1.0, (x1 - x0) - 2 * pad)
             import pdf_edit                       # aquí: pdf_edit importa módulos pesados
@@ -177,13 +190,19 @@ class PDFUtils:
 
     @staticmethod
     def _encode_text_style(bold: bool, italic: bool, align: int,
-                            font_css: str, color: tuple) -> str:
+                            font_css: str, color: tuple, angle: float = 0,
+                            size: tuple | None = None) -> str:
         """Compact token stored in the annotation subject so the options panel
-        can recover the styling when the annotation is re-selected."""
+        can recover the styling when the annotation is re-selected. (r118)
+        `g`: giro del cuadro en grados (horario, como se ve); `s`: ancho×alto
+        del cuadro sin girar (solo si está girado)."""
         hexcol = "#%02x%02x%02x" % tuple(
             max(0, min(255, int(c * 255))) for c in color)
-        return (f"TXT|b{int(bold)}|i{int(italic)}|a{int(align)}"
-                f"|f{font_css}|c{hexcol}")
+        out = (f"TXT|b{int(bold)}|i{int(italic)}|a{int(align)}"
+               f"|f{font_css}|c{hexcol}")
+        if angle % 360 and size:
+            out += f"|g{angle % 360:g}|s{size[0]:.2f}x{size[1]:.2f}"
+        return out
 
     @staticmethod
     def _set_info_keys(doc, annot, title: str = None, content: str = None,
@@ -201,7 +220,8 @@ class PDFUtils:
     @staticmethod
     def decode_text_style(subject: str) -> dict:
         out = {"bold": False, "italic": False, "align": 0,
-               "font_css": "sans-serif", "color": (0.0, 0.0, 0.0)}
+               "font_css": "sans-serif", "color": (0.0, 0.0, 0.0),
+               "angle": 0.0, "size": None}
         if not subject or not subject.startswith("TXT|"):
             return out
         for part in subject.split("|")[1:]:
@@ -216,6 +236,17 @@ class PDFUtils:
                     pass
             elif part.startswith("f"):
                 out["font_css"] = part[1:] or "sans-serif"
+            elif part.startswith("g"):
+                try:
+                    out["angle"] = float(part[1:])
+                except ValueError:
+                    pass
+            elif part.startswith("s") and "x" in part:
+                try:
+                    w, h = (float(v) for v in part[1:].split("x"))
+                    out["size"] = (w, h)
+                except ValueError:
+                    pass
             elif part.startswith("c") and len(part) >= 8:
                 try:
                     h = part[2:8]
@@ -263,11 +294,55 @@ class PDFUtils:
         doc.xref_set_key(annot.xref, "RC", fitz.get_pdf_str(rc))
         doc.xref_set_key(annot.xref, "Q", str(int(align)))
         doc.xref_set_key(annot.xref, "CL", "null")
+        previo = PDFUtils.decode_text_style(annot.info.get("subject", ""))
         annot.update()
         PDFUtils._set_info_keys(
             doc, annot, title=str(int(fontsize)), content=text,
             subject=PDFUtils._encode_text_style(
-                bold, italic, align, font_css, text_color))
+                bold, italic, align, font_css, text_color,
+                previo["angle"], previo["size"]))         # (r118) conserva el giro
+        PDFUtils.apply_text_appearance(doc, annot)
+
+    @staticmethod
+    def _set_raw_rect_size(doc, annot, w: float, h: float) -> None:
+        """/Rect de `w`×`h` con el mismo centro, en el espacio del PDF (y
+        hacia arriba, sin girar: no el de `annot.rect`)."""
+        x0, y0, x1, y1 = (float(v) for v in _re.findall(
+            r"[-\d.]+", doc.xref_get_key(annot.xref, "Rect")[1]))
+        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+        doc.xref_set_key(annot.xref, "Rect",
+                         f"[{cx - w / 2:g} {cy - h / 2:g} {cx + w / 2:g} {cy + h / 2:g}]")
+
+    @staticmethod
+    def text_rotation(annot) -> float:
+        """(r118) Giro propio del cuadro de texto, en grados (horario)."""
+        return PDFUtils.decode_text_style(annot.info.get("subject", ""))["angle"]
+
+    @staticmethod
+    def set_text_rotation(doc: fitz.Document, annot, angle: float,
+                          size: tuple | None = None) -> None:
+        """(r118) Gira el cuadro de texto `angle` grados (horario, como se ve)
+        alrededor de su centro. `size`: ancho y alto del cuadro sin girar; si
+        no se da, el guardado o, si aún no estaba girado, el que se ve."""
+        st = PDFUtils.decode_text_style(annot.info.get("subject", ""))
+        if size is None:
+            size = st["size"]
+        if size is None:
+            r = annot.rect
+            giro = max(0, int(annot.rotation or 0)) % 360
+            size = (r.height, r.width) if giro in (90, 270) else (r.width, r.height)
+        angle = round(float(angle), 2) % 360
+        PDFUtils._set_info_keys(doc, annot, subject=PDFUtils._encode_text_style(
+            st["bold"], st["italic"], st["align"], st["font_css"], st["color"],
+            angle, size))
+        if not angle and st["angle"]:
+            # Vuelve a horizontal: /Rect, otra vez el cuadro mismo, con su centro.
+            w, h = size
+            giro = max(0, int(annot.rotation or 0)) % 360
+            if giro in (90, 270):
+                w, h = h, w
+            PDFUtils._set_raw_rect_size(doc, annot, w, h)
+        annot.update()
         PDFUtils.apply_text_appearance(doc, annot)
 
     @staticmethod

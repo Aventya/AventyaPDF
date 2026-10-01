@@ -30,7 +30,7 @@ import color_picker  # noqa: E402
 import doc_tools  # noqa: E402
 
 _CLAVES = ("recent/files", "recent/dir", "view/sidebar", "signing/tsa_enabled",
-           "updates/check_on_start", "updates/skip_version")
+           "updates/check_on_start", "updates/skip_version", "view/thumb_scale")
 
 
 def _objetos_pdf(doc) -> list[str]:
@@ -98,6 +98,107 @@ class TestVentanaPrincipal(unittest.TestCase):
         doc.save(path)
         doc.close()
         return path
+
+    def test_ctrl_rueda_cambia_el_tamano_de_las_miniaturas(self):
+        """(r118) Ctrl + rueda sobre las miniaturas (normal y en «Operaciones
+        de página»): del 75 % al 200 % del tamaño de siempre; la cuadrícula se
+        recoloca (menos columnas al crecer)."""
+        from PyQt6.QtCore import QPoint, QPointF
+        from PyQt6.QtGui import QWheelEvent
+        w = self.w
+        self.assertTrue(w.open_path(self._crear_pdf(6)))
+        panel = w.sidebar.thumbs
+        lista = panel.list
+        w.sidebar.show_panel("thumbs")
+        panel.set_thumb_scale(1.0)
+        self.app.processEvents()
+
+        def rueda(pasos, ctrl=True):
+            mods = (Qt.KeyboardModifier.ControlModifier if ctrl
+                    else Qt.KeyboardModifier.NoModifier)
+            ev = QWheelEvent(QPointF(20, 20), QPointF(lista.mapToGlobal(QPoint(20, 20))),
+                             QPoint(), QPoint(0, 120 * pasos), Qt.MouseButton.NoButton,
+                             mods, Qt.ScrollPhase.NoScrollPhase, False)
+            lista.wheelEvent(ev)
+            while panel._pending:
+                panel._render_batch()
+            self.app.processEvents()
+
+        columnas = lambda: len({lista.visualItemRect(lista.item(i)).x()
+                                for i in range(lista.count())})
+        antes = columnas()
+        rueda(3)
+        self.assertAlmostEqual(panel.thumb_scale, 1.3)
+        self.assertEqual(lista.iconSize().width(), round(130 * 1.3))
+        self.assertEqual(lista.item(0).icon().availableSizes()[0].width(), round(130 * 1.3))
+        rueda(20)                                            # tope: el doble
+        self.assertAlmostEqual(panel.thumb_scale, 2.0)
+        self.assertLessEqual(columnas(), antes)
+        rueda(-40)                                           # tope: un 25 % menos
+        self.assertAlmostEqual(panel.thumb_scale, 0.75)
+        escala = panel.thumb_scale
+        rueda(-1, ctrl=False)                                # sin Ctrl: no cambia
+        self.assertEqual(panel.thumb_scale, escala)
+        panel.set_organizing(True)                           # también organizando
+        rueda(5)
+        self.assertAlmostEqual(panel.thumb_scale, 1.25)
+
+    def test_texto_horizontal_y_tirador_de_girar(self):
+        """(r118) El texto queda horizontal al terminar de escribirlo (antes,
+        `rotation` -1 de PyMuPDF lo torcía 1°), y el tirador superior central
+        gira el cuadro con su contenido; con Ctrl, de 15 en 15°."""
+        from PyQt6.QtCore import QPoint, QPointF, QEvent
+        from PyQt6.QtGui import QMouseEvent
+        from utils import PDFUtils
+        w = self.w
+        self.assertTrue(w.open_path(self._crear_pdf(1)))
+        v = w.viewer
+        page = v.pdf_page
+        a = PDFUtils.add_text_annotation(w.doc, 0, fitz.Rect(150, 300, 400, 340), "Hola", 16)
+        apx = int(w.doc.xref_get_key(a.xref, "AP/N")[1].split()[0])
+        self.assertEqual(w.doc.xref_get_key(apx, "Matrix")[1], "[1 0 0 1 0 0]")
+        w.render_page()
+        page = v.pdf_page
+        a = page.first_annot
+        v._select_hit((0, a))
+        v.update()
+
+        def raton(tipo, pos, ctrl=False):
+            mods = (Qt.KeyboardModifier.ControlModifier if ctrl
+                    else Qt.KeyboardModifier.NoModifier)
+            boton = Qt.MouseButton.LeftButton
+            ev = QMouseEvent(tipo, QPointF(pos), QPointF(v.mapToGlobal(pos)), boton,
+                             boton if tipo != QEvent.Type.MouseButtonRelease
+                             else Qt.MouseButton.NoButton, mods)
+            {QEvent.Type.MouseButtonPress: v.mousePressEvent,
+             QEvent.Type.MouseMove: v.mouseMoveEvent,
+             QEvent.Type.MouseButtonRelease: v.mouseReleaseEvent}[tipo](ev)
+
+        c = v._to_screen_rect(v._sel.rect).center()
+        tirador = v._rotate_handle()
+        self.assertEqual(tirador.x(), c.x())
+        self.assertLess(tirador.y(), v._to_screen_rect(v._sel.rect).top())
+        # Del tirador (arriba, -90°) a la derecha del centro (0°): +90°, y con
+        # Ctrl un poco menos sigue dando 90.
+        raton(QEvent.Type.MouseButtonPress, tirador)
+        self.assertTrue(v._rotating)
+        destino = QPoint(c.x() + 100, c.y() - 8)           # ≈ 85°
+        raton(QEvent.Type.MouseMove, destino, ctrl=True)
+        self.assertEqual(v._rot_angle, 90)
+        raton(QEvent.Type.MouseButtonRelease, destino, ctrl=True)
+        self.assertFalse(v._rotating)
+        a = v.pdf_page.first_annot
+        self.assertAlmostEqual(PDFUtils.text_rotation(a), 90)
+        self.assertTrue(w._modified)
+        r = v.annot_rect(a)                                 # vertical: 40 de ancho, 250 de alto
+        self.assertAlmostEqual(r.width, 40, delta=0.5)
+        self.assertAlmostEqual(r.height, 250, delta=0.5)
+        self.assertAlmostEqual((r.x0 + r.x1) / 2, 275, delta=0.5)   # mismo centro
+        self.assertAlmostEqual((r.y0 + r.y1) / 2, 320, delta=0.5)
+        # Sin Ctrl, el ángulo es libre; deshacer vuelve a horizontal.
+        w.undo()
+        a = w.viewer.pdf_page.first_annot
+        self.assertEqual(PDFUtils.text_rotation(a), 0)
 
     def test_archivo_cambiado_desde_otra_aplicacion(self):
         """(r115) Si otra aplicación cambia los bytes del PDF abierto, se lee

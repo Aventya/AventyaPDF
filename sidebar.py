@@ -9,7 +9,7 @@ cambian el PDF se delegan en `MainWindow` (que gestiona deshacer y el estado
 con un temporizador para no re-renderizar en cada pulsación.
 """
 import fitz
-from PyQt6.QtCore import QEvent, QItemSelectionModel, QMimeData, QRect, Qt, QSize, QTimer
+from PyQt6.QtCore import QEvent, QItemSelectionModel, QMimeData, QRect, QSettings, Qt, QSize, QTimer
 from PyQt6.QtGui import QColor, QCursor, QDrag, QFont, QIcon, QImage, QPainter, QPixmap
 from PyQt6.QtWidgets import (
     QAbstractItemView, QApplication, QFrame, QHBoxLayout, QInputDialog, QLabel, QListWidget,
@@ -25,23 +25,36 @@ COLUMN_MIN = 310          # ancho mínimo de la columna del panel lateral (r72: 
 _THUMB_W = 130
 _THUMB_H = int(_THUMB_W * 1.42)
 _LABEL_H = 20
+# (r118, petición de Ricardo) Ctrl + rueda sobre las miniaturas cambia su
+# tamaño: de un 25 % menos que el de siempre (130 px de ancho) al doble.
+THUMB_SCALE_MIN = 0.75
+THUMB_SCALE_MAX = 2.0
+THUMB_SCALE_STEP = 0.1
+_K_THUMB_SCALE = "view/thumb_scale"
 
 
-def _thumb_image(page: fitz.Page) -> QImage:
-    zoom = min(_THUMB_W / max(1.0, page.rect.width), _THUMB_H / max(1.0, page.rect.height))
+def _thumb_size(scale: float) -> tuple[int, int]:
+    w = round(_THUMB_W * scale)
+    return w, int(w * 1.42)
+
+
+def _thumb_image(page: fitz.Page, scale: float = 1.0) -> QImage:
+    tw, th = _thumb_size(scale)
+    zoom = min(tw / max(1.0, page.rect.width), th / max(1.0, page.rect.height))
     pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
     return QImage(pix.samples, pix.width, pix.height, pix.stride,
                   QImage.Format.Format_RGB888).copy()   # copia: pix se libera
 
 
-def _labeled_icon(img: QImage, number: int) -> QIcon:
+def _labeled_icon(img: QImage, number: int, scale: float = 1.0) -> QIcon:
     """El número de página se pinta dentro del propio icono, debajo de la
     imagen: así todas las celdas de la cuadrícula miden lo mismo."""
-    pm = QPixmap(_THUMB_W, _THUMB_H + _LABEL_H)
+    tw, th = _thumb_size(scale)
+    pm = QPixmap(tw, th + _LABEL_H)
     pm.fill(QColor(0, 0, 0, 0))
     p = QPainter(pm)
-    x = (_THUMB_W - img.width()) // 2
-    y = (_THUMB_H - img.height()) // 2
+    x = (tw - img.width()) // 2
+    y = (th - img.height()) // 2
     p.fillRect(x + 2, y + 2, img.width(), img.height(), QColor(0, 0, 0, 40))
     p.drawImage(x, y, img)
     p.setPen(QColor("#8A8886"))
@@ -50,7 +63,7 @@ def _labeled_icon(img: QImage, number: int) -> QIcon:
     f.setPixelSize(12)
     p.setFont(f)
     p.setPen(QColor("#201F1E"))
-    p.drawText(QRect(0, _THUMB_H, _THUMB_W, _LABEL_H),
+    p.drawText(QRect(0, th, tw, _LABEL_H),
                int(Qt.AlignmentFlag.AlignCenter), str(number))
     p.end()
     return QIcon(pm)
@@ -150,6 +163,17 @@ class _ThumbList(QListWidget):
         self._press_pos = None          # clic sin arrastre: solo limpia el estado
         super().mouseReleaseEvent(event)
 
+    def wheelEvent(self, event):
+        # (r118) Ctrl + rueda: tamaño de las miniaturas (en las dos vistas,
+        # normal y «Operaciones de página»). Sin Ctrl, desplaza como siempre.
+        if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            pasos = event.angleDelta().y() / 120
+            if pasos:
+                self._panel.set_thumb_scale(self._panel.thumb_scale + pasos * THUMB_SCALE_STEP)
+            event.accept()
+            return
+        super().wheelEvent(event)
+
     def dragEnterEvent(self, event):
         # Solo se acepta lo que arrastra esta misma lista (r52): así OLE pinta
         # el cursor de "permitido" mientras se está encima de las miniaturas,
@@ -232,7 +256,12 @@ class ThumbnailsPanel(QWidget):
         self.list.setResizeMode(QListWidget.ResizeMode.Adjust)
         self.list.setUniformItemSizes(True)
         self.list.setMovement(QListWidget.Movement.Static)
-        self.list.setIconSize(QSize(_THUMB_W, _THUMB_H + _LABEL_H))
+        try:
+            escala = float(QSettings("aventyapdf", "config").value(_K_THUMB_SCALE, 1.0))
+        except (TypeError, ValueError):
+            escala = 1.0
+        self.thumb_scale = min(THUMB_SCALE_MAX, max(THUMB_SCALE_MIN, escala))
+        self.list.setIconSize(self._icon_size())
         self.list.setSpacing(4)
         self.list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
@@ -249,9 +278,46 @@ class ThumbnailsPanel(QWidget):
         self._timer = QTimer(self)
         self._timer.setInterval(0)
         self._timer.timeout.connect(self._render_batch)
-        placeholder = QPixmap(_THUMB_W, _THUMB_H + _LABEL_H)
+        self._make_placeholder()
+
+    def _icon_size(self) -> QSize:
+        tw, th = _thumb_size(self.thumb_scale)
+        return QSize(tw, th + _LABEL_H)
+
+    def _cell_size(self) -> QSize:
+        return self._icon_size() + QSize(6, 6)
+
+    def _make_placeholder(self):
+        placeholder = QPixmap(self._icon_size())
         placeholder.fill(QColor("#E6E6E6"))
         self._placeholder = QIcon(placeholder)
+
+    def set_thumb_scale(self, scale: float):
+        """(r118) Tamaño de las miniaturas (1 = el de siempre), entre
+        THUMB_SCALE_MIN y THUMB_SCALE_MAX. La cuadrícula se recoloca sola (más
+        o menos columnas) y las imágenes se vuelven a dibujar a ese tamaño."""
+        scale = round(min(THUMB_SCALE_MAX, max(THUMB_SCALE_MIN, scale)), 2)
+        if abs(scale - self.thumb_scale) < 0.001:
+            return
+        self.thumb_scale = scale
+        s = QSettings("aventyapdf", "config")
+        s.setValue(_K_THUMB_SCALE, scale)
+        self.list.setIconSize(self._icon_size())
+        # (r118) Cada celda lleva su tamaño explícito: si no, Qt lo mide con la
+        # imagen que tenga la primera miniatura en ese momento (las nuevas se
+        # dibujan después) y la cuadrícula se quedaba con las celdas de antes.
+        for i in range(self.list.count()):
+            self.list.item(i).setSizeHint(self._cell_size())
+        self._make_placeholder()
+        doc = self.mw.doc
+        if doc:
+            actual = self.list.currentItem()
+            self._pending = list(range(min(len(doc), self.list.count())))
+            self._timer.start()
+            if actual is not None:
+                self.list.scrollToItem(actual)
+        self.list.doItemsLayout()
+        self.mw.statusBar().showMessage(f"Miniaturas al {round(scale * 100)} %")
 
     def rebuild(self):
         # Conserva la selección (o la que haya pedido la última operación).
@@ -267,6 +333,7 @@ class ThumbnailsPanel(QWidget):
             return
         for i in range(len(doc)):
             it = QListWidgetItem(self._placeholder, "")
+            it.setSizeHint(self._cell_size())
             it.setData(_ROLE, i)
             it.setToolTip(f"Página {i + 1}")
             self.list.addItem(it)
@@ -343,12 +410,14 @@ class ThumbnailsPanel(QWidget):
                 break
             i = self._pending.pop(0)
             if i < self.list.count() and i < len(doc):
-                self.list.item(i).setIcon(_labeled_icon(_thumb_image(doc[i]), i + 1))
+                self.list.item(i).setIcon(_labeled_icon(
+                    _thumb_image(doc[i], self.thumb_scale), i + 1, self.thumb_scale))
 
     def refresh_page(self, pno: int):
         doc = self.mw.doc
         if doc and 0 <= pno < min(len(doc), self.list.count()):
-            self.list.item(pno).setIcon(_labeled_icon(_thumb_image(doc[pno]), pno + 1))
+            self.list.item(pno).setIcon(_labeled_icon(
+                _thumb_image(doc[pno], self.thumb_scale), pno + 1, self.thumb_scale))
 
     def set_current(self, pno: int):
         if 0 <= pno < self.list.count():

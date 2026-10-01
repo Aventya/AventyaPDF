@@ -65,6 +65,9 @@ _TX_MULTILINE = getattr(fitz, "PDF_TX_FIELD_IS_MULTILINE", 4096)
 # Annotation selection state
 # ─────────────────────────────────────────────────────────────────────────────
 
+ROTATE_HANDLE_GAP = 22     # (r118) píxeles del tirador de girar sobre el cuadro
+
+
 @dataclass
 class AnnotSelection:
     idx: int
@@ -150,6 +153,13 @@ class PDFViewerWidget(QLabel):
         self._resize_orig_rect = None
         self._resize_keep_aspect = False
 
+        # (r118) Tirador de girar los cuadros de texto: arriba, en el centro.
+        self._rotating = False
+        self._rot_angle0 = 0.0          # giro del cuadro al empezar
+        self._rot_mouse0 = 0.0          # ángulo del ratón al empezar
+        self._rot_angle = 0.0           # giro mientras se arrastra
+        self._rot_size = (0.0, 0.0)     # cuadro sin girar (puntos, como se ve)
+
         # Herramienta «Recortar» (modo CROP, r99): recuadro en coordenadas de
         # pantalla, con 8 tiradores (4 esquinas + 4 lados) que cambian sus
         # márgenes por separado. No se aplica al soltar el ratón —a
@@ -233,6 +243,16 @@ class PDFViewerWidget(QLabel):
         if emoji_font.is_stamp(a.info.get('subject', '')):
             emoji_font.write_rect(page, a, nr)
             return
+        if a.type[1] == 'FreeText':
+            st = PDFUtils.decode_text_style(a.info.get('subject', ''))
+            antes = self.annot_rect(a)
+            if st["angle"] and st["size"] and (abs(antes.width - r.width) > 0.01
+                                                or abs(antes.height - r.height) > 0.01):
+                fx = r.width / max(antes.width, 0.01)
+                fy = r.height / max(antes.height, 0.01)
+                PDFUtils._set_info_keys(mw.doc, a, subject=PDFUtils._encode_text_style(
+                    st["bold"], st["italic"], st["align"], st["font_css"], st["color"],
+                    st["angle"], (st["size"][0] * fx, st["size"][1] * fy)))
         a.set_rect(nr)
         a.update()
         if page.rotation and a.flags & fitz.PDF_ANNOT_IS_NO_ROTATE:
@@ -359,6 +379,24 @@ class PDFViewerWidget(QLabel):
                 return name
         return None
 
+    def _rotate_handle(self) -> QPoint | None:
+        """(r118) Centro del tirador de girar del cuadro de texto seleccionado:
+        por encima del centro de su lado superior."""
+        if not (self._sel and self._sel.annot_type == 'FreeText' and self.mode == "NONE"):
+            return None
+        sr = self._to_screen_rect(self._sel.rect)
+        if sr.top() - ROTATE_HANDLE_GAP < 6:            # pegado arriba: debajo
+            return QPoint(sr.center().x(), sr.bottom() + ROTATE_HANDLE_GAP)
+        return QPoint(sr.center().x(), sr.top() - ROTATE_HANDLE_GAP)
+
+    def _on_rotate_handle(self, pos: QPoint) -> bool:
+        c = self._rotate_handle()
+        return c is not None and (pos - c).manhattanLength() <= 12
+
+    def _mouse_angle(self, pos: QPoint) -> float:
+        c = self._to_screen_rect(self._sel.rect).center()
+        return math.degrees(math.atan2(pos.y() - c.y(), pos.x() - c.x()))
+
     def _get_crop_handle(self, pos: QPoint) -> str | None:
         """(r99) Los 8 tiradores del recuadro de recorte: 4 esquinas y 4
         lados (medio de cada borde), cada uno mueve solo su propio margen."""
@@ -421,6 +459,17 @@ class PDFViewerWidget(QLabel):
                 self._crop_orig_rect = QRect(self.crop_rect)
             return
         if self.mode == "NONE":
+            if self._on_rotate_handle(pos):
+                a = self._annot_by_idx(self._sel.idx)
+                if a is not None:
+                    st = PDFUtils.decode_text_style(a.info.get('subject', ''))
+                    self._rotating = True
+                    self._rot_angle0 = self._rot_angle = st["angle"]
+                    self._rot_size = st["size"] or (self._sel.rect.width, self._sel.rect.height)
+                    self._rot_mouse0 = self._mouse_angle(pos)
+                    self.setCursor(Qt.CursorShape.ClosedHandCursor)
+                    self.update()
+                    return
             corner = self._get_resize_corner(pos)
             if corner and self._sel:
                 self._resizing = corner
@@ -531,6 +580,15 @@ class PDFViewerWidget(QLabel):
             return
 
         if self.mode == "NONE":
+            if self._rotating and self._sel:
+                ang = self._rot_angle0 + self._mouse_angle(pos) - self._rot_mouse0
+                if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+                    ang = round(ang / 15) * 15          # Ctrl: saltos de 15°
+                self._rot_angle = ang % 360
+                self.main_window.statusBar().showMessage(
+                    f"Giro: {self._rot_angle:.0f}°  ·  Ctrl: de 15 en 15°")
+                self.update()
+                return
             if self._resizing and self._sel and self._resize_orig_rect:
                 pt = self._to_pdf_pt(pos)
                 o = self._resize_orig_rect
@@ -560,6 +618,9 @@ class PDFViewerWidget(QLabel):
                     "TR": Qt.CursorShape.SizeBDiagCursor,
                     "BL": Qt.CursorShape.SizeBDiagCursor,
                 }
+                if self._on_rotate_handle(pos):
+                    self.setCursor(Qt.CursorShape.OpenHandCursor)
+                    return
                 corner = self._get_resize_corner(pos)
                 if corner:
                     self.setCursor(_diag_cursors[corner])
@@ -642,6 +703,23 @@ class PDFViewerWidget(QLabel):
             return   # la herramienta sigue activa, como en Acrobat
 
         if self.mode == "NONE":
+            if self._rotating:
+                self._rotating = False
+                self.setCursor(Qt.CursorShape.OpenHandCursor)
+                a = self._annot_by_idx(self._sel.idx) if self._sel else None
+                cambio = abs((self._rot_angle - self._rot_angle0 + 180) % 360 - 180)
+                if a is not None and cambio > 0.05:
+                    mw.checkpoint("Girar")
+                    PDFUtils.set_text_rotation(mw.doc, a, self._rot_angle, self._rot_size)
+                    mw.mark_modified()
+                    mw.render_page(keep_selection=True)
+                    a = self._annot_by_idx(self._sel.idx) if self._sel else None
+                    if a is not None:
+                        self._sel.rect = fitz.Rect(self.annot_rect(a))
+                        self._sel.orig_rect = fitz.Rect(self._sel.rect)
+                    mw.statusBar().showMessage(f"Cuadro de texto girado {self._rot_angle:.0f}°")
+                self.update()
+                return
             if self._tsel_start is not None:
                 self._tsel_start = None
                 if self._tsel_text:
@@ -1100,12 +1178,31 @@ class PDFViewerWidget(QLabel):
                   else QColor(0x00, 0x78, 0xD4)
             p.setPen(QPen(col, 2, Qt.PenStyle.DashLine))
             p.setBrush(Qt.BrushStyle.NoBrush)
-            p.drawRect(sr)
-            if not (self._sel.is_fixed or self._sel.is_note):
+            if self._rotating:
+                # Vista previa: el cuadro sin girar, girado lo que va el arrastre.
+                w = self._rot_size[0] * self.scale_factor
+                h_ = self._rot_size[1] * self.scale_factor
+                p.save()
+                p.translate(QRectF(sr).center())
+                p.rotate(self._rot_angle)
+                p.drawRect(QRectF(-w / 2, -h_ / 2, w, h_))
+                p.restore()
+            else:
+                p.drawRect(sr)
+            if not (self._sel.is_fixed or self._sel.is_note or self._rotating):
                 h = 8
                 for hx, hy in [(sr.left(), sr.top()), (sr.right()-h, sr.top()),
                                (sr.left(), sr.bottom()-h), (sr.right()-h, sr.bottom()-h)]:
                     p.fillRect(hx, hy, h, h, col)
+            c = self._rotate_handle()
+            if c is not None and not self._rotating:
+                p.setPen(QPen(col, 1.5))
+                arriba = c.y() < sr.top()
+                p.drawLine(QPoint(c.x(), sr.top() if arriba else sr.bottom()),
+                           QPoint(c.x(), c.y() + (5 if arriba else -5)))
+                p.setBrush(QColor(0xFF, 0xFF, 0xFF))
+                p.drawEllipse(c, 5, 5)
+                p.setBrush(Qt.BrushStyle.NoBrush)
 
         if self._stroking and len(self._stroke_pts) > 1:
             # (r59) Mismo aspecto que tendrá la anotación: el resaltado tiñe

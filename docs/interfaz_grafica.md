@@ -165,6 +165,15 @@ Todos los cambios de estilo de una anotación de texto pasan por **`_apply_text_
 ### Trazos rectos a mano alzada (`straighten_stroke()`, r59)
 Al marcar a mano alzada, un gesto **rápido** y más o menos recto sale como una recta (y se ajusta a horizontal o vertical si está a menos de 8°); un gesto lento se respeta tal cual salvo el temblor del pulso. Sustituye a `_maybe_straighten`, que enderezaba cualquier trazo casi horizontal aunque fuera lento. Detalle y umbrales en `edicion_pdf.md` §2.
 
+### Girar cuadros de texto (tirador superior, r118)
+Un cuadro de texto seleccionado (`FreeText`) muestra, además de sus cuatro esquinas, un **tirador de girar**: un círculo encima del centro de su lado superior (debajo si el cuadro está pegado al borde superior), unido al cuadro por una línea (`_rotate_handle`, `ROTATE_HANDLE_GAP`). Arrastrándolo gira el cuadro entero con su contenido alrededor de su centro, con una vista previa del cuadro girado y el ángulo en la barra de estado; **con Ctrl, en saltos de 15°**. Al soltar, un solo paso de deshacer («Girar»).
+* Se guarda en el `/Subj` del estilo (`TXT|…|g<grados>|s<ancho>x<alto>`): el giro (horario, como se ve) y el tamaño del cuadro sin girar. `PDFUtils.set_text_rotation` / `text_rotation`.
+* `apply_text_appearance` compone el texto **horizontal** en ese ancho y alto, la `/Matrix` del dibujo lo gira (más el giro de la página, r105), y `/Rect` pasa a ser lo que ocupa el cuadro girado, con el mismo centro: mover, seleccionar y borrar siguen como siempre. Redimensionar un texto girado escala igual su cuadro sin girar. Editar el texto conserva el giro (`rebuild_text_annotation`).
+* **Arreglado de paso**: el texto quedaba torcido 1° al salir del cuadro. Sin `/Rotate`, PyMuPDF da `annot.rotation == -1`, y `-1 % 360` eran 359°: la `/Matrix` del dibujo giraba el texto. Ahora un giro negativo cuenta como 0.
+
+### Tamaño de las miniaturas (Ctrl + rueda, r118)
+En el panel de miniaturas —también en «Operaciones de página», que usa la misma cuadrícula— **Ctrl + rueda** cambia su tamaño en pasos del 10 %, desde un 25 % menos que el de siempre (130 px de ancho) hasta el doble (`THUMB_SCALE_MIN`/`MAX`); la cuadrícula se recoloca sola (más o menos columnas según el ancho del panel) y las imágenes se vuelven a dibujar a ese tamaño. Se recuerda (`view/thumb_scale`). Cada celda lleva su tamaño explícito (`setSizeHint`): si no, Qt la mide con la imagen que tenga la primera miniatura en ese momento —las nuevas se dibujan después— y la cuadrícula se quedaba con las celdas del tamaño anterior, recortando o desbordando.
+
 ### Archivo cambiado desde otra aplicación (`check_disk_changes()`, r115)
 La app lee el PDF entero a memoria al abrirlo (no bloquea el archivo), así que otra aplicación puede reescribirlo. Si en el disco hay **otros bytes** que los que se leyeron (`_clean_bytes`), el documento se vuelve a leer **en la misma pestaña**, en la misma página, con un aviso en la barra de estado. Se comprueba:
 * al volver a la ventana (`applicationStateChanged` → activa);
