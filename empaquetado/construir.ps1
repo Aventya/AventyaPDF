@@ -21,11 +21,20 @@
        AppId, en %TEMP%, sin accesos directos, registro ni menú contextual),
        que descarga todo de Internet, le pasa el autodiagnóstico y la
        desinstala. Comprueba las URL, los hashes y la descompresión.
+    6. (r120, petición de Ricardo: «generar ambos empaquetados de una sola
+       vez») Paquete MSIX para la Microsoft Store (construir_store.ps1), de la
+       misma copia completa ya probada. Con la identidad de Partner Center
+       guardada en store\identidad.json sale el de subir a la Store
+       (AventyaPDF-<versión>-store.msix, sin firmar); sin ella, uno firmado con
+       el certificado propio para probar en el equipo. Con -ProbarInstalacion
+       el paquete también se instala, se autodiagnostica y se desinstala.
+       -SinStore: solo el .exe de GitHub.
 
     Uso:
         .\empaquetado\construir.ps1
         .\empaquetado\construir.ps1 -ProbarInstalacion
         .\empaquetado\construir.ps1 -SinInstalador     # solo hasta el autodiagnóstico
+        .\empaquetado\construir.ps1 -SinStore          # solo el .exe de GitHub
 
     Requisitos: el entorno de la aplicación (.\run.ps1 una vez), Tesseract
     instalado (la app lo instala; el autodiagnóstico lo necesita para probar
@@ -33,7 +42,7 @@
     y Visual Studio con C++ y el Windows SDK.
 #>
 [CmdletBinding()]
-param([switch]$SinInstalador, [switch]$ProbarInstalacion)
+param([switch]$SinInstalador, [switch]$ProbarInstalacion, [switch]$SinStore)
 
 $ErrorActionPreference = 'Stop'
 $Raiz     = Split-Path $PSScriptRoot -Parent
@@ -71,6 +80,22 @@ function Autodiagnostico([string]$exe) {
         if (-not $c.ok) { Write-Host $c.detalle -ForegroundColor Red }
     }
     if (-not $diag.ok) { throw "El autodiagnóstico de $exe ha fallado: no se crea el instalador." }
+}
+
+function PaqueteStore {
+    # ── 6. Paquete de la Microsoft Store (r120) ─────────────────────────── #
+    if ($SinStore) { return }
+    $store = Join-Path $PSScriptRoot 'construir_store.ps1'
+    $identidad = Join-Path $PSScriptRoot 'store\identidad.json'
+    if ($ProbarInstalacion -or -not (Test-Path $identidad)) {
+        & $store -Probar:$ProbarInstalacion           # firmado con el certificado propio
+    }
+    if (Test-Path $identidad) {
+        $id = Get-Content $identidad -Raw -Encoding utf8 | ConvertFrom-Json
+        & $store -ParaStore -Name $id.Name -Publisher $id.Publisher -PublisherName $id.PublisherDisplayName
+    } else {
+        Write-Host '  (Sin store\identidad.json todavía: paquete solo para probar; ver docs\microsoft_store.md)' -ForegroundColor Yellow
+    }
 }
 
 # ── 1. Lanzador y menú contextual ─────────────────────────────────────────── #
@@ -119,7 +144,7 @@ Comprobar 'Inno Setup'
 $setup = Join-Path $Salida "AventyaPDF-Setup-$Version.exe"
 $mb = [math]::Round((Get-Item $setup).Length / 1MB, 1)
 Write-Host "`nInstalador listo: $setup ($mb MB)" -ForegroundColor Green
-if (-not $ProbarInstalacion) { exit 0 }
+if (-not $ProbarInstalacion) { PaqueteStore; exit 0 }
 
 # ── 5. Instalación de prueba ──────────────────────────────────────────────── #
 Paso 'Instalación de prueba (descarga todo de Internet)'
@@ -163,3 +188,4 @@ finally {
 $quedan = if (Test-Path $destino) { @(Get-ChildItem $destino -Recurse -File).Count } else { 0 }
 if ($quedan) { throw "La desinstalación de prueba dejó $quedan archivos en $destino" }
 Write-Host '  Desinstalada sin dejar archivos.' -ForegroundColor Green
+PaqueteStore

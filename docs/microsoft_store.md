@@ -53,7 +53,22 @@ pasos en orden.
    `Package/Identity/Name`, `Package/Identity/Publisher` y
    `Package/Properties/PublisherDisplayName`, y pasármelos (o ejecutar el paso
    4 con ellos).
-4. **Generar el paquete para la Store** (después de `.\empaquetado\construir.ps1`):
+   Se guardan **una sola vez** en `empaquetado\store\identidad.json`:
+
+   ```json
+   { "Name": "<Package/Identity/Name>",
+     "Publisher": "CN=<…>",
+     "PublisherDisplayName": "<Package/Properties/PublisherDisplayName>" }
+   ```
+
+   (r120) Desde entonces, **`.\empaquetado\construir.ps1` genera las dos
+   versiones de una vez**: el instalador `.exe` de GitHub y el
+   `AventyaPDF-<versión>-store.msix` para subir a la Store. Sin ese archivo,
+   el `.msix` que sale es uno firmado con el certificado propio, solo para
+   probar en el equipo. `-SinStore` genera solo el `.exe`.
+
+4. **Generar el paquete para la Store** a mano (lo mismo que hace
+   `construir.ps1`, después de él):
 
    ```powershell
    .\empaquetado\construir_store.ps1 -ParaStore -Name '<Name>' -Publisher '<Publisher>' -PublisherName '<PublisherDisplayName>'
