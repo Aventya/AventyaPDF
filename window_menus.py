@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
 
 import actualizaciones
 import conversion_office
+import menu_contextual
 import dependencias
 import dialogs
 import doc_tools
@@ -59,6 +60,30 @@ class _UpdateNotifier(QObject):
         except actualizaciones.UpdateError:
             return
         self.found.emit(info)
+
+
+class _InstallerDownload(QObject):
+    """(r121) Descarga el instalador en un hilo aparte (sin navegador)."""
+    progreso = pyqtSignal(int, int)
+    listo = pyqtSignal(str)
+    error = pyqtSignal(str)
+
+    def __init__(self, info: dict):
+        super().__init__()
+        self._info = info
+
+    def start(self) -> None:
+        import threading
+        threading.Thread(target=self._run, daemon=True).start()
+
+    def _run(self) -> None:
+        try:
+            ruta = actualizaciones.download_installer(
+                self._info, progress=lambda h, t: self.progreso.emit(h, t))
+        except actualizaciones.UpdateError as e:
+            self.error.emit(str(e))
+            return
+        self.listo.emit(ruta)
 
 
 class MenusMixin:
@@ -203,6 +228,9 @@ class MenusMixin:
             self._act_auto_update.setChecked(self._auto_update_enabled())
             self._act_auto_update.toggled.connect(self._set_auto_update)
             m.addAction(self._act_auto_update)
+        if menu_contextual.puede_reparar():
+            A(m, "Reparar el menú contextual del Explorador…",
+              self.repair_context_menu, needs_doc=False)
         A(m, "Acerca de AventyaPDF", self.show_about, needs_doc=False)
 
         self._esc_shortcut = QShortcut(QKeySequence("Escape"), self)
@@ -850,9 +878,10 @@ class MenusMixin:
         if nueva:
             caja.setText(
                 f"<h3>Hay una versión nueva: AventyaPDF {info['version']}</h3>"
-                f"<p>Tienes la {APP_VERSION}. Descarga el instalador y ejecútalo: "
-                "se instala encima de la versión actual.</p>" + enlace)
-            descargar = caja.addButton("Descargar ahora", QMessageBox.ButtonRole.AcceptRole)
+                f"<p>Tienes la {APP_VERSION}. Se descarga e instala sola, encima de "
+                "la versión actual: AventyaPDF se cierra mientras tanto y se vuelve a "
+                "abrir al terminar.</p>" + enlace)
+            descargar = caja.addButton("Descargar e instalar", QMessageBox.ButtonRole.AcceptRole)
             caja.addButton("Ahora no" if automatic else "Cerrar", QMessageBox.ButtonRole.RejectRole)
             caja.setDefaultButton(descargar)
             if automatic:
@@ -871,7 +900,65 @@ class MenusMixin:
             s.setValue(_KEY_SKIP_VERSION, info["version"])
             s.sync()
         if descargar is not None and caja.clickedButton() is descargar:
-            QDesktopServices.openUrl(QUrl(info["installer_url"]))
+            if dependencias.carpeta_instalada() and info.get("installer_name"):
+                self._download_and_install(info)
+            else:       # desde el código fuente (o sin instalador): como antes
+                QDesktopServices.openUrl(QUrl(info["installer_url"]))
+
+    def _download_and_install(self, info: dict) -> None:
+        """(r121, petición de Ricardo: «el descargar de la actualización sí que
+        quiero que se haga por detrás, sin acceso al navegador») Descarga el
+        instalador en segundo plano (sin la marca de «descargado de Internet»:
+        SmartScreen no avisa), comprueba su huella SHA-256 con la que publica
+        GitHub, cierra AventyaPDF —preguntando antes por los cambios sin
+        guardar— y el instalador actualiza y la vuelve a abrir."""
+        progreso = QProgressDialog(f"Descargando AventyaPDF {info['version']}…", "", 0, 100, self)
+        progreso.setCancelButton(None)
+        progreso.setWindowTitle("Actualizar AventyaPDF")
+        progreso.setWindowModality(Qt.WindowModality.WindowModal)
+        progreso.setMinimumDuration(0)
+        progreso.setValue(0)
+        tarea = _InstallerDownload(info)
+        self._installer_download = tarea
+
+        def avance(hecho: int, total: int) -> None:
+            if total:
+                progreso.setValue(min(100, hecho * 100 // total))
+
+        def fallo(texto: str) -> None:
+            progreso.close()
+            QMessageBox.warning(self, "Actualizar AventyaPDF",
+                                f"{texto}\n\nPuedes descargarla a mano desde {info['page_url']}")
+
+        def listo(ruta: str) -> None:
+            progreso.close()
+            if QMessageBox.question(
+                    self, "Actualizar AventyaPDF",
+                    f"AventyaPDF {info['version']} está descargada y comprobada.\n\n"
+                    "Se cerrará AventyaPDF para instalarla y se volverá a abrir al terminar. "
+                    "¿Instalar ahora?") != QMessageBox.StandardButton.Yes:
+                return
+            if not self.close():                # cambios sin guardar: el usuario canceló
+                return
+            actualizaciones.launch_installer_after_exit(ruta, os.getpid())
+            QApplication.quit()
+
+        tarea.progreso.connect(avance)
+        tarea.error.connect(fallo)
+        tarea.listo.connect(listo)
+        tarea.start()
+
+    def repair_context_menu(self) -> None:
+        """(r121) Ayuda › Reparar el menú contextual del Explorador…: vuelve a
+        confiar en el certificado del paquete (con permiso de administrador) y
+        registra el submenú «AventyaPDF» en el menú principal de Windows 11."""
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            ok, texto = menu_contextual.reparar()
+        finally:
+            QApplication.restoreOverrideCursor()
+        (QMessageBox.information if ok else QMessageBox.warning)(
+            self, "Menú contextual del Explorador", texto)
 
     # ── aviso automático al iniciar (petición de Ricardo) ─────────────── #
 

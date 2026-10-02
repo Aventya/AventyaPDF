@@ -2591,7 +2591,7 @@ class TestVentanaPrincipal(unittest.TestCase):
         texto, botones = vistos[-1]
         self.assertIn("Hay una versión nueva: AventyaPDF 9.0.0", texto)
         self.assertIn(f"href='{url}'", texto)
-        self.assertIn("Descargar ahora", botones)
+        self.assertIn("Descargar e instalar", botones)
         # Al día: lo dice, y el enlace directo sigue ahí.
         al_dia = dict(info, version=window_menus.APP_VERSION)
         with mock.patch.object(actualizaciones, "fetch_latest", return_value=al_dia),                 mock.patch.object(QMessageBox, "exec", mostrar):
@@ -2599,7 +2599,7 @@ class TestVentanaPrincipal(unittest.TestCase):
         texto, botones = vistos[-1]
         self.assertIn("Tienes la última versión", texto)
         self.assertIn(f"href='{url}'", texto)
-        self.assertNotIn("Descargar ahora", botones)
+        self.assertNotIn("Descargar e instalar", botones)
         # Sin conexión: se explica y se ofrece la página de versiones.
         with mock.patch.object(actualizaciones, "fetch_latest",
                                side_effect=actualizaciones.UpdateError("sin red")),                 mock.patch.object(QMessageBox, "exec", mostrar):
@@ -2645,7 +2645,7 @@ class TestVentanaPrincipal(unittest.TestCase):
             w._on_update_found(nueva)
         texto, botones, casilla = vistos[-1]
         self.assertIn("Hay una versión nueva: AventyaPDF 9.0.0", texto)
-        self.assertIn("Descargar ahora", botones)
+        self.assertIn("Descargar e instalar", botones)
         self.assertIsNotNone(casilla)
 
         # Si hay otra ventana modal abierta (la presentación…), espera.

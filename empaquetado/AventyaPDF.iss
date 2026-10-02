@@ -171,6 +171,8 @@ Root: HKA; Subkey: "Software\RegisteredApplications"; ValueType: string; ValueNa
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Abrir {#AppName}"; Flags: nowait postinstall skipifsilent
+; (r121) Actualización desde la propia aplicación (/SILENT /REINICIAR): al acabar, se vuelve a abrir.
+Filename: "{app}\{#AppExe}"; Flags: nowait; Check: Reiniciar
 #endif
 
 [UninstallDelete]
@@ -215,6 +217,19 @@ begin
   Result := Codigo;
 end;
 
+// (r121) Sin mensajes en modo /VERYSILENT (pruebas, despliegues), pero sí
+// con /SILENT, que es como actualiza la propia aplicación.
+function Silencioso: Boolean;
+begin
+  Result := WizardSilent and (Pos('/VERYSILENT', Uppercase(GetCmdTail)) > 0);
+end;
+
+// (r121) /REINICIAR: la aplicación se cerró para actualizarse; se vuelve a abrir.
+function Reiniciar: Boolean;
+begin
+  Result := Pos('/REINICIAR', Uppercase(GetCmdTail)) > 0;
+end;
+
 function EsWindows11: Boolean;
 var
   V: TWindowsVersion;
@@ -249,14 +264,26 @@ begin
   if PowerShell('$c = New-Object Security.Cryptography.X509Certificates.X509Certificate2 ' + Literal(Cer) +
                 '; if (Test-Path (''Cert:\LocalMachine\TrustedPeople\'' + $c.Thumbprint)) { exit 0 } else { exit 1 }',
                 False) <> 0 then begin
-    Aviso('Para que el submenú «AventyaPDF» aparezca en el menú del botón derecho de Windows 11, ' +
-          'Windows tiene que confiar en el certificado de AventyaPDF.' + #13#10#13#10 +
-          'A continuación Windows pedirá permiso de administrador (solo esta vez).');
-    if PowerShell('Import-Certificate -FilePath ' + Literal(Cer) +
-                  ' -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null', True) <> 0 then begin
-      Aviso('No se ha dado el permiso: el submenú «AventyaPDF» estará en «Mostrar más opciones» ' +
-            'del menú del botón derecho. Puede volver a ejecutar el instalador para añadirlo al menú principal.');
-      exit;
+    // (r121, petición de Ricardo: «siempre se debe forzar la instalación como
+    // administrador, o dar la opción a ello para que el menú del ratón se pueda
+    // recuperar bien») El permiso de administrador se pide aunque la
+    // instalación sea silenciosa (actualización desde la app), y si se
+    // cancela se ofrece reintentarlo antes de quedarse sin el menú principal.
+    // Solo este paso se eleva: el resto, y el registro del paquete, son del
+    // usuario que instala (Add-AppxPackage es por usuario).
+    if not Silencioso then
+      MsgBox('Para que el submenú «AventyaPDF» aparezca en el menú del botón derecho de Windows 11, ' +
+             'Windows tiene que confiar en el certificado de AventyaPDF.' + #13#10#13#10 +
+             'A continuación Windows pedirá permiso de administrador (solo esta vez en este equipo).',
+             mbInformation, MB_OK);
+    while PowerShell('Import-Certificate -FilePath ' + Literal(Cer) +
+                     ' -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null', True) <> 0 do begin
+      if Silencioso or (MsgBox('No se ha dado el permiso de administrador.' + #13#10#13#10 +
+                'Sin él, el submenú «AventyaPDF» del botón derecho quedará en «Mostrar más opciones». ' +
+                '¿Volver a pedirlo?' + #13#10#13#10 +
+                '(También se puede hacer más tarde desde AventyaPDF: Ayuda › Reparar el menú ' +
+                'contextual del Explorador.)', mbConfirmation, MB_YESNO) <> IDYES) then
+        exit;
     end;
   end;
   if PowerShell('try { Add-AppxPackage -Path ' + Literal(Msix) + ' -ExternalLocation ' +

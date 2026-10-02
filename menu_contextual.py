@@ -248,3 +248,77 @@ def recoger_entrantes() -> list[list[str]]:
             continue
         resultado.append(argv)
     return resultado
+
+
+# ── (r121) Reparar el menú principal de Windows 11 ─────────────────────── #
+# Petición de Ricardo: «quiero que se instale con permisos de administrador
+# para que el menú del ratón en el explorador de Windows se ejecute
+# correctamente en lugar de tener que entrar en "mostrar más opciones"». El
+# submenú del menú PRINCIPAL de Windows 11 es un paquete MSIX disperso
+# (menu-contextual\); Windows solo lo acepta si el equipo confía en su
+# certificado, y añadirlo a «Personas de confianza» del equipo pide
+# administrador. El registro del paquete, en cambio, es POR USUARIO: se hace
+# sin elevar, como el propio usuario (si lo hiciera un administrador, quedaría
+# registrado para él y no para quien usa el equipo).
+
+_PAQUETE_MENU = "Aventya.AventyaPDF.MenuContextual"
+_CREATE_NO_WINDOW = 0x08000000
+
+
+def _archivos_menu() -> tuple[str, str, str] | None:
+    import dependencias
+    base = dependencias.carpeta_instalada()
+    if not base or dependencias.en_paquete_msix():
+        return None
+    cer = os.path.join(base, "menu-contextual", "AventyaPDF-MenuContextual.cer")
+    msix = os.path.join(base, "menu-contextual", "AventyaPDF-MenuContextual.msix")
+    return (base, cer, msix) if os.path.isfile(cer) and os.path.isfile(msix) else None
+
+
+def puede_reparar() -> bool:
+    """Instalación de GitHub en Windows 11 (el menú principal no existe en
+    Windows 10, y en la versión de la Store va dentro de su paquete)."""
+    return sys.platform == "win32" and sys.getwindowsversion().build >= 22000 \
+        and _archivos_menu() is not None
+
+
+def _powershell(orden: str) -> int:
+    import base64
+    import subprocess
+    cmd = base64.b64encode(orden.encode("utf-16-le")).decode("ascii")
+    return subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-EncodedCommand", cmd],
+                          capture_output=True, creationflags=_CREATE_NO_WINDOW).returncode
+
+
+def _literal(texto: str) -> str:
+    return "'" + texto.replace("'", "''") + "'"
+
+
+def reparar() -> tuple[bool, str]:
+    """Confía en el certificado del paquete (pidiendo administrador si hace
+    falta) y registra el submenú para el usuario actual. (ok, mensaje)."""
+    import base64
+    archivos = _archivos_menu()
+    if archivos is None:
+        return False, "Esta instalación no tiene el menú contextual de Windows 11."
+    base, cer, msix = archivos
+    confia = (f"$c = New-Object Security.Cryptography.X509Certificates.X509Certificate2 {_literal(cer)}; "
+              "if (Test-Path ('Cert:\\LocalMachine\\TrustedPeople\\' + $c.Thumbprint)) { exit 0 } else { exit 1 }")
+    if _powershell(confia) != 0:
+        interior = (f"Import-Certificate -FilePath {_literal(cer)} "
+                    "-CertStoreLocation Cert:\\LocalMachine\\TrustedPeople | Out-Null")
+        cod = base64.b64encode(interior.encode("utf-16-le")).decode("ascii")
+        _powershell("try { Start-Process powershell -Verb RunAs -Wait -WindowStyle Hidden "
+                    f"-ArgumentList '-NoProfile','-NonInteractive','-EncodedCommand','{cod}' }} "
+                    "catch { exit 1 }")
+        if _powershell(confia) != 0:
+            return False, ("No se ha dado el permiso de administrador: el submenú «AventyaPDF» "
+                           "sigue en «Mostrar más opciones». Vuelve a intentarlo y acepta el "
+                           "aviso de Windows.")
+    if _powershell(f"Get-AppxPackage -Name {_PAQUETE_MENU} | Remove-AppxPackage; "
+                   f"Add-AppxPackage -Path {_literal(msix)} -ExternalLocation {_literal(base)} "
+                   "-ForceUpdateFromAnyVersion -ErrorAction Stop") != 0:
+        return False, "Windows no aceptó el paquete del menú contextual."
+    return True, ("Listo: el submenú «AventyaPDF» está en el menú principal del botón derecho "
+                  "del Explorador (si no aparece aún, cierra y vuelve a abrir la ventana del "
+                  "Explorador).")

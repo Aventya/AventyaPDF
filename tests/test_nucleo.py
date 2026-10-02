@@ -467,6 +467,70 @@ class TestAutodiagnostico(unittest.TestCase):
         self.assertFalse(s.contains("prueba_autodiagnostico"))
 
 
+class TestActualizarSinNavegador(unittest.TestCase):
+    """(r121) La actualización se descarga por detrás, sin navegador, y solo
+    se instala si su huella SHA-256 es la que publica GitHub."""
+
+    def _info(self, datos: bytes, huella: str) -> dict:
+        return {"installer_name": "AventyaPDF-Setup-9.9.9.exe", "installer_url": "https://x/y.exe",
+                "installer_sha256": huella, "installer_size": len(datos)}
+
+    def _respuesta(self, datos: bytes):
+        import io
+        r = io.BytesIO(datos)
+        r.headers = {"Content-Length": str(len(datos))}
+        r.__enter__ = lambda *a: r
+        r.__exit__ = lambda *a: False
+        return mock.MagicMock(__enter__=lambda s: r, __exit__=lambda *a: False)
+
+    def test_descarga_y_comprueba_la_huella(self):
+        import hashlib
+        import actualizaciones
+        datos = b"instalador" * 5000
+        avances = []
+        with mock.patch("urllib.request.urlopen", return_value=self._respuesta(datos)):
+            ruta = actualizaciones.download_installer(
+                self._info(datos, hashlib.sha256(datos).hexdigest()),
+                progress=lambda h, t: avances.append((h, t)))
+        with open(ruta, "rb") as fh:
+            self.assertEqual(fh.read(), datos)
+        self.assertEqual(avances[-1], (len(datos), len(datos)))
+        os.remove(ruta)
+
+    def test_rechaza_un_instalador_alterado(self):
+        import actualizaciones
+        datos = b"instalador alterado"
+        with mock.patch("urllib.request.urlopen", return_value=self._respuesta(datos)):
+            with self.assertRaisesRegex(actualizaciones.UpdateError, "no coincide"):
+                actualizaciones.download_installer(self._info(datos, "00" * 32))
+
+    def test_reparar_menu_eleva_solo_el_certificado(self):
+        """El certificado se confía con administrador (solo si no lo estaba) y
+        el paquete se registra sin elevar, como el usuario."""
+        import base64
+        import menu_contextual
+        ordenes = []
+        confiado = iter([1, 0])                 # antes no; tras pedir permiso, sí
+
+        def ps(orden):
+            ordenes.append(orden)
+            if "Test-Path" in orden:
+                return next(confiado)
+            return 0
+        with mock.patch.object(menu_contextual, "_archivos_menu",
+                               return_value=(r"C:\app", r"C:\app\m.cer", r"C:\app\m.msix")), \
+                mock.patch.object(menu_contextual, "_powershell", side_effect=ps):
+            ok, texto = menu_contextual.reparar()
+        self.assertTrue(ok, texto)
+        elevado = [o for o in ordenes if "-Verb RunAs" in o]
+        self.assertEqual(len(elevado), 1)
+        interior = base64.b64decode(elevado[0].split("'-EncodedCommand','")[1].split("'")[0]).decode("utf-16-le")
+        self.assertIn("Import-Certificate", interior)
+        registro = ordenes[-1]
+        self.assertIn("Add-AppxPackage", registro)
+        self.assertNotIn("RunAs", registro)
+
+
 class TestActualizaciones(unittest.TestCase):
     """(petición de Ricardo) Ayuda › Buscar actualizaciones: versión y enlace
     directo al instalador sacados de la última publicación de GitHub."""
