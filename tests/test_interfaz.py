@@ -2130,7 +2130,9 @@ class TestVentanaPrincipal(unittest.TestCase):
                 d.new_page()
             d.save(b)
         self.assertTrue(w.open_path(a))
-        self.assertTrue(w.sidebar._doc_area.isHidden(), "con un documento no hay pestañas")
+        # (r122) La pestaña se ve ya con un solo documento abierto.
+        self.assertFalse(w.sidebar._doc_area.isHidden(), "con un documento ya hay pestaña")
+        self.assertEqual(len(w.sidebar._doc_btns), 1)
         w.go_to_page(1)
         w.insert_blank_after(1)                     # cambio sin guardar en el primero
         pagina = w.current_page
@@ -2169,9 +2171,10 @@ class TestVentanaPrincipal(unittest.TestCase):
         self.assertEqual((len(w._sessions), w._active, len(w.doc)), (2, 1, 5))
         w.close_document()
         self.assertEqual((len(w._sessions), w._active, len(w.doc)), (1, 0, 3))
-        self.assertTrue(w.sidebar._doc_area.isHidden())
+        self.assertFalse(w.sidebar._doc_area.isHidden())
         w._modified = False
         w.close_document()
+        self.assertTrue(w.sidebar._doc_area.isHidden(), "sin documentos no hay pestañas")
         self.assertIsNone(w.doc)
         self.assertEqual((w._sessions, w._active), ([], -1))
 

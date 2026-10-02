@@ -17,15 +17,21 @@ os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 # clic, «Abrir con…», varios PDF a la vez, otra aplicación— debe acabar en
 # la ÚNICA instancia abierta, no en una ventana nueva por archivo. Solo al
 # ejecutarse como programa, no al importarse.
+#
+# (r122, petición de Ricardo: «no quiero varias ventanas de la aplicación
+# abiertas, siempre debe funcionar todo en una sola ventana») También las
+# acciones del menú contextual (Firmar, Combinar, Convertir…): una vez
+# reunidas sus rutas, se ceden a la ventana ya abierta si la hay, igual que
+# una apertura normal; antes cada acción abría siempre una ventana nueva.
 if __name__ == "__main__":
     import menu_contextual
     _argv = sys.argv[1:]
     if _argv and _argv[0] in menu_contextual.ACCIONES:
-        sys.argv[1:] = menu_contextual.agrupar_invocaciones(_argv)
-    elif _argv[:1] == ["--autodiagnostico"]:
+        sys.argv[1:] = _argv = menu_contextual.agrupar_invocaciones(_argv)
+    if _argv[:1] == ["--autodiagnostico"]:
         pass                 # invocación especial (construir.ps1): nunca se cede
     elif menu_contextual.es_instancia_secundaria(_argv):
-        sys.exit(0)          # otra instancia ya recogerá esto (archivos, o solo activarse)
+        sys.exit(0)          # otra instancia ya recogerá esto (archivos, acción, o solo activarse)
 
 # Todos los complementos son obligatorios: antes de importar nada de fuera se
 # instala a la fuerza lo que falte de requirements.txt (dependencias.py).

@@ -2730,6 +2730,15 @@ class TestMenuContextual(_ConCarpeta):
                                        cwd=raiz, env=env, stdout=subprocess.PIPE, text=True,
                                        timeout=30)
             self.assertEqual(p_archivo.stdout.strip(), "True")
+            # (r122, «siempre debe funcionar todo en una sola ventana») Una
+            # acción del menú contextual lanzada como programa (main.py) se
+            # cede también a la ventana abierta, en vez de abrir otra.
+            pdf = os.path.join(self.tmp, "firmar.pdf")
+            with open(pdf, "wb") as f:
+                f.write(b"%PDF-1.4\n")
+            p_accion = subprocess.run([sys.executable, "main.py", "--firmar", pdf], cwd=raiz,
+                                      env=env, stdout=subprocess.PIPE, text=True, timeout=60)
+            self.assertEqual(p_accion.returncode, 0)
         finally:
             primaria.kill()
             primaria.wait(timeout=10)
@@ -2737,7 +2746,7 @@ class TestMenuContextual(_ConCarpeta):
         import menu_contextual as mc
         mc._CARPETA_ENTRANTES = os.path.join(self.tmp, "aventyapdf", "menu-contextual",
                                              "entrantes")
-        self.assertEqual(mc.recoger_entrantes(), [[], ["doc.pdf"]])
+        self.assertEqual(mc.recoger_entrantes(), [[], ["doc.pdf"], ["--firmar", pdf]])
         self.assertEqual(mc.recoger_entrantes(), [])   # ya recogidos: no se repiten
 
 

@@ -938,7 +938,9 @@ class SidePanel(QWidget):
             self._doc_lay.removeWidget(b)
             b.deleteLater()
         self._doc_btns = []
-        show = len(items) > 1
+        # (r122, petición de Ricardo) La pestaña se ve desde el primer
+        # documento abierto, no solo a partir del segundo.
+        show = len(items) >= 1
         self._doc_sep.setVisible(show)
         self._doc_area.setVisible(show)
         if not show:
