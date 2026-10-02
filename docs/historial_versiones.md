@@ -4,6 +4,22 @@
 
 Las publicadas como 1.0.0-1.3.0 se renumeraron 0.9.6-0.9.6.7 al publicarse la 0.9.7, y las 2.0.3-2.0.5 como 0.9.3-0.9.5 al publicarse la que fue 1.0.0: la **1.0.0** queda reservada para la primera versión con el instalador firmado.
 
+## 0.9.10 — 2026-10-02
+
+Commit `a28868e`.
+
+Todo en una sola ventana, actualizaciones sin pasar por el navegador y menú del botón derecho de Windows 11 siempre en su sitio.
+
+#### Novedades respecto a la 0.9.9
+- **Una sola ventana**: las acciones del menú del botón derecho del Explorador (Firmar, Combinar, Convertir a PDF, Imágenes a PDF…) se abren en la ventana de AventyaPDF que ya esté abierta, cada documento en su pestaña.
+- **La pestaña del documento se ve desde el primer PDF abierto**, no solo a partir del segundo.
+- **Actualizar sin navegador**: «Descargar e instalar» descarga el instalador en segundo plano, comprueba su huella SHA-256, cierra AventyaPDF (preguntando si hay cambios sin guardar), lo instala y vuelve a abrirlo.
+- **Menú del botón derecho de Windows 11**: el instalador pide el permiso de administrador necesario para que el submenú «AventyaPDF» aparezca en el menú principal; **Ayuda › Reparar el menú contextual del Explorador…** lo recupera si falta.
+- **Texto siempre horizontal** al terminar de editarlo, y **tirador superior para girar** el cuadro de texto (con Ctrl, en saltos de 15°).
+- **Tamaño de las miniaturas con Ctrl + rueda del ratón**.
+
+210 pruebas automáticas OK. Autodiagnóstico 9/9, también en una instalación real de prueba descargándolo todo de Internet.
+
 ## 0.9.9 — 2026-10-01
 
 Commit `9ad46de`.
