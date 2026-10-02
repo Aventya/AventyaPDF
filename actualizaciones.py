@@ -131,5 +131,7 @@ def launch_installer_after_exit(installer: str, pid: int) -> None:
     ps = (f"Wait-Process -Id {int(pid)} -Timeout 120 -ErrorAction SilentlyContinue; "
           f"Start-Process -FilePath '{installer.replace(chr(39), chr(39) * 2)}' "
           "-ArgumentList '/SILENT','/NOCANCEL','/NORESTART','/REINICIAR'")
+    # Solo CREATE_NO_WINDOW: con DETACHED_PROCESS powershell.exe se queda sin
+    # consola y se cierra sin ejecutar nada. Así sigue vivo al cerrarse la app.
     subprocess.Popen(["powershell", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden",
-                      "-Command", ps], creationflags=0x08000000 | 0x00000008)   # sin ventana, aparte
+                      "-Command", ps], creationflags=0x08000000)   # CREATE_NO_WINDOW
