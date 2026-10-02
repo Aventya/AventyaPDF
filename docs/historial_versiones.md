@@ -4,6 +4,18 @@
 
 Las publicadas como 1.0.0-1.3.0 se renumeraron 0.9.6-0.9.6.7 al publicarse la 0.9.7, y las 2.0.3-2.0.5 como 0.9.3-0.9.5 al publicarse la que fue 1.0.0: la **1.0.0** queda reservada para la primera versión con el instalador firmado.
 
+## 0.9.9 — 2026-10-01
+
+Commit `9ad46de`.
+
+Un PDF que cambia en otra aplicación se actualiza solo, y el instalador va firmado con Sigstore.
+
+#### Novedades respecto a la 0.9.8
+- **PDF cambiado desde otra aplicación**: si otro programa modifica el PDF que tienes abierto, AventyaPDF lo vuelve a leer solo, en la misma pestaña y página: al volver a su ventana, mientras está a la vista sin foco, al cambiar de pestaña o al abrir otra vez el mismo archivo. Si tienes cambios sin guardar, pregunta antes. Volver a guardar el mismo contenido no recarga nada.
+- **Instalador firmado con Sigstore**: cualquiera puede comprobar que es exactamente el publicado, sin modificaciones.
+
+203 pruebas automáticas OK. Autodiagnóstico 9/9, también en una instalación real de prueba descargándolo todo de Internet.
+
 ## 0.9.8 — 2026-09-30
 
 Commit `9024536`.
