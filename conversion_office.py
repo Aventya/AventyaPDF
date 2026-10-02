@@ -27,6 +27,14 @@ WORD_EXTS = {".doc", ".docx"}
 # Explorador, shell/AventyaPDFShell.cpp): si se amplía, en los tres sitios.
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tif", ".tiff", ".webp"}
 
+# (r123) Diálogos de abrir varios archivos: todo lo que la aplicación sabe
+# mostrar (PDF, y también imágenes y Word, que se convierten a PDF).
+_PATRON = " ".join("*" + e for e in sorted(IMAGE_EXTS))
+FILTRO_ABRIR = (f"Todos los admitidos (*.pdf {_PATRON} *.doc *.docx);;"
+                "Archivos PDF (*.pdf);;"
+                f"Imágenes ({_PATRON});;"
+                "Documentos de Word (*.doc *.docx)")
+
 _SIN_VENTANA = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 _TIEMPO_MAX = 300          # segundos para toda una tanda de documentos
 
@@ -171,4 +179,40 @@ def combinar(docs: list[fitz.Document]) -> fitz.Document:
     out = fitz.open()
     for d in docs:
         out.insert_pdf(d)
+    return out
+
+
+def combinar_archivos(paths: list[str]) -> fitz.Document:
+    """(r123) PDF, imágenes y Word mezclados → un único documento nuevo, en el
+    orden dado. A diferencia de `archivos_a_pdfs` + `combinar`, cada archivo
+    se lee, se copia al resultado y se suelta antes de pasar al siguiente, y
+    los PDF se leen a memoria (no quedan abiertos en disco): en Windows no se
+    pueden tener más de unos 500 archivos abiertos a la vez, y combinar más
+    PDF que eso fallaba entero. Ahora el único límite es la memoria."""
+    paths = [p for p in paths if tipo_de(p)]
+    word = [p for p in paths if tipo_de(p) == "word"]
+    convertidos = dict(zip(word, word_a_pdfs(word)))
+    out = fitz.open()
+    try:
+        for p in paths:
+            t = tipo_de(p)
+            if t == "pdf":
+                with open(p, "rb") as f:
+                    src = fitz.open("pdf", f.read())
+                if src.needs_pass:
+                    src.close()
+                    raise ValueError(f"«{os.path.basename(p)}» está protegido con contraseña.")
+            elif t == "img":
+                src = doc_tools.images_to_pdf([p])
+            else:
+                src = convertidos.pop(p)
+            try:
+                out.insert_pdf(src)
+            finally:
+                src.close()
+    except Exception:
+        out.close()
+        for d in convertidos.values():
+            d.close()
+        raise
     return out

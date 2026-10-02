@@ -17,12 +17,14 @@ _G = {k: icons.glyph(k) for k in icons.ICONS}
 
 from utils import PDFUtils, TOOLTIP_QSS
 from cert_manager import load_saved_cert, CertPickerDialog
+import conversion_office
 import doc_tools
 import emoji_font
 import pdf_edit
 import pdf_compression
 import color_picker
 import firma_manuscrita
+import menu_contextual
 from emoji_picker import EmojiPicker
 from sidebar import SidePanel
 from viewer import FREEHAND_WIDTHS, AnnotSelection, PDFViewerWidget
@@ -1762,25 +1764,28 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._finish_action()
 
     def merge_pdf(self):
+        """Organizar › Añadir PDF al final…: (r123) se pueden elegir varios
+        archivos de una vez (PDF, imágenes o Word), que se añaden en el orden
+        natural de sus nombres."""
         if not self._require_open():
             return
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Seleccionar PDF para unir", "", "Archivos PDF (*.pdf)")
-        if path:
-            try:
-                src = fitz.open(path)
-            except Exception as e:
-                QMessageBox.warning(self, "Error al unir", str(e))
-                return
-            if src.needs_pass:
-                src.close()
-                QMessageBox.warning(self, "Error al unir", "El PDF está protegido con contraseña.")
-                return
-            n, ok = self._run_doc_change("Unir PDF", lambda: self.doc.insert_pdf(src))
-            src.close()
-            if ok:
-                self.statusBar().showMessage(f"«{os.path.basename(path)}» añadido al final")
-                self._finish_action()
+        paths, _ = QFileDialog.getOpenFileNames(
+            self, "Seleccionar archivos para añadir al final", self._start_dir(),
+            conversion_office.FILTRO_ABRIR)
+        if not paths:
+            return
+        paths = sorted(paths, key=menu_contextual._orden_natural)
+        src = self._convert_paths(paths, "Error al unir", conversion_office.combinar_archivos)
+        if src is None:
+            return
+        _n, ok = self._run_doc_change("Unir PDF", lambda: self.doc.insert_pdf(src))
+        src.close()
+        if ok:
+            if len(paths) == 1:
+                self.statusBar().showMessage(f"«{os.path.basename(paths[0])}» añadido al final")
+            else:
+                self.statusBar().showMessage(f"{len(paths)} archivos añadidos al final")
+            self._finish_action()
 
     def compress_pdf(self):
         """Guarda una copia comprimida (Acrobat/iLovePDF, ver pdf_compression).

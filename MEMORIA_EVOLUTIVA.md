@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 | :-- | :-- |
-| Revisión de la memoria | **r122** |
+| Revisión de la memoria | **r123** |
 | Fecha de la revisión | 2026-10-02 |
 | Versión de la app | **0.9.10**, publicada (r118-r122). La 1.0.0 queda para el lanzamiento en la Microsoft Store (decisión de Ricardo, 2026-10-02: «cuando tenga todo el acceso a la Microsoft Store listo será cuando preparemos el lanzamiento de la versión 1.0.0»); las publicadas como 1.0.0-1.3.0 son ahora 0.9.6-0.9.6.7 (tabla en §8). En GitHub solo existe la última publicación; las anteriores, en `docs/historial_versiones.md`. `window_menus.APP_VERSION`, `APP_OWNER`, `APP_REPO` |
 | Raíz del proyecto | (r94) Ricardo trabaja desde **dos equipos**: `C:\Users\ricardo\Proyectos\AventyaPDF` (tiene Inno Setup, Visual Studio con C++ y el certificado del paquete del menú contextual: aquí se puede empaquetar) y `C:\Users\Aventya\Proyectos\AVENTYAPDF` (✅ ya renombrada, comprobado en r71; antes `ANTIGRAVITY-PDF`, ver r56) (hasta r5: `A:\CARPETA IA\RICARDO\ANTIGRAVITY-PDF`, carpeta compartida por varios equipos) |
@@ -166,6 +166,21 @@ ventana; ambos llaman a su API pública (`checkpoint`, `mark_modified`,
   Sale con el botón, Esc, otra herramienta, zoom 100 %, compresión, seleccionar
   una anotación o cambiar/cerrar el panel; si abrió el panel, lo vuelve a
   cerrar. Menú Organizar › «Organizar páginas en el panel lateral».
+- **Combinar y abrir varios** (r123): Organizar › «Combinar PDF…» con dos
+  opciones. «Combinar abiertos» junta todas las pestañas, en su orden y con sus
+  cambios sin guardar, en un PDF nuevo sin guardar; cierra todas y deja solo
+  la del resultado (pregunta antes; avisa si alguna tenía cambios). «Combinar
+  ficheros…» abre un diálogo de selección múltiple (PDF, imágenes, Word) y
+  combina en orden natural de nombre. «Añadir PDF al final…» y Archivo ›
+  «Abrir…» también admiten varios archivos y todos los tipos que la app sabe
+  mostrar (`conversion_office.FILTRO_ABRIR`): cada PDF en su pestaña, cada
+  imagen o Word convertido en la suya. Soltar varios PDF en la ventana los
+  abre todos (antes, solo el primero).
+- **Pestañas reordenables** (r123): las pestañas de documentos del rail se
+  arrastran con el ratón (`sidebar._DocTab`): mientras se arrastra se mueve el
+  propio botón entre los demás; al soltar, `move_document(src, dst)` reordena
+  `_sessions` sin cambiar el documento activo. Un clic sin arrastrar es un
+  clic normal.
 - **Opciones de herramienta** (r26, petición de Ricardo): `_zoom`, `_txt`,
   `_note`, `_markup`, `_mrk`, `_rect`, `_emoji` y `_edit` van **arriba del panel
   lateral** (`SidePanel.tools`, dentro de `SidePanel.column`, mismo `QVBoxLayout`
@@ -818,6 +833,15 @@ ventana; ambos llaman a su API pública (`checkpoint`, `mark_modified`,
     (`_size`) y `render` lo gira con un `cm` (`_rotation_cm`) dentro del
     recuadro; el giro lo lee `_page_rotation` y va en `_SpanishCertStampStyle.rotation`.
 
+58. **(r123) Combinar = abrir, copiar y soltar cada archivo.** En Windows un
+    proceso no puede tener más de unos 512 archivos abiertos con la biblioteca
+    C que usa MuPDF; `fitz.open(ruta)` deja el archivo abierto mientras viva
+    el documento. Por eso `conversion_office.combinar_archivos` lee cada PDF a
+    memoria (`fitz.open("pdf", bytes)`), lo inserta y lo cierra antes del
+    siguiente. No volver a abrir todos a la vez (`archivos_a_pdfs` + `combinar`)
+    para combinar: con más de ~500 PDF fallaba entero. `archivos_a_pdfs` queda
+    para «Convertir a PDF» (imágenes y Word, que no dejan archivos abiertos).
+
 ## 5. Operaciones que escriben en disco
 
 **Ningún flujo sobrescribe el original sin que el usuario guarde**:
@@ -1204,6 +1228,7 @@ motivos, invariantes, trampas y estado.
 
 | Rev | Fecha | Cambio |
 | :-- | :-- | :-- |
+| r123 | 2026-10-02 | **Combinar sin límite práctico, «Combinar PDF…» en Organizar, abrir varios y pestañas reordenables** (petición de Ricardo, tras preguntar cuántos PDF se pueden combinar como máximo: «quiero que combines las opciones 1 y 2, además de tener… una opción «Combinar PDF...» y que tenga dos sub menús «Combinar abiertos» y «Combinar ficheros»… desde la opción de abrir, siempre se deben poder abrir múltiples ficheros, de todos los tipos que nuestra aplicación sea capaz de visualizar. Además las pestañas… se deben poder reordenar usando el ratón»). **Investigación**: el código no ponía tope (solo mínimo 2), pero `archivos_a_pdfs` abría todos los PDF a la vez y los mantenía abiertos; en Windows el límite de archivos abiertos de la biblioteca C (~512) hacía fallar combinaciones de más de ~500 PDF (deducido, no medido en Windows). Medido en Linux con el código de la app: 3.000 PDF en 2,6 s y 293 MB. **Hecho**: `conversion_office.combinar_archivos` (invariante 58) para «Combinar en un PDF» del Explorador, «Combinar ficheros…» y «Añadir PDF al final…»; `window_menus.combine_open_documents` / `combine_files_dialog`; `main_window.merge_pdf` con selección múltiple; `window_document.open_pdf` → `open_paths` (selección múltiple, PDF + imágenes + Word) y `move_document`; `sidebar._DocTab` (arrastre de pestañas); soltar varios PDF abre todos. Queda igual la espera de 20 s del menú clásico del Explorador (`menu_contextual.ESPERA_MAX`). **Pruebas**: 7 nuevas (6 de interfaz, incluida una que arrastra una pestaña con el ratón simulado, y una de núcleo que combina 600 PDF); en la nube (Linux) 217 ejecutadas, los 36 fallos son los mismos de antes de los cambios (fuentes de Windows, Word, Tesseract y certificados: no existen en Linux). Falta pasar `.\run.ps1 -Pruebas` en Windows. |
 | r121 | 2026-10-02 | **Permiso de administrador del menú contextual siempre, y actualizar sin navegador** (peticiones de Ricardo: «quiero que se instale con permisos de administrador para que el menú del ratón en el explorador de Windows se ejecute correctamente en lugar de tener que entrar en "mostrar más opciones"… Siempre se debe forzar la instalación como administrador, o dar la opción a ello para que el menú del ratón se pueda recuperar bien»; «el descargar de la actualización sí que quiero que se haga por detrás, sin acceso al navegador»). **Diseño**: no se eleva todo el instalador: `Add-AppxPackage` registra el paquete disperso **por usuario**, y si lo hiciera un administrador distinto (un técnico en el equipo de un empleado) quedaría para él. Solo se eleva confiar en el certificado (`Import-Certificate` a `LocalMachine\TrustedPeople`). **Instalador** (`InstalarMenuModerno`): ese permiso se pide siempre que falte, también con `/SILENT` (la actualización desde la app; solo `/VERYSILENT` calla, `Silencioso`); si se cancela, bucle «¿Volver a pedirlo?» antes de quedarse en «Mostrar más opciones». **App**: «Ayuda › Reparar el menú contextual del Explorador…» (`menu_contextual.puede_reparar/reparar`: Windows 11, instalación de GitHub, no Store): comprueba la confianza, la pide con `Start-Process -Verb RunAs` (orden en `-EncodedCommand`) solo si falta, y registra el paquete sin elevar. **Actualizar**: `actualizaciones.download_installer` (urllib, sin la marca de «descargado de Internet» que ponen los navegadores → SmartScreen no avisa) comprueba el SHA-256 con el `digest` que GitHub publica de cada archivo (`release_info` → `installer_sha256`); el botón pasa a «Descargar e instalar» (`_download_and_install`: hilo `_InstallerDownload` + barra de progreso, pregunta, `self.close()` respeta los cambios sin guardar), y `launch_installer_after_exit` espera con PowerShell a que termine el proceso y lanza el instalador `/SILENT /NOCANCEL /NORESTART /REINICIAR`; `[Run]` con `Check: Reiniciar` vuelve a abrir AventyaPDF. Desde el código fuente sigue abriendo el navegador. Comprobado: descarga real de la 0.9.9 con su huella; el instalador compila. Pruebas nuevas `TestActualizarSinNavegador` (huella correcta, instalador alterado rechazado, reparar eleva solo el certificado y registra sin elevar); las de la ventana de actualizaciones, al botón nuevo. 210 pruebas OK (6 omitidas). |
 | r122 | 2026-10-02 | **Una sola ventana, y pestaña desde el primer documento** (petición de Ricardo: «cuando se abre un PDF, no aparece la pestaña del PDF abierto, sólo ocurre cuando hay más de 1 abierto… siempre que se utilice el menú contextual del ratón también abra cualquier acción dentro de esa misma ventana… no quiero varias ventanas de la aplicación abiertas»). `sidebar.set_documents`: la columna de pestañas se ve con 1 documento o más (antes, desde 2). `main.py`: las acciones del menú contextual (`--firmar`, `--combinar`, `--convertir`…), una vez reunidas por `agrupar_invocaciones`, pasan también por `es_instancia_secundaria`: si ya hay una ventana abierta se le ceden (`entrantes\`, que `procesar_argumentos` ya sabía interpretar) y el proceso termina; antes cada acción abría siempre una ventana nueva. Pruebas: `test_instancia_secundaria_cede_sus_archivos` lanza `main.py --firmar` con una instancia «abierta» y comprueba que se cede; la de varios documentos espera la pestaña con uno solo. 210 pruebas OK (6 omitidas). |
 | r120 | 2026-10-02 | **`construir.ps1` genera las dos versiones de una vez** (peticiones de Ricardo: «no quiero perder los empaquetados .exe… quiero hacer las dos versiones, una para github y otra para microsoftstore» y «prepara bien el construir.ps1 para generar ambos empaquetados de una sola vez»). Nuevo paso 6 (`PaqueteStore`): tras el `.exe` (y su instalación de prueba con `-ProbarInstalacion`), llama a `construir_store.ps1` con la misma copia completa. La identidad de Partner Center se guardará **una vez** en `empaquetado/store/identidad.json` (`Name`, `Publisher`, `PublisherDisplayName`): con ella sale `AventyaPDF-<versión>-store.msix` sin firmar para subir; sin ella, el `.msix` firmado con el certificado propio para probar. Con `-ProbarInstalacion` el paquete también se instala, se autodiagnostica desde dentro y se desinstala; `-SinStore`: solo el `.exe`. Probado de una vez: `.exe` 4,4 MB (instalación real 88 s, archivos idénticos, 335 MB = registrado, 9/9, desinstalación limpia) y `.msix` 192 MB (instalado, 9/9 con `paquete_store: True` y el Tesseract incluido, desinstalado). |

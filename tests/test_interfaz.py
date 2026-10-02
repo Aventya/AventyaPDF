@@ -765,6 +765,107 @@ class TestVentanaPrincipal(unittest.TestCase):
         self.assertEqual(len(w._sessions), antes + 3)
         self.assertEqual(w.pdf_path, a)
 
+    def test_combinar_abiertos_deja_solo_el_resultado(self):
+        """(r123, petición de Ricardo) Organizar › Combinar PDF › Combinar
+        abiertos: todas las pestañas, en su orden y con sus cambios sin
+        guardar, en un PDF nuevo; se cierran todas y queda solo la del
+        resultado. Los archivos del disco no cambian."""
+        w = self.w
+        a = self._crear_pdf_con_nombre("a.pdf", 2)
+        b = self._crear_pdf_con_nombre("b.pdf", 3)
+        w.open_path(a)
+        w.open_path(b)
+        w.insert_blank_after(0)                   # cambio sin guardar en «b»
+        w.switch_document(0)
+        w.combine_open_documents()
+        self.assertEqual((len(w._sessions), w._active), (1, 0))
+        self.assertEqual(len(w.doc), 6)           # 2 de «a» + 3 de «b» + la página en blanco
+        self.assertIn("pagina 1", w.doc[0].get_text())
+        self.assertEqual(w.pdf_path, "")
+        self.assertTrue(w._modified)
+        self.assertEqual(len(w.sidebar._doc_btns), 1)
+        with fitz.open(b) as d:
+            self.assertEqual(len(d), 3)          # el original no se toca
+
+    def test_combinar_abiertos_con_un_solo_documento_no_hace_nada(self):
+        w = self.w
+        a = self._crear_pdf_con_nombre("a.pdf", 2)
+        w.open_path(a)
+        w.combine_open_documents()
+        self.assertEqual((len(w._sessions), w.pdf_path), (1, a))
+
+    def test_combinar_ficheros_con_seleccion_multiple(self):
+        """(r123) Organizar › Combinar PDF › Combinar ficheros…: diálogo de
+        selección múltiple; se combinan en orden natural de nombre."""
+        from PyQt6.QtWidgets import QFileDialog
+        w = self.w
+        a10 = self._crear_pdf_con_nombre("doc10.pdf", 1)
+        a2 = self._crear_pdf_con_nombre("doc2.pdf", 2)
+        img = self._crear_imagen("doc3.png")
+        with mock.patch.object(QFileDialog, "getOpenFileNames",
+                               return_value=([a10, img, a2], "")):
+            w.combine_files_dialog()
+        self.assertEqual(len(w._sessions), 1)
+        self.assertEqual(len(w.doc), 4)
+        self.assertIn("pagina 1", w.doc[0].get_text())   # doc2 primero
+        self.assertEqual(w.doc[2].get_text().strip(), "")  # luego la imagen (doc3)
+
+    def test_anadir_al_final_varios_archivos(self):
+        """(r123) «Añadir PDF al final…» admite varios archivos de una vez."""
+        from PyQt6.QtWidgets import QFileDialog
+        w = self.w
+        w.open_path(self._crear_pdf_con_nombre("base.pdf", 1))
+        b = self._crear_pdf_con_nombre("b.pdf", 2)
+        c = self._crear_pdf_con_nombre("c.pdf", 3)
+        with mock.patch.object(QFileDialog, "getOpenFileNames", return_value=([c, b], "")):
+            w.merge_pdf()
+        self.assertEqual(len(w.doc), 6)
+        w.undo()
+        self.assertEqual(len(w.doc), 1)
+
+    def test_abrir_varios_archivos_de_todos_los_tipos(self):
+        """(r123, petición de Ricardo) Archivo › Abrir… siempre admite varios
+        archivos: cada PDF en su pestaña y cada imagen convertida en la suya."""
+        from PyQt6.QtWidgets import QFileDialog
+        w = self.w
+        a = self._crear_pdf_con_nombre("a.pdf", 1)
+        b = self._crear_pdf_con_nombre("b.pdf", 2)
+        img = self._crear_imagen("c.png")
+        with mock.patch.object(QFileDialog, "getOpenFileNames",
+                               return_value=([a, b, img], "")) as dlg:
+            w.open_pdf()
+        self.assertIn("*.png", dlg.call_args.args[3])
+        self.assertEqual(len(w._sessions), 3)
+        self.assertEqual([w._session(i)["pdf_path"] for i in range(3)], [a, b, ""])
+
+    def test_reordenar_pestanas_arrastrando_con_el_raton(self):
+        """(r123, petición de Ricardo) Las pestañas de los documentos se
+        cambian de sitio arrastrándolas; el documento activo no cambia."""
+        from PyQt6.QtCore import QPoint
+        from PyQt6.QtTest import QTest
+        w = self.w
+        rutas = [self._crear_pdf_con_nombre(f"{n}.pdf", 1) for n in "abc"]
+        for r in rutas:
+            w.open_path(r)
+        self.app.processEvents()
+        btns = w.sidebar._doc_btns
+        origen, destino = btns[0], btns[2]
+        QTest.mousePress(origen, Qt.MouseButton.LeftButton, pos=QPoint(5, 5))
+        abajo = origen.mapFromGlobal(destino.mapToGlobal(QPoint(5, destino.height() - 2)))
+        for y in range(5, abajo.y() + 1, 4):
+            QTest.mouseMove(origen, QPoint(5, y))
+        QTest.mouseMove(origen, abajo)
+        QTest.mouseRelease(origen, Qt.MouseButton.LeftButton, pos=abajo)
+        self.app.processEvents()
+        orden = [os.path.basename(w._session(i)["pdf_path"]) for i in range(3)]
+        self.assertEqual(orden, ["b.pdf", "c.pdf", "a.pdf"])
+        self.assertEqual(w.pdf_path, rutas[2])         # sigue activo «c»
+        self.assertTrue(w.sidebar._doc_btns[1].isChecked())
+        w.move_document(2, 0)                          # y al revés, directamente
+        orden = [os.path.basename(w._session(i)["pdf_path"]) for i in range(3)]
+        self.assertEqual(orden, ["a.pdf", "b.pdf", "c.pdf"])
+        self.assertEqual(w._active, 2)
+
     def test_icono_de_la_aplicacion_con_todos_los_tamanos(self):
         """(r57) vendor/icono/aventyapdf.ico existe, Qt lo lee y trae los
         tamaños oficiales de Windows (create_app_icon.TAMANOS)."""

@@ -91,6 +91,52 @@ def _small_btn(glyph: str, tip: str, fn) -> QPushButton:
     return b
 
 
+class _DocTab(QPushButton):
+    """(r123, petición de Ricardo) Pestaña de documento del rail que se puede
+    arrastrar con el ratón para cambiarla de sitio. Mientras se arrastra, el
+    propio botón se mueve entre los demás (sin imagen flotante); al soltar,
+    `SidePanel` aplica el orden nuevo a los documentos. Un clic sin arrastrar
+    sigue siendo un clic normal."""
+
+    def __init__(self, glyph: str, panel: "SidePanel"):
+        super().__init__(glyph)
+        self._panel = panel
+        self._press = None
+        self._dragging = False
+        self.drag_from = -1
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.MouseButton.LeftButton:
+            self._press = e.position().toPoint()
+            self._dragging = False
+        super().mousePressEvent(e)
+
+    def mouseMoveEvent(self, e):
+        if (not self._dragging and self._press is not None
+                and e.buttons() & Qt.MouseButton.LeftButton
+                and (e.position().toPoint() - self._press).manhattanLength()
+                >= QApplication.startDragDistance()):
+            self._dragging = True
+            self.setDown(False)
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+            self._panel._tab_drag_start(self)
+        if self._dragging:
+            self._panel._tab_drag_move(self, self.mapToGlobal(e.position().toPoint()))
+            return
+        super().mouseMoveEvent(e)
+
+    def mouseReleaseEvent(self, e):
+        if self._dragging and e.button() == Qt.MouseButton.LeftButton:
+            self._dragging = False
+            self._press = None
+            self.setDown(False)
+            self.unsetCursor()
+            self._panel._tab_drag_end(self)
+            return                              # soltar tras arrastrar no es un clic
+        self._press = None
+        super().mouseReleaseEvent(e)
+
+
 # ── Miniaturas ────────────────────────────────────────────────────────────── #
 
 class _ThumbList(QListWidget):
@@ -946,17 +992,43 @@ class SidePanel(QWidget):
         if not show:
             return
         for i, (name, path, modified) in enumerate(items):
-            b = QPushButton(self.DOC_GLYPH if path else self.NEW_DOC_GLYPH)
+            b = _DocTab(self.DOC_GLYPH if path else self.NEW_DOC_GLYPH, self)
             b.setObjectName("rail_doc")
             b.setCheckable(True)
             b.setChecked(i == active)
-            b.setToolTip(("● " if modified else "") + name + (f"\n{path}" if path else ""))
+            b.setToolTip(("● " if modified else "") + name + (f"\n{path}" if path else "")
+                         + "\n(arrastra para cambiarla de sitio)")
             b.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
             b.clicked.connect(lambda _c=False, k=i: self._doc_clicked(k))
             b.customContextMenuRequested.connect(
                 lambda pos, k=i, btn=b: self._doc_menu(k, btn, pos))
             self._doc_lay.insertWidget(self._doc_lay.count() - 1, b, 0, Qt.AlignmentFlag.AlignHCenter)
             self._doc_btns.append(b)
+
+    def _tab_drag_start(self, btn: _DocTab):
+        btn.drag_from = self._doc_btns.index(btn)
+
+    def _tab_drag_move(self, btn: _DocTab, global_pos):
+        """Coloca el botón arrastrado delante del primero cuyo centro quede
+        por debajo del puntero."""
+        others = [b for b in self._doc_btns if b is not btn]
+        y = global_pos.y()
+        dst = sum(1 for b in others
+                  if b.mapToGlobal(b.rect().center()).y() < y)
+        if self._doc_btns.index(btn) == dst:
+            return
+        self._doc_btns = others[:dst] + [btn] + others[dst:]
+        self._doc_lay.removeWidget(btn)
+        self._doc_lay.insertWidget(dst, btn, 0, Qt.AlignmentFlag.AlignHCenter)
+        self._doc_lay.activate()
+        self._doc_area.ensureWidgetVisible(btn, 0, 0)
+
+    def _tab_drag_end(self, btn: _DocTab):
+        src, dst = btn.drag_from, self._doc_btns.index(btn)
+        btn.drag_from = -1
+        if src >= 0 and src != dst:
+            # Fuera del manejador del ratón: el orden nuevo rehace los botones.
+            QTimer.singleShot(0, lambda: self.mw.move_document(src, dst))
 
     def _doc_clicked(self, index: int):
         self.mw.switch_document(index)

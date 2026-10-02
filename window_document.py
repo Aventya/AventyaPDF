@@ -28,6 +28,7 @@ from PyQt6.QtWidgets import (
     QProgressDialog,
 )
 
+import conversion_office
 import dependencias
 import dialogs
 import doc_tools
@@ -263,6 +264,19 @@ class DocumentMixin:
         if index == self._active:
             self.close_document()
 
+    def move_document(self, src: int, dst: int):
+        """(r123) Pestaña `src` arrastrada con el ratón a la posición `dst`.
+        Solo cambia el orden: el documento activo sigue siendo el mismo."""
+        n = len(self._sessions)
+        if not (0 <= src < n and 0 <= dst < n) or src == dst:
+            return
+        order = list(range(n))
+        order.insert(dst, order.pop(src))
+        self._sessions = [self._sessions[i] for i in order]
+        if self._active >= 0:
+            self._active = order.index(self._active)
+        self._refresh_doc_tabs()
+
     def _refresh_doc_tabs(self):
         if not hasattr(self, "sidebar"):
             return
@@ -288,10 +302,24 @@ class DocumentMixin:
             manual = os.path.join(instalada, "MANUAL.pdf")
             if os.path.isfile(manual):
                 start = manual
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Abrir PDF", start, "Archivos PDF (*.pdf);;Todos los archivos (*)")
-        if path:
-            self.open_path(path, confirmed=True)
+        # (r123, petición de Ricardo) Siempre se pueden elegir varios archivos,
+        # de todo lo que la aplicación sabe mostrar: cada PDF en su pestaña, y
+        # cada imagen o documento de Word convertido a PDF en la suya (sin guardar).
+        paths, _ = QFileDialog.getOpenFileNames(
+            self, "Abrir", start, conversion_office.FILTRO_ABRIR)
+        self.open_paths(paths)
+
+    def open_paths(self, paths: list[str]):
+        """Abre cada PDF en su pestaña; las imágenes y los Word, convertidos."""
+        otros = []
+        for p in paths:
+            tipo = conversion_office.tipo_de(p)
+            if tipo == "pdf":
+                self.open_path(p, confirmed=True)
+            elif tipo:
+                otros.append(p)
+        if otros:
+            self.convert_files_to_pdfs(otros)
 
     def open_path(self, path: str, confirmed: bool = False) -> bool:
         # (r20) Cada PDF se abre en su propia pestaña; `confirmed` ya no se usa.
@@ -559,8 +587,8 @@ class DocumentMixin:
         pdfs = [p for p in paths if self._drop_kind(p) == "pdf"]
         imgs = [p for p in paths if self._drop_kind(p) == "img"]
         event.acceptProposedAction()
-        if pdfs:
-            QTimer.singleShot(0, lambda: self.open_path(pdfs[0]))
+        if pdfs:                                # (r123) todos, no solo el primero
+            QTimer.singleShot(0, lambda: [self.open_path(p) for p in pdfs])
         elif imgs:
             QTimer.singleShot(0, lambda: self.create_from_images(imgs))
 

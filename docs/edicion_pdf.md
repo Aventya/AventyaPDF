@@ -190,7 +190,8 @@ El botón **Operaciones de página** de la barra superior activa el modo de pág
 
 Los accesos rápidos sobre la página actual están en el menú **Organizar** de [window_menus.py](../window_menus.py):
 * **Duplicar página actual (`copy_page()`)**: Clona la página activa insertándola a continuación.
-* **Insertar página en blanco (`insert_blank_after()`)**, **Insertar PDF tras la página actual…** y **Añadir PDF al final… (`merge_pdf()`)**.
+* **Insertar página en blanco (`insert_blank_after()`)**, **Insertar PDF tras la página actual…** y **Añadir PDF al final… (`merge_pdf()`)**; este último admite (r123) varios archivos de una vez —PDF, imágenes o Word—, añadidos en orden natural de nombre.
+* **Combinar PDF…** (r123), con dos opciones: **Combinar abiertos (`combine_open_documents()`)** junta todas las pestañas, en su orden y con sus cambios sin guardar, en un PDF nuevo sin guardar, cierra las pestañas y deja solo la del resultado; **Combinar ficheros… (`combine_files_dialog()`)** pide varios archivos (PDF, imágenes o Word) y los combina en un PDF nuevo sin guardar, en orden natural de nombre. Cada archivo se lee, se copia y se suelta antes del siguiente (`conversion_office.combinar_archivos`): no hay límite de número más allá de la memoria del equipo.
 * **Eliminar / Extraer / Girar páginas…**: diálogos con rango de páginas.
 
 ---

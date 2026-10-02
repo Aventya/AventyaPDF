@@ -185,6 +185,12 @@ class MenusMixin:
         A(m, "Insertar página en blanco", lambda: self.insert_blank_after(self.current_page))
         A(m, "Insertar PDF tras la página actual…", self.insert_pdf_after_current)
         A(m, "Añadir PDF al final…", self.merge_pdf)
+        sub = m.addMenu("Combinar PDF…")
+        self._act_combine_open = A(sub, "Combinar abiertos", self.combine_open_documents,
+                                   needs_doc=False)
+        A(sub, "Combinar ficheros…", self.combine_files_dialog, needs_doc=False)
+        sub.aboutToShow.connect(
+            lambda: self._act_combine_open.setEnabled(len(self._sessions) >= 2))
         A(m, "Duplicar página actual", self.copy_page)
         A(m, "Eliminar páginas…", self.delete_pages_dialog)
         A(m, "Extraer páginas…", self.extract_pages_dialog)
@@ -454,10 +460,9 @@ class MenusMixin:
             QMessageBox.warning(self, "Combinar en un PDF",
                                 "Hacen falta al menos dos archivos (PDF, imágenes o Word) para combinarlos.")
             return
-        docs = self._convert_paths(paths, "Combinar en un PDF")
-        if docs is None:
+        doc = self._convert_paths(paths, "Combinar en un PDF", conversion_office.combinar_archivos)
+        if doc is None:
             return
-        doc = conversion_office.combinar(docs)
         self._begin_new_session()
         self._set_document(doc, "", None, modified=True)
         self.statusBar().showMessage(f"PDF combinado a partir de {len(paths)} archivos — sin guardar")
@@ -484,13 +489,78 @@ class MenusMixin:
         if abiertos:
             self._select_tool("SIGN")
 
-    def _convert_paths(self, paths, titulo):
+    def combine_files_dialog(self):
+        """(r123) Organizar › Combinar PDF › Combinar ficheros…: elige varios
+        archivos (PDF, imágenes o Word) y los combina en un PDF nuevo sin
+        guardar, en una pestaña nueva. Se combinan en el orden natural de sus
+        nombres (el diálogo de Windows no devuelve el orden en que se pulsaron);
+        después se pueden reordenar las páginas en el panel lateral."""
+        paths, _ = QFileDialog.getOpenFileNames(
+            self, "Combinar ficheros en un PDF", self._start_dir(),
+            conversion_office.FILTRO_ABRIR)
+        if not paths:
+            return
+        if len(paths) < 2:
+            QMessageBox.warning(self, "Combinar ficheros",
+                                "Selecciona al menos dos archivos para combinarlos "
+                                "(con Ctrl o Mayús pulsada).")
+            return
+        self.combine_files_to_pdf(sorted(paths, key=menu_contextual._orden_natural))
+
+    def combine_open_documents(self):
+        """(r123) Organizar › Combinar PDF › Combinar abiertos: todas las
+        pestañas, en su orden, en un único PDF nuevo sin guardar. Se cierran
+        todas y queda solo la del resultado. Entra el contenido tal como se ve
+        (también los cambios aún sin guardar); los archivos del disco no se tocan."""
+        n = len(self._sessions)
+        if n < 2:
+            QMessageBox.information(self, "Combinar abiertos",
+                                    "Hacen falta al menos dos documentos abiertos para combinarlos.")
+            return
+        if self._sign_worker is not None and self._sign_worker.isRunning():
+            self.statusBar().showMessage("Espera a que termine la firma en curso")
+            return
+        dirty = [i for i in range(n) if self._session_dirty(i)]
+        text = f"Se combinarán los {n} documentos abiertos, en el orden de sus pestañas, " \
+               "en un PDF nuevo sin guardar, y se cerrarán sus pestañas."
+        if dirty:
+            text += (f"\n\n{len(dirty)} de ellos tienen cambios sin guardar: los cambios "
+                     "entran en el PDF combinado, pero no se guardarán en sus archivos.")
+        r = QMessageBox.question(self, "Combinar abiertos", text + "\n\n¿Continuar?",
+                                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                 QMessageBox.StandardButton.Yes)
+        if r != QMessageBox.StandardButton.Yes:
+            return
+        self._stash_active()
+        docs = [s["doc"] for s in self._sessions]
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            out = conversion_office.combinar(docs)
+        except Exception as e:
+            QApplication.restoreOverrideCursor()
+            self._restore_session(self._active)
+            QMessageBox.critical(self, "Combinar abiertos", f"No se pudieron combinar:\n{e}")
+            return
+        QApplication.restoreOverrideCursor()
+        for d in docs:
+            try:
+                d.close()
+            except Exception:
+                pass
+        self._sessions = []
+        self._active = -1
+        self._reset_document_fields()
+        self._set_document(out, "", None, modified=True)
+        self.statusBar().showMessage(
+            f"PDF combinado a partir de {n} documentos abiertos — sin guardar")
+
+    def _convert_paths(self, paths, titulo, fn=conversion_office.archivos_a_pdfs):
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         if any(conversion_office.tipo_de(p) == "word" for p in paths):
             self.statusBar().showMessage("Convirtiendo documentos de Word…")
             QApplication.processEvents()
         try:
-            return conversion_office.archivos_a_pdfs(paths)
+            return fn(paths)
         except Exception as e:
             QApplication.restoreOverrideCursor()
             QMessageBox.critical(self, titulo, f"No se pudieron convertir los archivos:\n{e}")

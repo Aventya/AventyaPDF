@@ -2793,5 +2793,29 @@ class TestConversionOffice(_ConCarpeta):
         self.assertEqual(len(co.combinar(docs)), 3)
 
 
+    def test_combinar_muchos_pdf_sin_dejarlos_abiertos(self):
+        """(r123) Combinar más de 512 PDF: en Windows no caben tantos archivos
+        abiertos a la vez, así que cada uno se lee y se suelta antes del
+        siguiente. Orden respetado, imágenes mezcladas y PDF protegido avisado."""
+        import conversion_office as co
+        rutas = []
+        for i in range(600):
+            p = os.path.join(self.tmp, f"{i:03d}.pdf")
+            with fitz.open() as d:
+                d.new_page(width=200 + i, height=300)
+                d.save(p)
+            rutas.append(p)
+        img = os.path.join(self.tmp, "foto.png")
+        fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 20, 10), False).save(img)
+        out = co.combinar_archivos(rutas + [img])
+        self.assertEqual(len(out), 601)
+        self.assertEqual([round(out[i].rect.width) for i in (0, 599)], [200, 799])
+        protegido = os.path.join(self.tmp, "protegido.pdf")
+        with fitz.open() as d:
+            d.new_page()
+            d.save(protegido, encryption=fitz.PDF_ENCRYPT_AES_256, user_pw="x", owner_pw="y")
+        with self.assertRaisesRegex(ValueError, "protegido.pdf"):
+            co.combinar_archivos(rutas[:2] + [protegido])
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
