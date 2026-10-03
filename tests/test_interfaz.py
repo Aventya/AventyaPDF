@@ -2695,7 +2695,7 @@ class TestVentanaPrincipal(unittest.TestCase):
         texto, botones = vistos[-1]
         self.assertIn("Hay una versión nueva: AventyaPDF 9.0.0", texto)
         self.assertIn(f"href='{url}'", texto)
-        self.assertIn("Descargar e instalar", botones)
+        self.assertIn("Descargar", botones)
         # Al día: lo dice, y el enlace directo sigue ahí.
         al_dia = dict(info, version=window_menus.APP_VERSION)
         with mock.patch.object(actualizaciones, "fetch_latest", return_value=al_dia),                 mock.patch.object(QMessageBox, "exec", mostrar):
@@ -2703,12 +2703,54 @@ class TestVentanaPrincipal(unittest.TestCase):
         texto, botones = vistos[-1]
         self.assertIn("Tienes la última versión", texto)
         self.assertIn(f"href='{url}'", texto)
-        self.assertNotIn("Descargar e instalar", botones)
+        self.assertNotIn("Descargar", botones)
         # Sin conexión: se explica y se ofrece la página de versiones.
         with mock.patch.object(actualizaciones, "fetch_latest",
                                side_effect=actualizaciones.UpdateError("sin red")),                 mock.patch.object(QMessageBox, "exec", mostrar):
             w.check_updates()
         self.assertIn(actualizaciones.RELEASES_URL, vistos[-1][0])
+
+    def test_actualizacion_queda_en_descargas(self):
+        """(r127, petición de Ricardo) La actualización se descarga a la
+        carpeta Descargas y se avisa de que está allí esperando: la
+        aplicación no se cierra ni ejecuta el instalador."""
+        import actualizaciones
+        w = self.w
+        info = {"version": "9.0.0", "tag": "v9.0.0", "installer_name": "AventyaPDF-Setup-9.0.0.exe",
+                "installer_url": "https://x/AventyaPDF-Setup-9.0.0.exe", "page_url": "https://x/v9.0.0"}
+        ruta = os.path.join(tempfile.gettempdir(), "AventyaPDF-Setup-9.0.0.exe")
+        vistos = []
+
+        def mostrar_y_pulsar(caja):
+            vistos.append((caja.text(), [b.text() for b in caja.buttons()]))
+            boton = next(b for b in caja.buttons() if b.text() == "Mostrar en Descargas")
+            boton.click()
+            return 0
+
+        # Ya descargada: lo dice y ofrece abrir la carpeta con el archivo.
+        with mock.patch.object(actualizaciones, "instalador_descargado", return_value=ruta), \
+                mock.patch.object(actualizaciones, "mostrar_en_carpeta") as carpeta, \
+                mock.patch.object(QMessageBox, "exec", mostrar_y_pulsar):
+            w._show_update_dialog(info, automatic=True)
+        texto, botones = vistos[-1]
+        self.assertIn("ya está descargada", texto)
+        self.assertIn("AventyaPDF-Setup-9.0.0.exe", texto)
+        self.assertNotIn("Descargar", botones)
+        carpeta.assert_called_once_with(ruta)
+
+        # Al terminar una descarga: aviso con la ruta, sin cerrar la ventana.
+        tarea = mock.MagicMock()
+        with mock.patch("window_menus._InstallerDownload", return_value=tarea), \
+                mock.patch.object(actualizaciones, "mostrar_en_carpeta") as carpeta, \
+                mock.patch.object(QMessageBox, "exec", mostrar_y_pulsar), \
+                mock.patch.object(w, "close") as cerrar:
+            w._download_update(info)
+            listo = tarea.listo.connect.call_args[0][0]
+            listo(ruta)
+        self.assertIn("esperando a que la instales", vistos[-1][0])
+        carpeta.assert_called_once_with(ruta)
+        cerrar.assert_not_called()
+        tarea.start.assert_called_once()
 
     def test_aviso_automatico_de_actualizaciones(self):
         """(petición de Ricardo) Al iniciar se comprueba en segundo plano si
@@ -2749,7 +2791,7 @@ class TestVentanaPrincipal(unittest.TestCase):
             w._on_update_found(nueva)
         texto, botones, casilla = vistos[-1]
         self.assertIn("Hay una versión nueva: AventyaPDF 9.0.0", texto)
-        self.assertIn("Descargar e instalar", botones)
+        self.assertIn("Descargar", botones)
         self.assertIsNotNone(casilla)
 
         # Si hay otra ventana modal abierta (la presentación…), espera.

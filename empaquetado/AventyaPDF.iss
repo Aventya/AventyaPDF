@@ -26,7 +26,9 @@
 ;  * (r86) Menú contextual del Explorador, submenú «AventyaPDF» con Firmar
 ;    digitalmente / Combinar en un PDF / Convertir a PDF (ver [Code]):
 ;      - Menú PRINCIPAL de Windows 11: paquete MSIX disperso firmado con la
-;        DLL de shell\ (Add-AppxPackage -ExternalLocation {app}). Windows solo
+;        DLL de shell\, registrado con -ExternalLocation {app} por
+;        menu-contextual\AventyaPDF-MenuContextual.exe (r127: sin PowerShell,
+;        que hacía que los antivirus lo marcaran). Windows solo
 ;        lo acepta si el equipo confía en el certificado del paquete: la
 ;        primera vez se añade a «Personas de confianza» del equipo, lo único
 ;        que pide permiso de administrador (una sola vez por equipo y
@@ -125,6 +127,11 @@ Source: "{#DistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs cr
 ; _internal): así se ve nada más abrir el diálogo «Abrir PDF» la primera
 ; vez, antes de que haya una carpeta reciente — ver window_document.open_pdf.
 Source: "..\docs\MANUAL.pdf"; DestDir: "{app}"; Flags: ignoreversion
+#ifndef Prueba
+; (r127) Para quitar el menú de la versión anterior antes de copiar nada
+; (PrepareToInstall, con ExtractTemporaryFile): las anteriores no lo tenían.
+Source: "{#DistDir}\menu-contextual\AventyaPDF-MenuContextual.exe"; Flags: dontcopy
+#endif
 
 [InstallDelete]
 ; Al actualizar, fuera los restos de la versión anterior (bibliotecas que ya no se usan).
@@ -172,6 +179,8 @@ Root: HKA; Subkey: "Software\RegisteredApplications"; ValueType: string; ValueNa
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "Abrir {#AppName}"; Flags: nowait postinstall skipifsilent
 ; (r121) Actualización desde la propia aplicación (/SILENT /REINICIAR): al acabar, se vuelve a abrir.
+; (r127) Desde la 0.9.12 la aplicación ya no lanza el instalador (lo deja en Descargas y lo
+; instala el usuario), pero la 0.9.11 aún actualiza así: no quitar mientras pueda haberla instalada.
 Filename: "{app}\{#AppExe}"; Flags: nowait; Check: Reiniciar
 #endif
 
@@ -185,30 +194,21 @@ Type: filesandordirs; Name: "{app}\app"
 [Code]
 // ── (r86) Menú contextual del Explorador ─────────────────────────────────── //
 const
-  PaqueteMenu = 'Aventya.AventyaPDF.MenuContextual';
   ClaveClasica = 'Software\Classes\SystemFileAssociations\';
   // Mismas extensiones que shell\AventyaPDFShell.cpp y conversion_office.py.
   ExtImagenWord = '.png .jpg .jpeg .bmp .gif .tif .tiff .webp .doc .docx';
 
-// Texto como literal de PowerShell entre comillas simples.
-function Literal(const S: String): String;
+// (r127, petición de Ricardo: «la aplicación está usando PowerShell y
+// debería dejar de usarlo») Todo lo del menú de Windows 11 lo hace
+// AventyaPDF-MenuContextual.exe (shell\MenuContextual.cpp) con las API de
+// Windows; hasta r125 se lanzaba PowerShell oculto y elevado, que es lo que
+// hacía que Microsoft Defender marcara el instalador.
+// Devuelve su código de salida (-1 si no llegó a ejecutarse, p. ej. si se
+// rechaza el permiso de administrador).
+function Ayudante(const Exe, Params: String; Elevado: Boolean): Integer;
 var
-  T: String;
-begin
-  T := S;
-  StringChangeEx(T, '''', '''''', True);
-  Result := '''' + T + '''';
-end;
-
-// Ejecuta una orden de PowerShell sin ventana; devuelve su código de salida
-// (-1 si no llegó a ejecutarse, p. ej. si se rechaza el permiso).
-function PowerShell(const Orden: String; Elevado: Boolean): Integer;
-var
-  Exe, Params: String;
   Codigo: Integer;
 begin
-  Exe := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
-  Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "' + Orden + '"';
   if Elevado then begin
     if not ShellExec('runas', Exe, Params, '', SW_HIDE, ewWaitUntilTerminated, Codigo) then
       Codigo := -1;
@@ -217,8 +217,13 @@ begin
   Result := Codigo;
 end;
 
+function AyudanteInstalado: String;
+begin
+  Result := ExpandConstant('{app}\menu-contextual\AventyaPDF-MenuContextual.exe');
+end;
+
 // (r121) Sin mensajes en modo /VERYSILENT (pruebas, despliegues), pero sí
-// con /SILENT, que es como actualiza la propia aplicación.
+// con /SILENT, que es como actualizaba la propia aplicación hasta la 0.9.11.
 function Silencioso: Boolean;
 begin
   Result := WizardSilent and (Pos('/VERYSILENT', Uppercase(GetCmdTail)) > 0);
@@ -244,14 +249,15 @@ begin
     MsgBox(Texto, mbInformation, MB_OK);
 end;
 
-procedure QuitarMenuModerno;
+procedure QuitarMenuModerno(const Exe: String);
 begin
-  PowerShell('Get-AppxPackage -Name ' + PaqueteMenu + ' | Remove-AppxPackage', False);
+  if FileExists(Exe) then
+    Ayudante(Exe, 'quitar', False);
 end;
 
 procedure InstalarMenuModerno;
 var
-  Carpeta, Cer, Msix, Registro: String;
+  Carpeta, Cer, Msix, Registro, Exe: String;
 begin
   if not EsWindows11 then
     exit;
@@ -260,24 +266,22 @@ begin
   Msix := Carpeta + '\AventyaPDF-MenuContextual.msix';
   Registro := Carpeta + '\registro.txt';
   DeleteFile(Registro);
+  Exe := AyudanteInstalado;
   // ¿El equipo ya confía en el certificado del paquete?
-  if PowerShell('$c = New-Object Security.Cryptography.X509Certificates.X509Certificate2 ' + Literal(Cer) +
-                '; if (Test-Path (''Cert:\LocalMachine\TrustedPeople\'' + $c.Thumbprint)) { exit 0 } else { exit 1 }',
-                False) <> 0 then begin
+  if Ayudante(Exe, 'comprobar "' + Cer + '"', False) <> 0 then begin
     // (r121, petición de Ricardo: «siempre se debe forzar la instalación como
     // administrador, o dar la opción a ello para que el menú del ratón se pueda
     // recuperar bien») El permiso de administrador se pide aunque la
     // instalación sea silenciosa (actualización desde la app), y si se
     // cancela se ofrece reintentarlo antes de quedarse sin el menú principal.
     // Solo este paso se eleva: el resto, y el registro del paquete, son del
-    // usuario que instala (Add-AppxPackage es por usuario).
+    // usuario que instala (el registro del paquete es por usuario).
     if not Silencioso then
       MsgBox('Para que el submenú «AventyaPDF» aparezca en el menú del botón derecho de Windows 11, ' +
              'Windows tiene que confiar en el certificado de AventyaPDF.' + #13#10#13#10 +
              'A continuación Windows pedirá permiso de administrador (solo esta vez en este equipo).',
              mbInformation, MB_OK);
-    while PowerShell('Import-Certificate -FilePath ' + Literal(Cer) +
-                     ' -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null', True) <> 0 do begin
+    while Ayudante(Exe, 'confiar "' + Cer + '"', True) <> 0 do begin
       if Silencioso or (MsgBox('No se ha dado el permiso de administrador.' + #13#10#13#10 +
                 'Sin él, el submenú «AventyaPDF» del botón derecho quedará en «Mostrar más opciones». ' +
                 '¿Volver a pedirlo?' + #13#10#13#10 +
@@ -286,9 +290,8 @@ begin
         exit;
     end;
   end;
-  if PowerShell('try { Add-AppxPackage -Path ' + Literal(Msix) + ' -ExternalLocation ' +
-                Literal(ExpandConstant('{app}')) + ' -ForceUpdateFromAnyVersion -ErrorAction Stop } ' +
-                'catch { $_ | Out-File -Encoding utf8 ' + Literal(Registro) + '; exit 1 }', False) <> 0 then
+  if Ayudante(Exe, 'registrar "' + Msix + '" "' + ExpandConstant('{app}') + '" "' + Registro + '"',
+              False) <> 0 then
     Aviso('No se pudo añadir el submenú «AventyaPDF» al menú principal de Windows 11 ' +
           '(sigue en «Mostrar más opciones»). Detalle en:' + #13#10 + Registro);
 end;
@@ -356,7 +359,8 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   // Al actualizar: fuera el paquete anterior antes de sustituir su DLL.
-  QuitarMenuModerno;
+  ExtractTemporaryFile('AventyaPDF-MenuContextual.exe');
+  QuitarMenuModerno(ExpandConstant('{tmp}\AventyaPDF-MenuContextual.exe'));
   Result := '';
 end;
 
@@ -417,7 +421,7 @@ end;
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usUninstall then begin
-    QuitarMenuModerno;
+    QuitarMenuModerno(AyudanteInstalado);
     QuitarMenuClasico;
   end;
 end;

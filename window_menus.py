@@ -945,13 +945,28 @@ class MenusMixin:
         caja.setWindowTitle("Actualización disponible" if automatic else "Buscar actualizaciones")
         caja.setIconPixmap(QIcon(icons.APP_ICON).pixmap(64, 64))
         omitir = None
-        if nueva:
+        descargado = actualizaciones.instalador_descargado(info) if nueva else None
+        if descargado:
+            # (r127) Ya está en Descargas, esperando a que el usuario la instale.
             caja.setText(
                 f"<h3>Hay una versión nueva: AventyaPDF {info['version']}</h3>"
-                f"<p>Tienes la {APP_VERSION}. Se descarga e instala sola, encima de "
-                "la versión actual: AventyaPDF se cierra mientras tanto y se vuelve a "
-                "abrir al terminar.</p>" + enlace)
-            descargar = caja.addButton("Descargar e instalar", QMessageBox.ButtonRole.AcceptRole)
+                f"<p>Tienes la {APP_VERSION}. La nueva <b>ya está descargada</b> y comprobada "
+                f"en tu carpeta Descargas, esperando a que la instales:</p>"
+                f"<p><b>{os.path.basename(descargado)}</b></p>"
+                "<p>Para instalarla, cierra AventyaPDF y ejecuta ese archivo.</p>" + enlace)
+            descargar = caja.addButton("Mostrar en Descargas", QMessageBox.ButtonRole.AcceptRole)
+            caja.addButton("Ahora no" if automatic else "Cerrar", QMessageBox.ButtonRole.RejectRole)
+            caja.setDefaultButton(descargar)
+            if automatic:
+                omitir = QCheckBox("No volver a avisar de esta versión")
+                caja.setCheckBox(omitir)
+        elif nueva:
+            caja.setText(
+                f"<h3>Hay una versión nueva: AventyaPDF {info['version']}</h3>"
+                f"<p>Tienes la {APP_VERSION}. Se descarga en tu carpeta Descargas; "
+                "después cierras AventyaPDF y la instalas ejecutando el archivo "
+                "descargado.</p>" + enlace)
+            descargar = caja.addButton("Descargar", QMessageBox.ButtonRole.AcceptRole)
             caja.addButton("Ahora no" if automatic else "Cerrar", QMessageBox.ButtonRole.RejectRole)
             caja.setDefaultButton(descargar)
             if automatic:
@@ -970,18 +985,22 @@ class MenusMixin:
             s.setValue(_KEY_SKIP_VERSION, info["version"])
             s.sync()
         if descargar is not None and caja.clickedButton() is descargar:
-            if dependencias.carpeta_instalada() and info.get("installer_name"):
-                self._download_and_install(info)
-            else:       # desde el código fuente (o sin instalador): como antes
+            if descargado:
+                actualizaciones.mostrar_en_carpeta(descargado)
+            elif info.get("installer_name"):
+                self._download_update(info)
+            else:       # publicación sin instalador: su página
                 QDesktopServices.openUrl(QUrl(info["installer_url"]))
 
-    def _download_and_install(self, info: dict) -> None:
-        """(r121, petición de Ricardo: «el descargar de la actualización sí que
-        quiero que se haga por detrás, sin acceso al navegador») Descarga el
-        instalador en segundo plano (sin la marca de «descargado de Internet»:
-        SmartScreen no avisa), comprueba su huella SHA-256 con la que publica
-        GitHub, cierra AventyaPDF —preguntando antes por los cambios sin
-        guardar— y el instalador actualiza y la vuelve a abrir."""
+    def _download_update(self, info: dict) -> None:
+        """(r121, r127) Descarga el instalador en segundo plano, sin navegador,
+        a la carpeta Descargas, y comprueba su huella SHA-256 con la que
+        publica GitHub. No lo ejecuta: (r127, petición de Ricardo: «que se
+        quedase en la carpeta Descargas y se indique que la actualización
+        está allí esperando a que la instale el usuario, para que la
+        aplicación no utilice PowerShell») avisa de dónde está y lo instala
+        el usuario. Hasta r125 la aplicación se cerraba y lo lanzaba con
+        PowerShell, y eso hacía que Microsoft Defender la marcara."""
         progreso = QProgressDialog(f"Descargando AventyaPDF {info['version']}…", "", 0, 100, self)
         progreso.setCancelButton(None)
         progreso.setWindowTitle("Actualizar AventyaPDF")
@@ -1002,16 +1021,20 @@ class MenusMixin:
 
         def listo(ruta: str) -> None:
             progreso.close()
-            if QMessageBox.question(
-                    self, "Actualizar AventyaPDF",
-                    f"AventyaPDF {info['version']} está descargada y comprobada.\n\n"
-                    "Se cerrará AventyaPDF para instalarla y se volverá a abrir al terminar. "
-                    "¿Instalar ahora?") != QMessageBox.StandardButton.Yes:
-                return
-            if not self.close():                # cambios sin guardar: el usuario canceló
-                return
-            actualizaciones.launch_installer_after_exit(ruta, os.getpid())
-            QApplication.quit()
+            caja = QMessageBox(QMessageBox.Icon.Information, "Actualizar AventyaPDF", "", parent=self)
+            caja.setText(
+                f"<p>AventyaPDF {info['version']} está descargada y comprobada en tu carpeta "
+                f"Descargas, esperando a que la instales:</p>"
+                f"<p><b>{os.path.basename(ruta)}</b></p>"
+                "<p>Para instalarla, cierra AventyaPDF y ejecuta ese archivo. Mientras no "
+                "la instales, AventyaPDF te recordará que está ahí.</p>")
+            caja.setTextFormat(Qt.TextFormat.RichText)
+            mostrar = caja.addButton("Mostrar en Descargas", QMessageBox.ButtonRole.AcceptRole)
+            caja.addButton("Aceptar", QMessageBox.ButtonRole.RejectRole)
+            caja.setDefaultButton(mostrar)
+            caja.exec()
+            if caja.clickedButton() is mostrar:
+                actualizaciones.mostrar_en_carpeta(ruta)
 
         tarea.progreso.connect(avance)
         tarea.error.connect(fallo)

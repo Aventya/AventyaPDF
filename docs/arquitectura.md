@@ -80,7 +80,7 @@ graph TD
 
 ### 3. Capa de Identidad y Criptografía (Crypto & Identity)
 * Realiza la lectura, exportación y almacenamiento seguro de identidades digitales para firma electrónica.
-* Se integra con el almacén personal de certificados de Windows usando consultas directas .NET (`X509Store`) ejecutadas vía PowerShell asíncrono para sortear limitaciones de exportación.
+* Se integra con el almacén personal de certificados de Windows llamando directamente a CryptoAPI/CNG con `ctypes` (`windows_signer.py`, r108): firma con la clave donde está, sin exportarla. (r127) La aplicación no lanza PowerShell en ningún caso.
 * Almacena contraseñas cifradas en el almacén de credenciales del sistema operativo mediante `keyring`.
 * Utiliza **pyHanko** como motor principal de firma para inyectar firmas PAdES visibles y mantener el estándar de firma incremental del PDF.
 

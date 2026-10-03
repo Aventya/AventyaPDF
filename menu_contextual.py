@@ -260,19 +260,24 @@ def recoger_entrantes() -> list[list[str]]:
 # administrador. El registro del paquete, en cambio, es POR USUARIO: se hace
 # sin elevar, como el propio usuario (si lo hiciera un administrador, quedaría
 # registrado para él y no para quien usa el equipo).
+# (r127, petición de Ricardo: «la aplicación está usando PowerShell y debería
+# dejar de usarlo») Todo lo hace menu-contextual\AventyaPDF-MenuContextual.exe
+# (shell\MenuContextual.cpp, el mismo que usa el instalador) con las API de
+# Windows; el permiso de administrador se pide con elevar.py (ShellExecuteExW).
 
-_PAQUETE_MENU = "Aventya.AventyaPDF.MenuContextual"
 _CREATE_NO_WINDOW = 0x08000000
 
 
-def _archivos_menu() -> tuple[str, str, str] | None:
+def _archivos_menu() -> tuple[str, str, str, str] | None:
     import dependencias
     base = dependencias.carpeta_instalada()
     if not base or dependencias.en_paquete_msix():
         return None
-    cer = os.path.join(base, "menu-contextual", "AventyaPDF-MenuContextual.cer")
-    msix = os.path.join(base, "menu-contextual", "AventyaPDF-MenuContextual.msix")
-    return (base, cer, msix) if os.path.isfile(cer) and os.path.isfile(msix) else None
+    carpeta = os.path.join(base, "menu-contextual")
+    cer = os.path.join(carpeta, "AventyaPDF-MenuContextual.cer")
+    msix = os.path.join(carpeta, "AventyaPDF-MenuContextual.msix")
+    exe = os.path.join(carpeta, "AventyaPDF-MenuContextual.exe")
+    return (base, cer, msix, exe) if all(map(os.path.isfile, (cer, msix, exe))) else None
 
 
 def puede_reparar() -> bool:
@@ -282,43 +287,34 @@ def puede_reparar() -> bool:
         and _archivos_menu() is not None
 
 
-def _powershell(orden: str) -> int:
-    import base64
+def _ayudante(exe: str, *args: str) -> tuple[int, str]:
+    """Ejecuta el ayudante sin elevar: (código de salida, motivo si falla)."""
     import subprocess
-    cmd = base64.b64encode(orden.encode("utf-16-le")).decode("ascii")
-    return subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-EncodedCommand", cmd],
-                          capture_output=True, creationflags=_CREATE_NO_WINDOW).returncode
-
-
-def _literal(texto: str) -> str:
-    return "'" + texto.replace("'", "''") + "'"
+    r = subprocess.run([exe, *args], capture_output=True, creationflags=_CREATE_NO_WINDOW)
+    return r.returncode, r.stderr.decode("utf-8", "replace").strip()
 
 
 def reparar() -> tuple[bool, str]:
     """Confía en el certificado del paquete (pidiendo administrador si hace
     falta) y registra el submenú para el usuario actual. (ok, mensaje)."""
-    import base64
+    import elevar
     archivos = _archivos_menu()
     if archivos is None:
         return False, "Esta instalación no tiene el menú contextual de Windows 11."
-    base, cer, msix = archivos
-    confia = (f"$c = New-Object Security.Cryptography.X509Certificates.X509Certificate2 {_literal(cer)}; "
-              "if (Test-Path ('Cert:\\LocalMachine\\TrustedPeople\\' + $c.Thumbprint)) { exit 0 } else { exit 1 }")
-    if _powershell(confia) != 0:
-        interior = (f"Import-Certificate -FilePath {_literal(cer)} "
-                    "-CertStoreLocation Cert:\\LocalMachine\\TrustedPeople | Out-Null")
-        cod = base64.b64encode(interior.encode("utf-16-le")).decode("ascii")
-        _powershell("try { Start-Process powershell -Verb RunAs -Wait -WindowStyle Hidden "
-                    f"-ArgumentList '-NoProfile','-NonInteractive','-EncodedCommand','{cod}' }} "
-                    "catch { exit 1 }")
-        if _powershell(confia) != 0:
+    base, cer, msix, exe = archivos
+    if _ayudante(exe, "comprobar", cer)[0] != 0:
+        try:
+            elevar.ejecutar_como_administrador(exe, ["confiar", cer], timeout=120)
+        except (OSError, TimeoutError):
+            pass                                # se comprueba abajo
+        if _ayudante(exe, "comprobar", cer)[0] != 0:
             return False, ("No se ha dado el permiso de administrador: el submenú «AventyaPDF» "
                            "sigue en «Mostrar más opciones». Vuelve a intentarlo y acepta el "
                            "aviso de Windows.")
-    if _powershell(f"Get-AppxPackage -Name {_PAQUETE_MENU} | Remove-AppxPackage; "
-                   f"Add-AppxPackage -Path {_literal(msix)} -ExternalLocation {_literal(base)} "
-                   "-ForceUpdateFromAnyVersion -ErrorAction Stop") != 0:
-        return False, "Windows no aceptó el paquete del menú contextual."
+    codigo, motivo = _ayudante(exe, "registrar", msix, base)
+    if codigo != 0:
+        return False, ("Windows no aceptó el paquete del menú contextual."
+                       + (f"\n\n{motivo}" if motivo else ""))
     return True, ("Listo: el submenú «AventyaPDF» está en el menú principal del botón derecho "
                   "del Explorador (si no aparece aún, cierra y vuelve a abrir la ventana del "
                   "Explorador).")

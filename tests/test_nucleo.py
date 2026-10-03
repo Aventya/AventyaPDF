@@ -468,8 +468,13 @@ class TestAutodiagnostico(unittest.TestCase):
 
 
 class TestActualizarSinNavegador(unittest.TestCase):
-    """(r121) La actualización se descarga por detrás, sin navegador, y solo
-    se instala si su huella SHA-256 es la que publica GitHub."""
+    """(r121, r127) La actualización se descarga por detrás, sin navegador, a
+    la carpeta Descargas, y solo se da por buena si su huella SHA-256 es la
+    que publica GitHub. No se ejecuta: la instala el usuario."""
+
+    def setUp(self):
+        self.carpeta = tempfile.mkdtemp(prefix="aventyapdf_descargas_")
+        self.addCleanup(shutil.rmtree, self.carpeta, True)
 
     def _info(self, datos: bytes, huella: str) -> dict:
         return {"installer_name": "AventyaPDF-Setup-9.9.9.exe", "installer_url": "https://x/y.exe",
@@ -479,56 +484,89 @@ class TestActualizarSinNavegador(unittest.TestCase):
         import io
         r = io.BytesIO(datos)
         r.headers = {"Content-Length": str(len(datos))}
-        r.__enter__ = lambda *a: r
-        r.__exit__ = lambda *a: False
         return mock.MagicMock(__enter__=lambda s: r, __exit__=lambda *a: False)
 
     def test_descarga_y_comprueba_la_huella(self):
         import hashlib
         import actualizaciones
         datos = b"instalador" * 5000
+        info = self._info(datos, hashlib.sha256(datos).hexdigest())
         avances = []
+        self.assertIsNone(actualizaciones.instalador_descargado(info, self.carpeta))
         with mock.patch("urllib.request.urlopen", return_value=self._respuesta(datos)):
             ruta = actualizaciones.download_installer(
-                self._info(datos, hashlib.sha256(datos).hexdigest()),
-                progress=lambda h, t: avances.append((h, t)))
+                info, progress=lambda h, t: avances.append((h, t)), carpeta=self.carpeta)
+        self.assertEqual(os.path.dirname(ruta), self.carpeta)
         with open(ruta, "rb") as fh:
             self.assertEqual(fh.read(), datos)
         self.assertEqual(avances[-1], (len(datos), len(datos)))
-        os.remove(ruta)
+        # Ya está en Descargas, esperando: se reconoce y no se vuelve a bajar.
+        self.assertEqual(actualizaciones.instalador_descargado(info, self.carpeta), ruta)
+        with mock.patch("urllib.request.urlopen", side_effect=AssertionError("descarga repetida")):
+            self.assertEqual(actualizaciones.download_installer(info, carpeta=self.carpeta), ruta)
+        # Un archivo con el mismo nombre pero distinto no cuenta como descargado.
+        with open(ruta, "wb") as fh:
+            fh.write(b"otro")
+        self.assertIsNone(actualizaciones.instalador_descargado(info, self.carpeta))
 
     def test_rechaza_un_instalador_alterado(self):
         import actualizaciones
         datos = b"instalador alterado"
         with mock.patch("urllib.request.urlopen", return_value=self._respuesta(datos)):
             with self.assertRaisesRegex(actualizaciones.UpdateError, "no coincide"):
-                actualizaciones.download_installer(self._info(datos, "00" * 32))
+                actualizaciones.download_installer(self._info(datos, "00" * 32), carpeta=self.carpeta)
+        self.assertEqual(os.listdir(self.carpeta), [])
+
+    def test_carpeta_descargas_existe(self):
+        import actualizaciones
+        self.assertTrue(os.path.isdir(actualizaciones.carpeta_descargas()))
 
     def test_reparar_menu_eleva_solo_el_certificado(self):
-        """El certificado se confía con administrador (solo si no lo estaba) y
-        el paquete se registra sin elevar, como el usuario."""
-        import base64
+        """(r127) Sin PowerShell: el ayudante comprueba y confía en el
+        certificado (esto último elevado, solo si hacía falta) y registra el
+        paquete sin elevar, como el usuario."""
+        import elevar
         import menu_contextual
-        ordenes = []
+        llamadas = []
         confiado = iter([1, 0])                 # antes no; tras pedir permiso, sí
 
-        def ps(orden):
-            ordenes.append(orden)
-            if "Test-Path" in orden:
-                return next(confiado)
-            return 0
-        with mock.patch.object(menu_contextual, "_archivos_menu",
-                               return_value=(r"C:\app", r"C:\app\m.cer", r"C:\app\m.msix")), \
-                mock.patch.object(menu_contextual, "_powershell", side_effect=ps):
+        def ayudante(exe, *args):
+            llamadas.append(args)
+            return (next(confiado), "") if args[0] == "comprobar" else (0, "")
+        archivos = (r"C:\app", r"C:\app\m.cer", r"C:\app\m.msix", r"C:\app\m.exe")
+        with mock.patch.object(menu_contextual, "_archivos_menu", return_value=archivos), \
+                mock.patch.object(menu_contextual, "_ayudante", side_effect=ayudante), \
+                mock.patch.object(elevar, "ejecutar_como_administrador", return_value=0) as elevado:
             ok, texto = menu_contextual.reparar()
         self.assertTrue(ok, texto)
-        elevado = [o for o in ordenes if "-Verb RunAs" in o]
-        self.assertEqual(len(elevado), 1)
-        interior = base64.b64decode(elevado[0].split("'-EncodedCommand','")[1].split("'")[0]).decode("utf-16-le")
-        self.assertIn("Import-Certificate", interior)
-        registro = ordenes[-1]
-        self.assertIn("Add-AppxPackage", registro)
-        self.assertNotIn("RunAs", registro)
+        elevado.assert_called_once_with(r"C:\app\m.exe", ["confiar", r"C:\app\m.cer"], timeout=120)
+        self.assertEqual(llamadas[-1], ("registrar", r"C:\app\m.msix", r"C:\app"))
+        # Si se niega el permiso, se dice y no se registra nada.
+        llamadas.clear()
+        with mock.patch.object(menu_contextual, "_archivos_menu", return_value=archivos), \
+                mock.patch.object(menu_contextual, "_ayudante", return_value=(1, "")), \
+                mock.patch.object(elevar, "ejecutar_como_administrador",
+                                  side_effect=elevar.Cancelado("no")):
+            ok, texto = menu_contextual.reparar()
+        self.assertFalse(ok)
+        self.assertIn("permiso de administrador", texto)
+
+    def test_la_aplicacion_no_lanza_powershell(self):
+        """(r127, petición de Ricardo: «la aplicación está usando PowerShell
+        y debería dejar de usarlo») Ningún módulo de la aplicación ni el
+        instalador lanzan PowerShell (Microsoft Defender los marcaba)."""
+        import re
+        patron = re.compile(r"""["'][^"'\n]*powershell""", re.IGNORECASE)
+        culpables = []
+        for nombre in sorted(os.listdir(RAIZ)):
+            if nombre.endswith(".py"):
+                with open(os.path.join(RAIZ, nombre), encoding="utf-8") as fh:
+                    if patron.search(fh.read()):
+                        culpables.append(nombre)
+        with open(os.path.join(RAIZ, "empaquetado", "AventyaPDF.iss"), encoding="utf-8-sig") as fh:
+            if "powershell.exe" in fh.read().lower():
+                culpables.append("empaquetado/AventyaPDF.iss")
+        self.assertEqual(culpables, [])
 
 
 class TestActualizaciones(unittest.TestCase):

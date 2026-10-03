@@ -2,8 +2,8 @@
 conversion_office.py — Documentos de Word (.doc, .docx) a PDF (r86).
 
 AventyaPDF no lee Word por sí misma: delega en lo que haya instalado.
-1. Microsoft Word, por automatización COM desde PowerShell (sin paquetes de
-   Python adicionales). Es la conversión más fiel.
+1. Microsoft Word, por automatización COM (word_com.py, con comtypes, en un
+   proceso aparte; hasta r125, desde PowerShell). Es la conversión más fiel.
 2. Si no hay Word o falla: LibreOffice en modo sin ventana (`soffice
    --headless --convert-to pdf`).
 Si no hay ninguno de los dos, `ConversionError` lo explica.
@@ -16,6 +16,7 @@ temporal que se borra).
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 
 import fitz
@@ -38,32 +39,6 @@ FILTRO_ABRIR = (f"Todos los admitidos (*.pdf {_PATRON} *.doc *.docx);;"
 _SIN_VENTANA = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 _TIEMPO_MAX = 300          # segundos para toda una tanda de documentos
 
-# Word, sin ventana ni avisos. Las rutas llegan en un archivo (una línea de
-# origen y otra de destino por documento), nunca dentro del propio script.
-# La contraseña ficticia hace que un documento protegido FALLE en vez de
-# quedarse esperando a que alguien la escriba en un diálogo invisible.
-_SCRIPT_WORD = r"""
-$ErrorActionPreference = 'Stop'
-$lineas = @(Get-Content -LiteralPath $env:AVENTYAPDF_LISTA -Encoding UTF8)
-$w = New-Object -ComObject Word.Application
-try {
-    $w.Visible = $false
-    $w.DisplayAlerts = 0
-    for ($i = 0; $i -lt $lineas.Count; $i += 2) {
-        $origen = [string]$lineas[$i]
-        $destino = [string]$lineas[$i + 1]
-        $d = $w.Documents.Open($origen, $false, $true, $false, '§AventyaPDF§')
-        try { $d.ExportAsFixedFormat($destino, 17) }
-        finally { $d.Close(0) }
-    }
-}
-finally {
-    $w.Quit()
-    [void][Runtime.InteropServices.Marshal]::ReleaseComObject($w)
-}
-"""
-
-
 class ConversionError(RuntimeError):
     pass
 
@@ -85,12 +60,15 @@ def _con_word(pares: list[tuple[str, str]], tmp: str) -> str:
     with open(lista, "w", encoding="utf-8") as f:
         for origen, destino in pares:
             f.write(f"{origen}\n{destino}\n")
+    # (r127) Sin PowerShell: word_com.py habla con Word por COM (comtypes),
+    # en otro proceso para poder cortarlo si Word se queda colgado.
+    import word_com
     try:
         r = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-             "-Command", _SCRIPT_WORD],
-            env={**os.environ, "AVENTYAPDF_LISTA": lista},
-            capture_output=True, text=True, timeout=_TIEMPO_MAX, creationflags=_SIN_VENTANA)
+            [sys.executable, os.path.abspath(word_com.__file__), lista],
+            env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=_TIEMPO_MAX, creationflags=_SIN_VENTANA)
     except (OSError, subprocess.TimeoutExpired) as e:
         return str(e)
     return "" if r.returncode == 0 else (r.stderr or r.stdout or f"código {r.returncode}").strip()

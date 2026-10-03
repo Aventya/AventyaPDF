@@ -14,8 +14,6 @@ import hashlib
 import json
 import os
 import re
-import subprocess
-import tempfile
 import urllib.error
 import urllib.request
 
@@ -82,24 +80,87 @@ def fetch_latest(timeout: float = TIMEOUT) -> dict:
     return release_info(data)
 
 
-# ── Descargar e instalar sin pasar por el navegador (r121) ──────────────── #
-# Petición de Ricardo: «el descargar de la actualización sí que quiero que se
-# haga por detrás, sin acceso al navegador». Descargado así (urllib), el
-# archivo no lleva la marca «descargado de Internet» que ponen los
-# navegadores, y Windows SmartScreen no avisa al ejecutarlo.
+# ── Descargar sin pasar por el navegador (r121, r127) ───────────────────── #
+# Petición de Ricardo (r121): «el descargar de la actualización sí que quiero
+# que se haga por detrás, sin acceso al navegador». (r127) «Lo que me gustaría
+# es que la descarga de las actualizaciones sea directa desde la propia
+# aplicación pero que se quedase en la carpeta Descargas y se indique que la
+# actualización está allí esperando a que la instale el usuario, para que la
+# aplicación no utilice PowerShell»: hasta r125 la aplicación se cerraba y
+# lanzaba el instalador con PowerShell oculto, una de las cosas por las que
+# Microsoft Defender la marcaba. Ahora solo descarga; instala el usuario.
 
-def download_installer(info: dict, progress=None, timeout: float = 60) -> str:
-    """Descarga el instalador de `info` a una carpeta temporal y comprueba su
-    SHA-256 con el que publica GitHub. `progress(bytes, total)` opcional.
+_FOLDERID_DOWNLOADS = "{374DE290-123F-4565-9164-39C4925E467B}"
+
+
+def carpeta_descargas() -> str:
+    """La carpeta Descargas del usuario (la de verdad, aunque la haya movido a
+    otra unidad o a OneDrive); si Windows no la da, ~/Downloads."""
+    if os.name == "nt":
+        try:
+            import ctypes
+            import uuid
+            from ctypes import wintypes
+            guid = (ctypes.c_byte * 16).from_buffer_copy(uuid.UUID(_FOLDERID_DOWNLOADS).bytes_le)
+            ruta = ctypes.c_wchar_p()
+            shell32, ole32 = ctypes.windll.shell32, ctypes.windll.ole32
+            shell32.SHGetKnownFolderPath.argtypes = [ctypes.c_void_p, wintypes.DWORD, wintypes.HANDLE,
+                                                     ctypes.POINTER(ctypes.c_wchar_p)]
+            if shell32.SHGetKnownFolderPath(ctypes.byref(guid), 0, None, ctypes.byref(ruta)) == 0:
+                try:
+                    if ruta.value and os.path.isdir(ruta.value):
+                        return ruta.value
+                finally:
+                    ole32.CoTaskMemFree(ruta)
+        except (OSError, AttributeError, ValueError):
+            pass
+    return os.path.join(os.path.expanduser("~"), "Downloads")
+
+
+def _sha256(ruta: str) -> str:
+    h = hashlib.sha256()
+    with open(ruta, "rb") as fh:
+        for bloque in iter(lambda: fh.read(1 << 20), b""):
+            h.update(bloque)
+    return h.hexdigest()
+
+
+def instalador_descargado(info: dict, carpeta: str | None = None) -> str | None:
+    """Ruta del instalador de `info` si ya está en Descargas y es el
+    publicado (misma huella SHA-256 o, si GitHub no la diera, mismo tamaño):
+    la actualización que espera a que el usuario la instale."""
+    if not info.get("installer_name"):
+        return None
+    ruta = os.path.join(carpeta or carpeta_descargas(), info["installer_name"])
+    if not os.path.isfile(ruta):
+        return None
+    esperado = (info.get("installer_sha256") or "").lower()
+    try:
+        if esperado:
+            return ruta if _sha256(ruta) == esperado else None
+        tam = info.get("installer_size") or 0
+        return ruta if tam and os.path.getsize(ruta) == tam else None
+    except OSError:
+        return None
+
+
+def download_installer(info: dict, progress=None, timeout: float = 60,
+                       carpeta: str | None = None) -> str:
+    """Descarga el instalador de `info` a la carpeta Descargas (o a `carpeta`)
+    y comprueba su SHA-256 con el que publica GitHub; si ya estaba allí y es
+    el mismo, no lo vuelve a bajar. `progress(bytes, total)` opcional.
     Devuelve la ruta; lanza UpdateError si algo falla."""
     if not info.get("installer_name"):
         raise UpdateError("La publicación no tiene instalador.")
-    carpeta = os.path.join(tempfile.gettempdir(), "aventyapdf-actualizacion")
-    os.makedirs(carpeta, exist_ok=True)
+    carpeta = carpeta or carpeta_descargas()
+    hecho = instalador_descargado(info, carpeta)
+    if hecho:
+        return hecho
     destino = os.path.join(carpeta, info["installer_name"])
     req = urllib.request.Request(info["installer_url"], headers={"User-Agent": f"{REPO}-actualizaciones"})
     h = hashlib.sha256()
     try:
+        os.makedirs(carpeta, exist_ok=True)
         with urllib.request.urlopen(req, timeout=timeout) as resp, open(destino + ".part", "wb") as fh:
             total = int(resp.headers.get("Content-Length") or info.get("installer_size") or 0)
             hecho = 0
@@ -118,20 +179,30 @@ def download_installer(info: dict, progress=None, timeout: float = 60) -> str:
     if esperado and h.hexdigest() != esperado.lower():
         os.remove(destino + ".part")
         raise UpdateError("El instalador descargado no coincide con el publicado (huella SHA-256): "
-                          "no se instala.")
+                          "se ha borrado.")
     os.replace(destino + ".part", destino)
     return destino
 
 
-def launch_installer_after_exit(installer: str, pid: int) -> None:
-    """Cuando termine el proceso `pid` (esta aplicación, que se cierra para
-    dejar sustituir sus archivos), ejecuta el instalador en modo silencioso
-    con su barra de progreso; al acabar vuelve a abrir AventyaPDF
-    (/REINICIAR, ver [Run] de AventyaPDF.iss)."""
-    ps = (f"Wait-Process -Id {int(pid)} -Timeout 120 -ErrorAction SilentlyContinue; "
-          f"Start-Process -FilePath '{installer.replace(chr(39), chr(39) * 2)}' "
-          "-ArgumentList '/SILENT','/NOCANCEL','/NORESTART','/REINICIAR'")
-    # Solo CREATE_NO_WINDOW: con DETACHED_PROCESS powershell.exe se queda sin
-    # consola y se cierra sin ejecutar nada. Así sigue vivo al cerrarse la app.
-    subprocess.Popen(["powershell", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden",
-                      "-Command", ps], creationflags=0x08000000)   # CREATE_NO_WINDOW
+def mostrar_en_carpeta(ruta: str) -> None:
+    """Abre la carpeta de `ruta` en el Explorador con el archivo seleccionado
+    (SHOpenFolderAndSelectItems, sin lanzar ningún intérprete)."""
+    if os.name != "nt":
+        return
+    import ctypes
+    shell32 = ctypes.windll.shell32
+    shell32.ILCreateFromPathW.restype = ctypes.c_void_p
+    shell32.ILCreateFromPathW.argtypes = [ctypes.c_wchar_p]
+    shell32.SHOpenFolderAndSelectItems.argtypes = [ctypes.c_void_p, ctypes.c_uint,
+                                                   ctypes.c_void_p, ctypes.c_ulong]
+    shell32.ILFree.argtypes = [ctypes.c_void_p]
+    pidl = shell32.ILCreateFromPathW(os.path.abspath(ruta))
+    if not pidl:
+        os.startfile(os.path.dirname(ruta))
+        return
+    try:
+        ctypes.windll.ole32.CoInitialize(None)
+        if shell32.SHOpenFolderAndSelectItems(pidl, 0, None, 0) != 0:
+            os.startfile(os.path.dirname(ruta))
+    finally:
+        shell32.ILFree(pidl)

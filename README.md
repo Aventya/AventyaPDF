@@ -111,6 +111,7 @@ Componentes de terceros, cada uno con su licencia:
 | [PyQt6](https://www.riverbankcomputing.com/software/pyqt/) | GPL-3.0 |
 | [pyHanko](https://github.com/MatthiasValvekens/pyHanko) | MIT |
 | [pdf2docx](https://github.com/ArtifexSoftware/pdf2docx) | MIT |
+| [comtypes](https://github.com/enthought/comtypes) | MIT |
 | [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) | Apache-2.0 |
 | [Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons) | MIT ([vendor/fonts/fluent-icons/LICENSE](vendor/fonts/fluent-icons/LICENSE)) |
 | [Noto Sans / Serif / Sans Mono / Emoji](https://fonts.google.com/noto) | SIL OFL 1.1 ([vendor/fonts/noto/OFL.txt](vendor/fonts/noto/OFL.txt)) |

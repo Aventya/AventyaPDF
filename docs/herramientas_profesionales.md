@@ -93,8 +93,10 @@ queda sin guardar en la aplicación.
 - **Menú principal de Windows 11**: solo admite extensiones `IExplorerCommand`
   de aplicaciones con identidad de paquete. `shell/AventyaPDFShell.cpp` (DLL
   C++ con WRL, cargada en `dllhost.exe`) se registra con un **paquete MSIX
-  disperso** (`shell/AppxManifest.xml`) que el instalador añade con
-  `Add-AppxPackage -ExternalLocation {app}`. La DLL decide qué opciones enseña
+  disperso** (`shell/AppxManifest.xml`) que el instalador registra con
+  `menu-contextual\AventyaPDF-MenuContextual.exe` (r127, `shell/MenuContextual.cpp`:
+  `PackageManager.AddPackageByUriAsync` con `ExternalLocationUri` = {app}; antes,
+  `Add-AppxPackage` desde PowerShell). La DLL decide qué opciones enseña
   según lo seleccionado y lanza la aplicación **una vez** con todos los
   archivos (o con `--lista <archivo>` si no caben en la línea de órdenes).
   El paquete va firmado con un certificado propio (`shell/construir_shell.ps1`

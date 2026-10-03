@@ -181,12 +181,14 @@ def _install_with_installer(report) -> str:
         exe = os.path.join(folder, "tesseract-ocr-setup.exe")
         _download(INSTALLER_URL, exe, report, "el instalador de Tesseract OCR")
         report("Instalando Tesseract OCR…\n(Windows pedirá permiso de administrador)")
-        script = (f"$p = Start-Process -FilePath '{exe}' -ArgumentList '/S' "
-                  "-Verb RunAs -Wait -PassThru; exit $p.ExitCode")
-        cp = _run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
-                  INSTALL_TIMEOUT)
-        if cp.returncode != 0:
-            return f"el instalador oficial terminó con el código {cp.returncode}"
+        # (r127) Sin PowerShell: permiso de administrador con ShellExecuteExW.
+        import elevar
+        try:
+            codigo = elevar.ejecutar_como_administrador(exe, ["/S"], INSTALL_TIMEOUT)
+        except elevar.Cancelado:
+            return "no se dio el permiso de administrador"
+        if codigo != 0:
+            return f"el instalador oficial terminó con el código {codigo}"
         return ""
     finally:
         shutil.rmtree(folder, ignore_errors=True)

@@ -1,10 +1,13 @@
 <#
     construir_shell.ps1 — Extensión del menú contextual de Windows 11 (r86)
     ----------------------------------------------------------------------
-    Deja en -Salida los tres archivos que el instalador necesita:
+    Deja en -Salida los archivos que el instalador necesita:
       AventyaPDFShell.dll              (junto a AventyaPDF.exe)
       AventyaPDF-MenuContextual.msix   paquete disperso firmado
       AventyaPDF-MenuContextual.cer    certificado público con el que se firmó
+      AventyaPDF-MenuContextual.exe    (r127) confía en el certificado y
+                                       registra o quita el paquete, sin
+                                       PowerShell (MenuContextual.cpp)
 
     1. Compila AventyaPDFShell.cpp con Visual C++ (x64, CRT estático: no
        depende de ningún redistribuible).
@@ -52,6 +55,19 @@ $orden = "set `"PATH=$(Split-Path $vswhere);%PATH%`" && `"$vcvars`" >nul && cl /
          "/Fo`"$trabajo\\`" /LD `"$cpp`" /link /DEF:`"$def`" /OUT:`"$dll`" /IMPLIB:`"$trabajo\AventyaPDFShell.lib`""
 cmd /c $orden
 Comprobar 'Compilar AventyaPDFShell.dll'
+
+# (r127) Ayudante sin PowerShell: CryptoAPI + PackageManager (C++/WinRT).
+$coma = (($Version.Split('.') + @('0', '0', '0', '0'))[0..3]) -join ','
+$ayudante = Join-Path $Salida "$Nombre.exe"
+$rcAyudante = Join-Path $PSScriptRoot 'MenuContextual.rc'
+$resAyudante = Join-Path $trabajo 'MenuContextual.res'
+$orden = "set `"PATH=$(Split-Path $vswhere);%PATH%`" && `"$vcvars`" >nul && " +
+         "rc /nologo /c65001 /dVERSION_COMA=$coma /dVERSION_TEXTO=\`"$Version\`" /fo `"$resAyudante`" `"$rcAyudante`" && " +
+         "cl /nologo /EHsc /O2 /MT /std:c++20 /W3 /DUNICODE /D_UNICODE /Fo`"$trabajo\\`" " +
+         "`"$(Join-Path $PSScriptRoot 'MenuContextual.cpp')`" `"$resAyudante`" " +
+         "/link /SUBSYSTEM:WINDOWS /ENTRY:wmainCRTStartup /OUT:`"$ayudante`""
+cmd /c $orden
+Comprobar "Compilar $Nombre.exe"
 
 # ── 2. Certificado ────────────────────────────────────────────────────────── #
 $cert = Get-ChildItem Cert:\CurrentUser\My |

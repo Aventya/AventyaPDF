@@ -1,0 +1,31 @@
+// Icono y datos de versión de AventyaPDF-MenuContextual.exe (r127).
+// VERSION_COMA y VERSION_TEXTO los define construir_shell.ps1 al compilar (rc /d).
+#include <winver.h>
+
+1 ICON "..\\vendor\\icono\\aventyapdf.ico"
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION VERSION_COMA
+ PRODUCTVERSION VERSION_COMA
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_APP
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "0C0A04B0"
+    BEGIN
+      VALUE "CompanyName", "Aventya Asesoría Integral SL"
+      VALUE "FileDescription", "AventyaPDF - menú contextual del Explorador"
+      VALUE "FileVersion", VERSION_TEXTO
+      VALUE "InternalName", "AventyaPDF-MenuContextual"
+      VALUE "LegalCopyright", "Aventya Asesoría Integral SL - AGPL-3.0"
+      VALUE "OriginalFilename", "AventyaPDF-MenuContextual.exe"
+      VALUE "ProductName", "AventyaPDF"
+      VALUE "ProductVersion", VERSION_TEXTO
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0C0A, 1200
+  END
+END
