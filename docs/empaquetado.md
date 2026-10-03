@@ -47,10 +47,32 @@ Al actualizar, `runtime\` y `app\` se borran y se vuelven a descargar enteros
 abierto, el instalador pide cerrarlo (`AppMutex`, el mutex de instancia única).
 
 El desinstalador (Configuración › Aplicaciones) quita el programa, lo
-descargado, los accesos directos y todas las claves del registro. **No** borra
-`%LOCALAPPDATA%\aventyapdf` (configuración, idiomas de OCR descargados y
-`errores.log`): son datos del usuario y los comparte con la versión de
-desarrollo.
+descargado, los accesos directos y todas las claves del registro. (r130,
+petición de Ricardo: «que el desinstalador de AventyaPDF deje el sistema tan
+limpio como lo acabas de hacer tú… que se eliminen todos los ajustes y los
+certificados de AventyaPDF») Además no deja rastro de la aplicación:
+
+* **Ajustes**: la clave `HKCU\Software\aventyapdf` (todo lo de
+  `QSettings("aventyapdf", "config")`: recientes, preferencias, firma
+  manuscrita, certificado elegido…).
+* **Contraseñas guardadas** de certificados: las credenciales genéricas
+  `aventyapdf-signing` / `…@aventyapdf-signing` del Administrador de
+  credenciales (`AventyaPDF-MenuContextual.exe olvidar-claves`).
+* **Certificado del menú** en «Personas de confianza» del equipo: todos los
+  autofirmados `CN=Aventya Asesoria Integral SL`, de cualquier compilación
+  (`desconfiar`, con permiso de administrador: Windows lo pide, igual que al
+  añadirlo; si se rechaza, se explica cómo quitarlo con `certlm.msc`). Si otro
+  usuario del equipo sigue teniendo AventyaPDF, su submenú de Windows 11 no
+  podrá volver a registrarse hasta que reinstale o use «Reparar».
+* **`%LOCALAPPDATA%\aventyapdf`**: idiomas de OCR (`tessdata`), colas del menú
+  contextual y registros (`*.log`), uno a uno, y la carpeta si queda vacía. No
+  se borra entera porque en los equipos de desarrollo guarda también `venv` y
+  `build-*`. La variante de prueba (`-ProbarInstalacion`) no borra nada de
+  esto (`#ifndef Prueba`; lo vigila una prueba automática).
+
+**No** desinstala Tesseract OCR: es un programa aparte, instalado en el
+sistema, que puede usar otra aplicación (se quita desde Configuración ›
+Aplicaciones). Tampoco toca los instaladores que haya en Descargas.
 
 ## Cómo se genera
 

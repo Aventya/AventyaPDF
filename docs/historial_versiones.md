@@ -4,6 +4,20 @@
 
 Las publicadas como 1.0.0-1.3.0 se renumeraron 0.9.6-0.9.6.7 al publicarse la 0.9.7, y las 2.0.3-2.0.5 como 0.9.3-0.9.5 al publicarse la que fue 1.0.0: la **1.0.0** queda reservada para la primera versión con el instalador firmado.
 
+## 0.9.12 — 2026-10-03
+
+Commit `149681c`.
+
+AventyaPDF ya no usa PowerShell para nada, y las actualizaciones se descargan en tu carpeta Descargas para que las instales tú.
+
+#### Novedades respecto a la 0.9.11
+- **Sin PowerShell**: ni el instalador ni AventyaPDF lanzan PowerShell. El menú del botón derecho de Windows 11, el permiso de administrador, la conversión de documentos de Word y la instalación de Tesseract OCR usan directamente las funciones de Windows. Algunos antivirus desconfiaban del instalador por eso.
+- **Actualizaciones en tu carpeta Descargas**: «Ayuda › Buscar actualizaciones…» (o el aviso al iniciar) descarga la versión nueva en segundo plano en tu carpeta Descargas y comprueba su huella SHA-256. AventyaPDF ya no se cierra ni la instala por su cuenta: te avisa de que está allí esperando, con un botón «Mostrar en Descargas», y la instalas tú cuando quieras cerrando AventyaPDF y abriendo el archivo. Mientras no la instales, el aviso recuerda que ya está descargada.
+- **Menú del botón derecho de Windows 11 más fiable**: volver a instalar AventyaPDF ya no puede dejar el submenú «AventyaPDF» fuera del menú principal.
+- Mensajes de error más claros cuando Word no puede convertir un documento o Windows no acepta el menú del botón derecho.
+
+220 pruebas automáticas OK.
+
 ## 0.9.11 — 2026-10-02
 
 Commit `658a1d2`.

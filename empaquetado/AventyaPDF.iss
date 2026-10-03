@@ -189,6 +189,24 @@ Type: files; Name: "{app}\menu-contextual\registro.txt"
 ; (r109) Lo que crea Python al funcionar (__pycache__ y .pyc de compileall).
 Type: filesandordirs; Name: "{app}\runtime"
 Type: filesandordirs; Name: "{app}\app"
+#ifndef Prueba
+; (r130, petición de Ricardo: «que el desinstalador de AventyaPDF deje el
+; sistema tan limpio como lo acabas de hacer tú… que se eliminen todos los
+; ajustes y los certificados de AventyaPDF») Lo que la aplicación crea en
+; %LOCALAPPDATA%\aventyapdf: idiomas de OCR, colas del menú contextual y
+; registros de errores. Uno a uno y no la carpeta entera: en los equipos de
+; desarrollo ahí viven también venv\ y build-*\ (run.ps1, construir.ps1), que
+; no son de la aplicación instalada; la carpeta se quita si queda vacía (en
+; el equipo de un usuario, siempre). Fuera de la variante de prueba: la
+; instalación de prueba de construir.ps1 no debe borrar nada de esto.
+; Si la aplicación empieza a guardar algo nuevo ahí, añadirlo aquí.
+Type: filesandordirs; Name: "{localappdata}\aventyapdf\tessdata"
+Type: filesandordirs; Name: "{localappdata}\aventyapdf\menu-contextual"
+Type: files; Name: "{localappdata}\aventyapdf\*.log"
+Type: dirifempty; Name: "{localappdata}\aventyapdf"
+; Restos de la actualización de las versiones hasta la 0.9.11.
+Type: filesandordirs; Name: "{%TEMP}\aventyapdf-actualizacion"
+#endif
 
 #ifndef Prueba
 [Code]
@@ -418,11 +436,38 @@ begin
   end;
 end;
 
+// ── (r130) Desinstalar sin dejar rastro ────────────────────────────────── //
+// Los ajustes (QSettings("aventyapdf", "config")) viven en el registro del
+// usuario; las contraseñas de certificados que se guardaron, en el
+// Administrador de credenciales (keyring); el certificado del menú, en
+// «Personas de confianza» del EQUIPO (quitarlo pide administrador, como
+// añadirlo). Ojo: si otro usuario de este equipo tiene AventyaPDF instalado,
+// su submenú de Windows 11 deja de poder registrarse hasta que vuelva a
+// instalar o use Ayuda › Reparar el menú contextual.
+procedure QuitarCertificados(const Exe: String);
+begin
+  if not FileExists(Exe) or (Ayudante(Exe, 'confiados', False) <> 0) then
+    exit;
+  if not UninstallSilent then
+    MsgBox('Para quitar de este equipo el certificado del menú del botón derecho de AventyaPDF, ' +
+           'Windows pedirá permiso de administrador.', mbInformation, MB_OK);
+  if (Ayudante(Exe, 'desconfiar', True) <> 0) and not UninstallSilent then
+    MsgBox('No se ha quitado el certificado de AventyaPDF de «Personas de confianza» del equipo ' +
+           '(no se dio el permiso de administrador).' + #13#10#13#10 +
+           'Se puede quitar a mano: «Administrar certificados de equipo» (certlm.msc) › ' +
+           'Personas de confianza › Certificados › «Aventya Asesoria Integral SL».',
+           mbInformation, MB_OK);
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usUninstall then begin
     QuitarMenuModerno(AyudanteInstalado);
     QuitarMenuClasico;
+    if FileExists(AyudanteInstalado) then
+      Ayudante(AyudanteInstalado, 'olvidar-claves', False);
+    QuitarCertificados(AyudanteInstalado);
+    RegDeleteKeyIncludingSubkeys(HKCU, 'Software\aventyapdf');
   end;
 end;
 #endif

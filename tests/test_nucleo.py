@@ -551,6 +551,33 @@ class TestActualizarSinNavegador(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("permiso de administrador", texto)
 
+    def test_desinstalar_borra_los_datos_solo_en_el_instalador_real(self):
+        """(r130) El desinstalador borra ajustes, contraseñas, certificados y
+        los datos de %LOCALAPPDATA%\\aventyapdf, pero solo en el instalador
+        real: la variante de prueba (construir.ps1 -ProbarInstalacion) se
+        desinstala en el equipo de desarrollo y no debe tocarlos. Y nunca la
+        carpeta entera (ahí viven venv y build-* en desarrollo)."""
+        with open(os.path.join(RAIZ, "empaquetado", "AventyaPDF.iss"), encoding="utf-8-sig") as fh:
+            lineas = fh.read().splitlines()
+        dentro_prueba = []          # pila de #ifndef Prueba / #ifdef…
+        datos = []
+        for linea in lineas:
+            t = linea.strip()
+            if t.startswith("#if"):
+                dentro_prueba.append(t == "#ifndef Prueba")
+            elif t == "#endif":
+                dentro_prueba.pop()
+            elif r"{localappdata}\aventyapdf" in t.lower() and not t.startswith(";"):
+                datos.append(t)
+                self.assertIn(True, dentro_prueba, f"fuera de #ifndef Prueba: {t}")
+        self.assertTrue(datos)
+        self.assertFalse([t for t in datos if t.lower().startswith("type: filesandordirs")
+                          and t.lower().rstrip('"').endswith(r"{localappdata}\aventyapdf")])
+        codigo = "\n".join(lineas)
+        for orden in ("olvidar-claves", "QuitarCertificados", "'desconfiar', True",
+                      r"RegDeleteKeyIncludingSubkeys(HKCU, 'Software\aventyapdf')"):
+            self.assertIn(orden, codigo)
+
     def test_la_aplicacion_no_lanza_powershell(self):
         """(r127, petición de Ricardo: «la aplicación está usando PowerShell
         y debería dejar de usarlo») Ningún módulo de la aplicación ni el

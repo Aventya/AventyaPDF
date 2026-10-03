@@ -16,12 +16,25 @@
 //                                      usuario actual (sin elevar)
 //   quitar                             quita el paquete del usuario actual
 //
+// (r130) Para el desinstalador (petición de Ricardo: «que el desinstalador de
+// AventyaPDF deje el sistema tan limpio como lo acabas de hacer tú… que se
+// eliminen todos los ajustes y los certificados de AventyaPDF»):
+//   confiados                          0 si queda algún certificado de
+//                                      AventyaPDF en «Personas de confianza»
+//   desconfiar                         los quita todos (los de cualquier
+//                                      compilación: autofirmados con el sujeto
+//                                      kSujeto); hay que lanzarlo con «runas»
+//   olvidar-claves                     borra del Administrador de credenciales
+//                                      las contraseñas que guardó la app
+//                                      (keyring, servicio kServicioClaves)
+//
 // Devuelve 0 si todo fue bien; 1 si no (el motivo, en <log> o en la salida de
 // error); 2 si los argumentos no son válidos. Sin ventana (subsistema
 // Windows). Compilación: shell\construir_shell.ps1.
 
 #include <windows.h>
 #include <wincrypt.h>
+#include <wincred.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.ApplicationModel.h>
@@ -32,6 +45,7 @@
 #include <vector>
 
 #pragma comment(lib, "crypt32.lib")
+#pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "windowsapp.lib")
 
 using namespace winrt;
@@ -40,6 +54,10 @@ using namespace winrt::Windows::Management::Deployment;
 
 // Mismo nombre que la Identity de shell\AppxManifest.xml.
 static const wchar_t* const kPaquete = L"Aventya.AventyaPDF.MenuContextual";
+// Sujeto del certificado autofirmado del paquete ($Sujeto de construir_shell.ps1).
+static const wchar_t* const kSujeto = L"CN=Aventya Asesoria Integral SL";
+// Servicio con el que cert_manager.py guarda las contraseñas (_KR_SERVICE).
+static const wchar_t* const kServicioClaves = L"aventyapdf-signing";
 
 static std::wstring g_log;
 
@@ -120,6 +138,94 @@ static int Confiar(const wchar_t* cer)
     return codigo;
 }
 
+// (r130) ¿Es un certificado del paquete de AventyaPDF? Autofirmado (emisor =
+// sujeto) y con el sujeto exacto: así se reconocen los de todas las
+// compilaciones (cada equipo que compila crea el suyo) y nada más.
+static bool EsDeAventya(PCCERT_CONTEXT c)
+{
+    wchar_t sujeto[256] = {}, emisor[256] = {};
+    CertNameToStrW(X509_ASN_ENCODING, &c->pCertInfo->Subject, CERT_X500_NAME_STR, sujeto, ARRAYSIZE(sujeto));
+    CertNameToStrW(X509_ASN_ENCODING, &c->pCertInfo->Issuer, CERT_X500_NAME_STR, emisor, ARRAYSIZE(emisor));
+    return wcscmp(sujeto, kSujeto) == 0 && wcscmp(emisor, kSujeto) == 0;
+}
+
+static std::vector<PCCERT_CONTEXT> DeAventya(HCERTSTORE almacen)
+{
+    std::vector<PCCERT_CONTEXT> hallados;
+    PCCERT_CONTEXT c = nullptr;
+    while ((c = CertEnumCertificatesInStore(almacen, c)) != nullptr)
+        if (EsDeAventya(c))
+            hallados.push_back(CertDuplicateCertificateContext(c));
+    return hallados;
+}
+
+static int Confiados()
+{
+    HCERTSTORE almacen = AbrirPersonasDeConfianza(true);
+    if (!almacen)
+        return 1;
+    auto hallados = DeAventya(almacen);
+    for (auto c : hallados)
+        CertFreeCertificateContext(c);
+    CertCloseStore(almacen, 0);
+    return hallados.empty() ? 1 : 0;
+}
+
+static int Desconfiar()
+{
+    int codigo = 0;
+    // El del equipo (lo que añade «confiar»; pide administrador) y, por si
+    // alguien lo añadió a mano, el del usuario.
+    for (DWORD ubicacion : {CERT_SYSTEM_STORE_LOCAL_MACHINE, CERT_SYSTEM_STORE_CURRENT_USER}) {
+        HCERTSTORE almacen = CertOpenStore(CERT_STORE_PROV_SYSTEM_W, 0, 0,
+                                           ubicacion | CERT_STORE_OPEN_EXISTING_FLAG, L"TrustedPeople");
+        if (!almacen) {
+            if (ubicacion == CERT_SYSTEM_STORE_LOCAL_MACHINE) {
+                Informar(L"No se pudo abrir «Personas de confianza» del equipo (¿sin permiso de administrador?).");
+                codigo = 1;
+            }
+            continue;
+        }
+        for (auto c : DeAventya(almacen)) {
+            // CertDeleteCertificateFromStore libera el contexto, también si falla.
+            if (!CertDeleteCertificateFromStore(c)) {
+                Informar(L"Windows no dejó quitar un certificado de AventyaPDF (error " +
+                         std::to_wstring(GetLastError()) + L").");
+                codigo = 1;
+            }
+        }
+        CertCloseStore(almacen, 0);
+    }
+    return codigo;
+}
+
+// keyring guarda cada contraseña como credencial genérica con destino
+// «servicio» o «usuario@servicio» (WinVaultKeyring).
+static int OlvidarClaves()
+{
+    DWORD n = 0;
+    PCREDENTIALW* lista = nullptr;
+    if (!CredEnumerateW(nullptr, 0, &n, &lista))
+        return GetLastError() == ERROR_NOT_FOUND ? 0 : 1;
+    const std::wstring servicio = kServicioClaves, sufijo = L"@" + servicio;
+    std::vector<std::wstring> borrar;
+    for (DWORD i = 0; i < n; ++i) {
+        if (lista[i]->Type != CRED_TYPE_GENERIC || !lista[i]->TargetName)
+            continue;
+        const std::wstring destino = lista[i]->TargetName;
+        if (destino == servicio ||
+            (destino.size() > sufijo.size() &&
+             destino.compare(destino.size() - sufijo.size(), sufijo.size(), sufijo) == 0))
+            borrar.push_back(destino);
+    }
+    CredFree(lista);
+    int codigo = 0;
+    for (auto const& destino : borrar)
+        if (!CredDeleteW(destino.c_str(), CRED_TYPE_GENERIC, 0))
+            codigo = 1;
+    return codigo;
+}
+
 // ── Paquete disperso ────────────────────────────────────────────────────── //
 
 static Uri UriDeArchivo(std::wstring ruta)
@@ -175,6 +281,12 @@ int wmain(int argc, wchar_t** argv)
                 g_log = argv[4];
             return Registrar(argv[2], argv[3]);
         }
+        if (orden == L"confiados" && argc == 2)
+            return Confiados();
+        if (orden == L"desconfiar" && argc == 2)
+            return Desconfiar();
+        if (orden == L"olvidar-claves" && argc == 2)
+            return OlvidarClaves();
         if (orden == L"quitar" && argc == 2) {
             QuitarPaquete(PackageManager());
             return 0;
