@@ -90,7 +90,14 @@ if (-not $sdk) { throw 'Falta el Windows SDK (makeappx.exe / signtool.exe).' }
 $makeappx = $sdk.FullName
 $signtool = Join-Path $sdk.DirectoryName 'signtool.exe'
 
-$v4 = (($Version.Split('.') + @('0', '0', '0', '0'))[0..2] -join '.') + '.0'
+# (r128) El cuarto número es propio de cada compilación (horas desde 2026,
+# cabe en 16 bits hasta 2033). Windows rechaza (0x80073CFB) registrar un
+# paquete con la MISMA identidad (nombre + versión) que otro que ya conoce
+# pero con contenido distinto, aunque se haya quitado para el usuario: pasó
+# al instalar una compilación de pruebas 0.9.11 encima de la 0.9.11 publicada
+# (cada compilación vuelve a firmar el paquete, así que nunca es idéntico).
+$revision = [int][math]::Floor(((Get-Date).ToUniversalTime() - [datetime]'2026-01-01').TotalHours)
+$v4 = (($Version.Split('.') + @('0', '0', '0', '0'))[0..2] -join '.') + ".$revision"
 $paquete = Join-Path $trabajo 'paquete'
 New-Item -ItemType Directory -Force $paquete | Out-Null
 Copy-Item -Recurse (Join-Path $PSScriptRoot 'imagenes') $paquete
