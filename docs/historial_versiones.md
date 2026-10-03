@@ -4,6 +4,24 @@
 
 Las publicadas como 1.0.0-1.3.0 se renumeraron 0.9.6-0.9.6.7 al publicarse la 0.9.7, y las 2.0.3-2.0.5 como 0.9.3-0.9.5 al publicarse la que fue 1.0.0: la **1.0.0** queda reservada para la primera versión con el instalador firmado.
 
+## 0.9.11 — 2026-10-02
+
+Commit `658a1d2`.
+
+Combinar sin límite de archivos, nuevo menú «Combinar PDF…», abrir varios archivos a la vez y pestañas que se ordenan con el ratón.
+
+#### Novedades respecto a la 0.9.10
+- **Combinar sin límite de archivos**: antes, combinar más de unos 500 PDF de una vez fallaba (Windows no deja tener tantos archivos abiertos a la vez). Ahora cada archivo se lee, se copia y se suelta antes del siguiente: el único límite es la memoria del equipo.
+- **Organizar › Combinar PDF…**, con dos opciones:
+  - **Combinar abiertos**: junta todas las pestañas, en su orden y con sus cambios sin guardar, en un PDF nuevo; cierra las pestañas y deja solo la del resultado, listo para guardar. Los archivos originales no se tocan.
+  - **Combinar ficheros…**: elige varios archivos (PDF, imágenes o Word) con Ctrl o Mayús y los combina en un PDF nuevo, en orden alfabético natural de sus nombres.
+- **Archivo › Abrir… admite varios archivos a la vez**, de todos los tipos que AventyaPDF sabe mostrar: cada PDF en su pestaña y cada imagen o documento de Word convertido a PDF en la suya.
+- **Organizar › Añadir PDF al final… admite varios archivos** de una vez.
+- **Pestañas reordenables**: arrastra con el ratón la pestaña de un documento arriba o abajo para cambiarla de sitio.
+- Soltar varios PDF sobre la ventana los abre todos (antes, solo el primero).
+
+217 pruebas automáticas OK.
+
 ## 0.9.10 — 2026-10-02
 
 Commit `a28868e`.
