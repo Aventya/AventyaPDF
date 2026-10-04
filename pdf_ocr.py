@@ -21,22 +21,37 @@ solo trataba páginas sin ningún texto y las sustituía por imagen + texto:
 6. Tesseract devuelve solo la capa de texto invisible (textonly_pdf) y se
    superpone con show_pdf_page: la página conserva imagen, vectores,
    anotaciones, formularios y cifrado, y el cambio se puede deshacer.
+
+(r131) OpenCV y NumPy se cargan la primera vez que se usan (`_cv`), no al
+importar este módulo: OpenCV era la mitad del arranque en frío de la app.
 """
+from __future__ import annotations
+
 import csv
 import math
 import os
 import re
 import subprocess
 import tempfile
+from typing import TYPE_CHECKING
 
-import cv2
 import fitz
-import numpy as np
 
 import doc_tools
 import tesseract_setup
 
+if TYPE_CHECKING:
+    import numpy as np
+
 DPI = 400
+
+
+def _cv():
+    """(r131) OpenCV y NumPy, cargados al primer uso (ver cabecera)."""
+    import cv2
+    import numpy as np
+    return cv2, np
+
 OSD_DPI = 150
 MIN_OSD_CONFIDENCE = 0.3
 # Límites de render: muchos escáneres guardan la página con tamaño en puntos =
@@ -184,6 +199,7 @@ def skew_angle(gray: np.ndarray) -> float:
     """(r60) Inclinación (grados) de las líneas de texto por perfil de
     proyección: el ángulo que hace más «picudas» las sumas por filas. Se busca
     entre ±MAX_SKEW en dos pasadas (0,5° y 0,1°) sobre una copia pequeña."""
+    cv2, np = _cv()
     h, w = gray.shape
     f = 1000 / max(h, w)
     small = cv2.resize(gray, (max(1, int(w * f)), max(1, int(h * f))),
@@ -221,6 +237,7 @@ def _text_layer(gray: np.ndarray, dpi: int, language: str,
     MuPDF: este no deja elegir el umbralizado). Sauvola (thresholding_method=2)
     y solo texto (textonly_pdf=1), así que no arrastra ninguna imagen (r35).
     Si la imagen se enderezó `angle` grados, la capa se gira de vuelta."""
+    cv2, _np = _cv()
     tesseract_setup.ensure_pdf_font()
     with tempfile.TemporaryDirectory(prefix="agpdf_ocr_") as tmp:
         png, base = os.path.join(tmp, "pagina.png"), os.path.join(tmp, "capa")
@@ -259,6 +276,7 @@ def ocr_page(page: fitz.Page, language: str = "spa", dpi: int = DPI,
     """Añade a `page` la capa de texto invisible de lo que Tesseract reconozca
     fuera del texto ya seleccionable (el visible: la capa de un OCR anterior se
     sustituye, r60). Devuelve el número de palabras añadidas."""
+    cv2, np = _cv()
     remove_previous_ocr(page)
     original = page.rotation
     extra = detect_rotation(page, language) if detect_orientation else 0

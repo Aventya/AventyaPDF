@@ -866,6 +866,23 @@ class TestVentanaPrincipal(unittest.TestCase):
         self.assertEqual(orden, ["a.pdf", "b.pdf", "c.pdf"])
         self.assertEqual(w._active, 2)
 
+    def test_el_arranque_no_carga_ocr_ni_firma(self):
+        """(r131) Arranque rápido: abrir la ventana no carga OpenCV/NumPy (OCR)
+        ni pyHanko (firma); se cargan la primera vez que se usan. En un
+        proceso aparte, para que no cuente lo que ya cargaron otras pruebas."""
+        import subprocess
+        codigo = ("import sys; from PyQt6.QtWidgets import QApplication; "
+                  "app = QApplication(sys.argv); from main_window import MainWindow; "
+                  "w = MainWindow(); w.show(); app.processEvents(); "
+                  "print(sorted(m for m in ('cv2', 'numpy', 'pyhanko', 'signer_backend') "
+                  "if m in sys.modules))")
+        raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = dict(os.environ, QT_QPA_PLATFORM="offscreen", PYTHONPATH=raiz)
+        r = subprocess.run([sys.executable, "-c", codigo], cwd=raiz, env=env,
+                           capture_output=True, text=True, timeout=120)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.strip().splitlines()[-1], "[]")
+
     def test_icono_de_la_aplicacion_con_todos_los_tamanos(self):
         """(r57) vendor/icono/aventyapdf.ico existe, Qt lo lee y trae los
         tamaños oficiales de Windows (create_app_icon.TAMANOS)."""

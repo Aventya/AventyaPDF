@@ -31,7 +31,7 @@ import icons
 import pdf_ocr
 import tesseract_setup
 import tesseract_ui
-from signer_backend import TSA_PRESETS
+from tsa import TSA_PRESETS
 
 SETTINGS = ("aventyapdf", "config")
 APP_VERSION = "0.9.13"

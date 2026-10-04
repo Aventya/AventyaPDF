@@ -35,7 +35,7 @@ import doc_tools
 import icons
 from cert_manager import CertPickerDialog, load_saved_cert
 from history import Snapshot, UndoStack
-from signer_backend import PAdESSigner, SigningError, TSA_PRESETS, remove_last_signature
+from tsa import TSA_PRESETS
 
 SETTINGS = ("aventyapdf", "config")
 MAX_RECENT = 10
@@ -59,6 +59,8 @@ class SignWorker(QThread):
         self._kwargs = kwargs
 
     def run(self):
+        # (r131) pyHanko se carga al firmar, no al arrancar la aplicación.
+        from signer_backend import PAdESSigner, SigningError
         try:
             self.succeeded.emit(PAdESSigner.sign_pdf_bytes(**self._kwargs))
         except SigningError as e:
@@ -1126,6 +1128,7 @@ class DocumentMixin:
         if r != QMessageBox.StandardButton.Yes:
             return False
         origen = self._pending_bytes if self._pending_bytes is not None else self._clean_bytes
+        from signer_backend import SigningError, remove_last_signature   # (r131) al usarse
         try:
             nuevo = remove_last_signature(origen, field_name, self._password)
             doc = self._open_bytes(nuevo)

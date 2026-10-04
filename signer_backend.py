@@ -40,12 +40,8 @@ TEXT_MARGIN_RATIO = 0.10
 # OID para organizationIdentifier (NIF de la organización representada)
 _OID_ORG_ID = ObjectIdentifier("2.5.4.97")
 
-# Servidores de sellado de tiempo (RFC 3161) gratuitos y conocidos.
-TSA_PRESETS = [
-    "http://timestamp.digicert.com",
-    "http://timestamp.sectigo.com",
-    "https://freetsa.org/tsr",
-]
+# Servidores de sellado de tiempo (RFC 3161): (r131) viven en tsa.py, ligero.
+from tsa import TSA_PRESETS  # noqa: E402,F401
 
 
 def _clean_id(value: str) -> str:
