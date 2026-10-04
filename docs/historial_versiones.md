@@ -4,6 +4,18 @@
 
 Las publicadas como 1.0.0-1.3.0 se renumeraron 0.9.6-0.9.6.7 al publicarse la 0.9.7, y las 2.0.3-2.0.5 como 0.9.3-0.9.5 al publicarse la que fue 1.0.0: la **1.0.0** queda reservada para la primera versión con el instalador firmado.
 
+## 0.9.13 — 2026-10-03
+
+Commit `c1f5cd2`.
+
+Desinstalar AventyaPDF ya no deja rastro: se borran sus ajustes, las contraseñas guardadas y su certificado.
+
+#### Novedades respecto a la 0.9.12
+- **Desinstalar sin dejar rastro**: al desinstalar AventyaPDF se borran también sus ajustes (archivos recientes, preferencias, firma manuscrita, certificado elegido…), las contraseñas de certificados guardadas en el Administrador de credenciales de Windows, el certificado del menú del botón derecho de «Personas de confianza» del equipo, los idiomas de OCR descargados y los registros de errores.
+- No se desinstala Tesseract OCR, que es un programa aparte que puede usar otra aplicación.
+
+221 pruebas automáticas OK.
+
 ## 0.9.12 — 2026-10-03
 
 Commit `149681c`.

@@ -34,7 +34,7 @@ import tesseract_ui
 from tsa import TSA_PRESETS
 
 SETTINGS = ("aventyapdf", "config")
-APP_VERSION = "0.9.13"
+APP_VERSION = "0.9.14"
 # (r71) Titular y repositorio público (AGPL-3.0, libre distribución).
 APP_OWNER = "Aventya Asesoría Integral SL"
 APP_REPO = "https://github.com/Aventya/AventyaPDF"
