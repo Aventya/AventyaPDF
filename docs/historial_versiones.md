@@ -2,7 +2,7 @@
 
 **Solo se mantiene la última versión**, la de [Releases](https://github.com/Aventya/AventyaPDF/releases/latest). Las anteriores se desechan: su publicación, su etiqueta y su instalador se han retirado de GitHub, porque pueden tener fallos ya corregidos. Aquí queda solo la mención de lo que trajo cada una, con el commit del que salió (el código sigue en el historial de la rama `desarrollo`).
 
-Las publicadas como 1.0.0-1.3.0 se renumeraron 0.9.6-0.9.6.7 al publicarse la 0.9.7, y las 2.0.3-2.0.5 como 0.9.3-0.9.5 al publicarse la que fue 1.0.0: la **1.0.0** queda reservada para la primera versión con el instalador firmado.
+Las publicadas como 1.0.0-1.3.0 se renumeraron 0.9.6-0.9.6.7 al publicarse la 0.9.7, y las 2.0.3-2.0.5 como 0.9.3-0.9.5 al publicarse la que fue 1.0.0: la **1.0.0** queda para el lanzamiento en la Microsoft Store.
 
 ## 0.9.13 — 2026-10-03
 

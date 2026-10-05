@@ -1,18 +1,18 @@
 # MEMORIA EVOLUTIVA — AventyaPDF
 
 > **Documento vivo.** Es la fuente única de verdad sobre la composición y el
-> comportamiento real del proyecto. Se lee ANTES de tocar código y se actualiza
-> DESPUÉS de cada edición. Protocolo de actualización en la sección 9.
+> comportamiento real del proyecto. Se lee antes de tocar código y se actualiza
+> después de cada edición. Protocolo de actualización en la sección 9.
 
 | Campo | Valor |
 | :-- | :-- |
-| Revisión de la memoria | **r133** |
-| Fecha de la revisión | 2026-10-04 |
+| Revisión de la memoria | **r134** |
+| Fecha de la revisión | 2026-10-05 |
 | Versión de la app | **0.9.14** publicada y firmada con Sigstore (r133); la 0.9.13 retirada de GitHub. La 1.0.0 queda para el lanzamiento en la Microsoft Store. |
-| Raíz del proyecto | (r94) Ricardo trabaja desde **dos equipos**: `C:\Users\ricardo\Proyectos\AventyaPDF` (tiene Inno Setup, Visual Studio con C++ y el certificado del paquete del menú contextual: aquí se puede empaquetar) y `C:\Users\Aventya\Proyectos\AVENTYAPDF` (✅ ya renombrada, comprobado en r71; antes `ANTIGRAVITY-PDF`, ver r56) (hasta r5: `A:\CARPETA IA\RICARDO\ANTIGRAVITY-PDF`, carpeta compartida por varios equipos) |
+| Raíz del proyecto | (r94) Ricardo trabaja desde **dos equipos**: `C:\Users\ricardo\Proyectos\AventyaPDF` (tiene Inno Setup, Visual Studio con C++ y el certificado del paquete del menú contextual: aquí se puede empaquetar) y `C:\Users\Aventya\Proyectos\AVENTYAPDF` (antes `ANTIGRAVITY-PDF`) |
 | Control de versiones | ✅ **git** desde r71, repositorio **público** https://github.com/Aventya/AventyaPDF (cuenta de GitHub `Aventya`). (r94) **Rama de trabajo: `desarrollo`**; `main` = solo lo publicado (ver §8 «Ramas»). Licencia **AGPL-3.0** (`LICENSE`). Titular: **Aventya Asesoría Integral SL**. |
-| Estado | ✅ **Pruebas automáticas: 200/200** (r106; 6 omitidas; r105: 199; r104: 197; r95: 190/190, 5 omitidas por falta de `signxml`; r86: 188 (6 omitidas); r82…r72: 169/169; r71: 168; r70, 5 omitidas; r69: 167; r68: 166; r62: instalador `AventyaPDF-Setup-2.0.1.exe` generado y probado). ⚠️ La interfaz real aún no se ha abierto ni probado a mano (ver §7.0). (r86) El menú contextual del Explorador lo instala ya el instalador (menú principal de Windows 11 + clásico). |
-| Líneas de código Python | ~11.000 en 29 módulos + 2 de pruebas (r38: fuera el visor XFA y pdf.js) |
+| Estado | ✅ **Pruebas automáticas: 222** (r131). En Windows pasan todas salvo las omitidas; en Linux (sesiones en la nube) fallan unas 36 que dependen de Windows (fuentes, Word, Tesseract, certificados), así que allí se compara con el resultado anterior al cambio. Cada versión se instala y se prueba a mano en el equipo `ricardo` antes de publicarse. El instalador pone el menú contextual del Explorador (menú principal de Windows 11 + clásico). |
+| Líneas de código Python | ~18.000 en 44 módulos + 2 de pruebas (r134) |
 
 ---
 
@@ -289,7 +289,7 @@ ventana; ambos llaman a su API pública (`checkpoint`, `mark_modified`,
 - **Errores inesperados** (r5): diálogo «Error inesperado» con el traceback en
   «Mostrar detalles»; la aplicación sigue abierta.
 
-## 4. Invariantes técnicos — NO ROMPER
+## 4. Invariantes técnicos (no romper)
 
 1. **Coordenadas.** El visor usa coordenadas de página PyMuPDF (origen
    arriba-izquierda) escaladas por `scale_factor`. **El único volteo a PDF
@@ -1014,27 +1014,12 @@ sello, `signed_at` vacío (no hay «fecha declarada» aparte de la del sello).
 
 ## 7. Deuda técnica y observaciones abiertas
 
-### 7.0 ⚠️ Verificación pendiente
-**r6: primera ejecución real.** Con el proyecto en `C:` la consola funciona.
-`.\run.ps1 -Pruebas` → **18/18 OK** tras corregir dos pruebas que usaban
-`fitz.Rect.center` (invariante 23; el código de la app no lo usaba). En las
-pruebas de firma salen trazas de pyHanko «self-signed»: es lo esperado, porque
-el certificado de pruebas es autofirmado (veredicto `untrusted`), y no son fallos.
-
-**Pendiente:** abrir la app (`.\run.ps1`) y seguir el plan manual de
-[docs/herramientas_profesionales.md](docs/herramientas_profesionales.md#plan-de-pruebas)
-(diálogos modales, impresión, OCR, TSA y certificados de Windows no tienen
-pruebas automáticas). Ante cualquier fallo, pedir `errores.log`.
-
-Antecedente: r4 y r5 no pudieron ejecutar Python (la unidad `A:` hacía fallar
-las consolas) y verificaron las APIs de riesgo leyendo el código fuente de las
-versiones instaladas. Quedaron confirmadas: `add_*_annot(quads=[Rect…])`,
-`TextWriter.write_text(morph=…)` (compensa rotación y CropBox),
-`insert_text(rotate=…)`, `Widget.on_state()`, `pdfocr_tobytes`, `bake`,
-`fullcopy_page`, constantes `PDF_*`, `enumerate_sig_fields`, `load_pkcs12`,
-campos de `PdfSignatureMetadata`, `PdfSigner`, atributos de estado de
-validación, `ValidationContext`, `IncrementalPdfFileWriter.encrypt`,
-`QDialog.DialogCode` (IntEnum en PyQt6 6.11).
+### 7.0 Lo que no cubren las pruebas automáticas
+Diálogos modales, impresión, OCR, sellado de tiempo y certificados de Windows
+se prueban a mano con el plan de
+[docs/herramientas_profesionales.md](docs/herramientas_profesionales.md#plan-de-pruebas).
+Ante cualquier fallo, pedir `errores.log`. En las pruebas de firma salen trazas
+de pyHanko «self-signed»: es lo esperado (certificado de pruebas autofirmado).
 
 ### 7.1 Errores o límites conocidos
 - Guardar cambios en un PDF firmado reescribe el archivo (no hay guardado
@@ -1117,7 +1102,7 @@ validación, `ValidationContext`, `IncrementalPdfFileWriter.encrypt`,
 **Un entorno por equipo fuera de la carpeta del proyecto**, gestionado por [run.ps1](run.ps1):
 
 ```powershell
-cd "C:\Users\Aventya\Proyectos\ANTIGRAVITY-PDF"   # (r56) pendiente de pasar a AVENTYAPDF, ver cabecera
+cd <carpeta del proyecto>   # C:\Users\ricardo\Proyectos\AventyaPDF o C:\Users\Aventya\Proyectos\AVENTYAPDF
 .\run.ps1                # instala Python y el entorno si faltan; instala los paquetes que falten
 .\run.ps1 -Pruebas       # pruebas automáticas (sin ventanas, sin red)
 .\run.ps1 -Actualizar    # reinstala y actualiza requirements.txt
@@ -1144,19 +1129,21 @@ descargas en `build-cache`) y no crea el instalador si falla el autodiagnóstico
 **(r85) Publicar una versión — versionado evolutivo** (petición de Ricardo: «ok,
 a partir de ahora versiones evolutivas»). Desde la 1.0.0 cada publicación lleva
 un número **mayor** que la última de GitHub: el último número para correcciones
-(1.0.1, 1.0.2…) y el del medio para funciones nuevas (1.1.0…). Nunca se
-republica encima de una versión ya publicada (r126: **tampoco sustituyendo
-solo el instalador adjunto** con `gh release upload --clobber` o borrando y
-recreando la publicación; si tras publicar aparece un fallo, se publica la
-versión siguiente) (ni se mueve su etiqueta ni se
-sustituye su instalador): el aviso automático de actualizaciones
+(1.0.1, 1.0.2…) y el del medio para funciones nuevas (1.1.0…). Hasta entonces,
+en la serie 0.9.x, cada publicación sube el último número (0.9.14 → 0.9.15),
+sea corrección o función nueva. Una versión publicada no se toca: ni se mueve su
+etiqueta ni se sustituye su instalador (tampoco con `gh release upload
+--clobber` ni borrando y recreando la publicación); si tras publicar aparece un
+fallo, se publica la versión siguiente (incidente de la 0.9.11, r126). El
+motivo: el aviso automático de actualizaciones
 (`actualizaciones.is_newer`) compara números, y quien ya tuviera instalada esa
 versión no se enteraría del cambio. Pasos:
 
 (r110) **Renumeración a 0.9.x** (petición de Ricardo: «publícalo como 0.9.7
 pasando todas las demás versiones a ser actualizaciones menores a esta
 versión… es la última versión antes de obtener el certificado»). La **1.0.0**
-queda reservada para la primera versión con el instalador firmado. En GitHub,
+queda para el lanzamiento en la Microsoft Store (decisión de Ricardo,
+2026-10-02). En GitHub,
 las publicaciones 1.x se renombraron (etiqueta nueva en el mismo commit,
 borrada la antigua, título, notas y nombre del instalador adjunto, con una
 nota «Versión previa» delante, igual que cuando 2.0.3-2.0.5 pasaron a
@@ -1194,7 +1181,8 @@ solo mira tres números: no publicar versiones de cuatro números en adelante.
    (`git ls-files --eol vendor/fonts | grep crlf` los lista).
 4. (r94) Pasar `desarrollo` a `main` (`git switch main`, `git merge desarrollo`),
    commit y `git push origin main`; etiqueta anotada `v<versión>` y su push.
-   Volver a `desarrollo` y ponerla al día con `main`.
+   Volver a `desarrollo` (`git switch desarrollo`); como `main` solo recibe
+   fusiones de `desarrollo`, no hace falta traer nada de vuelta.
 5. `gh release create v<versión> empaquetado\salida\AventyaPDF-Setup-<versión>.exe --latest`
    con notas en español: instalación, aviso de SmartScreen y cambios respecto
    a la anterior.
@@ -1213,7 +1201,9 @@ solo mira tres números: no publicar versiones de cuatro números en adelante.
    publicación anterior entera**, con su etiqueta e instalador
    (`gh release delete v<anterior> --cleanup-tag -y`; `git tag -d v<anterior>`),
    después de copiar sus novedades a `docs/historial_versiones.md` (versión,
-   fecha, commit). En GitHub solo existe la última publicación.
+   fecha, commit). En GitHub solo existe la última publicación. (r133) El modo
+   automático de Claude Code bloquea este borrado: pedir a Ricardo que lo
+   autorice expresamente en la sesión.
 
 **(r94) Ramas — trabajo en curso en `desarrollo`** (petición de Ricardo: «los
 cambios no los quiero hacer públicos hasta tenerlos pulidos, pero necesito ir
@@ -1221,9 +1211,12 @@ dejándolos en GitHub pues trabajo desde dos equipos distintos»).
 
 - Todo el trabajo se hace y se sube en la rama **`desarrollo`**. `main` solo
   recibe cambios cuando Ricardo dice que están pulidos y se publica versión
-  (pasos de arriba). Esta misma nota y `CLAUDE.md` solo están en `desarrollo`
-  (decisión de Ricardo): en un equipo que siga en `main`, hay que pedir
-  expresamente «descarga la rama desarrollo de GitHub y sigamos trabajando en ella».
+  (pasos de arriba). Esta memoria y `CLAUDE.md` llegan también a `main` con
+  cada publicación (r134: se dejan ahí a propósito, porque `README.md` y
+  `docs/` enlazan la memoria y quitarlas de `main` rompería esos enlaces y
+  obligaría a resolver un conflicto en cada publicación), pero en `main` van
+  atrasadas: en un equipo que siga en `main`, hay que pedir expresamente
+  «descarga la rama desarrollo de GitHub y sigamos trabajando en ella».
 - Al **empezar** una sesión en cualquier equipo: `git fetch`, `git switch
   desarrollo` (la primera vez en un equipo crea la rama local a partir de
   `origin/desarrollo`) y `git pull`. «Descarga la última versión» significa eso.
@@ -1238,16 +1231,12 @@ Tesseract OCR (r16): `.\run.ps1` lo comprueba antes de arrancar y, si falta, lo
 instala solo (pedirá permiso de administrador) con los idiomas español, inglés y
 osd. A mano: `python tesseract_setup.py` con el Python del entorno.
 
-> Nota operativa: desde `C:\Users\Aventya\Proyectos\ANTIGRAVITY-PDF` (r56:
-> pendiente de pasar a `...\AVENTYAPDF`, ver cabecera; hasta r5:
-> `A:\CARPETA IA\RICARDO\ANTIGRAVITY-PDF`) las consolas de las herramientas
-> funcionan y pueden lanzar `run.ps1 -Pruebas`.
-> (r21) Eso sí, invocar `powershell -File .\run.ps1` **desde la herramienta
+> Nota operativa: en la carpeta del proyecto de los dos equipos las consolas de
+> las herramientas funcionan y pueden lanzar `run.ps1 -Pruebas`.
+> Eso sí, invocar `powershell -File .\run.ps1` **desde la herramienta
 > Bash** falla con «Get-FileHash no se reconoce»: hay que usar la herramienta
 > PowerShell, o el intérprete del entorno directamente
 > (`%LOCALAPPDATA%\aventyapdf\venv\Scripts\python.exe -m unittest discover -s tests`).
-> Desde la antigua ruta en `A:` fallaban siempre; si el proyecto vuelve ahí,
-> habrá que pedirle a Ricardo que ejecute.
 
 ## 9. Protocolo de actualización de esta memoria
 
@@ -1268,6 +1257,7 @@ motivos, invariantes, trampas y estado.
 
 | Rev | Fecha | Cambio |
 | :-- | :-- | :-- |
+| r134 | 2026-10-05 | **Auditoría de las instrucciones (`CLAUDE.md` y esta memoria)** (Ricardo, tras el informe de `/claude-api prompt-audit`: «haz los cambios de publicación necesarios y modifica todo lo que ves necesario en la memoria y sobre todo en claude.md»). **Datos viejos corregidos**: cabecera (estado de pruebas 200/200 y «la interfaz aún no se ha probado a mano», recuento de módulos, rutas antiguas), §7.0 «Verificación pendiente» (ya no lo está), ruta `ANTIGRAVITY-PDF` en §8. **Contradicciones**: §8 decía que la 1.0.0 sería la primera con instalador firmado y la cabecera que será el lanzamiento en la Store (la más reciente, 2026-10-02, manda); §8 «Ramas» decía que esta memoria y `CLAUDE.md` solo estaban en `desarrollo`, pero llegan a `main` con cada publicación: se dejan ahí (README y docs/ los enlazan) y la nota lo dice. **Publicación** (§8): numeración de la serie 0.9.x (sube el último número), la regla de no tocar una versión publicada en una sola frase, el paso 4 ya no manda «poner al día `desarrollo` con `main`» (no hace falta) y el paso 6 avisa de que el borrado necesita la autorización de Ricardo. `CLAUDE.md` reescrito: qué es el proyecto, para quién se escribe, pruebas en Windows y en Linux, ramas y publicación. `docs/historial_versiones.md`: corregido el mismo dato de la 1.0.0. |
 | r133 | 2026-10-04 | **0.9.14 publicada** desde el equipo `ricardo`: 222 pruebas OK, `construir.ps1 -ProbarInstalacion` sin fallos (instalador y MSIX), `desarrollo` → `main`, etiqueta `v0.9.14`, publicación con `--notes-file` y firma Sigstore correcta (`.sigstore.json` adjunto). Paso 6: publicación y etiqueta `v0.9.13` borradas con autorización expresa de Ricardo («hazlo tu»; el modo automático bloquea ese borrado si no se autoriza). |
 | r132 | 2026-10-04 | **0.9.14 preparada para publicar** (Ricardo, tras probar r131 en su equipo: «mejora bastante la apertura, publica la nueva versión»). `APP_VERSION` 0.9.14; la 0.9.13 pasa a `docs/historial_versiones.md` (commit `c1f5cd2`; se borrará de GitHub al publicar la 0.9.14); notas en `empaquetado/notas/0.9.14.md`. Los pasos 3-6 de «Publicar una versión» (compilar, `main`, etiqueta, publicación, retirar la 0.9.13) los hace el equipo `ricardo`. |
 | r131 | 2026-10-04 | **Arranque más rápido: OCR y firma se cargan al usarse** (Ricardo: «¿se puede hacer que se mantenga una parte de AventyaPDF en memoria para que su apertura fuera lo más rápida posible?»; de las dos propuestas —carga diferida o aplicación residente en segundo plano con icono junto al reloj—, «haz la propuesta 1»). **Medido** (Linux, `-X importtime`): en el primer arranque tras encender, importar la ventana tardaba ~9 s, de ellos ~4,3 s OpenCV (solo para enderezar páginas en el OCR, vía `pdf_ocr`) y ~1,5 s pyHanko (solo para firmar, vía `signer_backend`). **Hecho**: `pdf_ocr._cv()`, pyHanko importado dentro de `SignWorker.run` y `remove_last_signature`, `TSA_PRESETS` a `tsa.py` (invariante 60). Con caché caliente, importar la ventana pasa de ~0,6 s a ~0,25 s; en frío se ahorran esos ~6 s (en Windows, además, el antivirus ya no revisa esos archivos al arrancar). La primera firma o el primer OCR de cada sesión tardan un poco más. Prueba nueva `test_el_arranque_no_carga_ocr_ni_firma` (proceso aparte; falla con el código anterior). Suite en Linux: 222, mismos fallos que antes del cambio (los de solo Windows). La propuesta 2 (residente) queda sin hacer. Falta medir el arranque en frío en Windows. |
