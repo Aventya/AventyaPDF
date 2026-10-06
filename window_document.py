@@ -501,7 +501,7 @@ class DocumentMixin:
         # siempre se debe mostrar abierto en cuanto se abra un PDF que
         # traiga una firma certificada en su interior») A diferencia de
         # «thumbs» (que solo se abre si el panel lateral estaba cerrado),
-        # Firmas Certificadas se abre siempre que el documento esté firmado,
+        # Firmas certificadas se abre siempre que el documento esté firmado,
         # aunque el panel ya mostrara otra cosa.
         if doc_tools.signed_count(doc):
             self.sidebar.show_panel("signatures")
@@ -1227,7 +1227,7 @@ class DocumentMixin:
         en la barra de tareas») Formulario sin firmar y/o cifrado, centrado
         en la barra de estado (`_notice_box`) — sustituye al aviso superior
         (`_build_banner`, r46, retirado por no usarlo ya nada). El de firma
-        no se anuncia aquí: vive en el panel lateral de Firmas Certificadas
+        no se anuncia aquí: vive en el panel lateral de Firmas certificadas
         (rail o menú), que `_set_document` abre siempre que el documento
         está firmado (r77)."""
         msgs = []

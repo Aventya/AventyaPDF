@@ -114,7 +114,7 @@ Icons: es la única fuente de iconos del programa (`icons.py`). Cada carpeta lle
 
 ## Relación con otros Documentos
 
-Este fichero se relaciona directamente con:
+Este archivo se relaciona directamente con:
 * **[Índice Principal (indice.md)](indice.md)**: Estructura general de la memoria.
 * **[Interfaz Gráfica y Visor (interfaz_grafica.md)](interfaz_grafica.md)**: Detalle del comportamiento de la interfaz y visor.
 * **[Edición y Manipulación de PDF (edicion_pdf.md)](edicion_pdf.md)**: Implementación de la edición y organización de páginas.

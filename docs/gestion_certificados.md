@@ -85,7 +85,7 @@ Para facilitar la verificación del sistema de firmas por parte de desarrollador
 
 ## Relación con otros Documentos
 
-Este fichero se relaciona directamente con:
+Este archivo se relaciona directamente con:
 * **[Arquitectura General (arquitectura.md)](arquitectura.md)**: Estructura del flujo de datos de identidades.
 * **[Firma Digital PAdES (firma_digital.md)](firma_digital.md)**: Destinatario de los archivos PFX y contraseñas para el proceso de firmado.
 * **[Interfaz Gráfica y Visor (interfaz_grafica.md)](interfaz_grafica.md)**: El panel de opciones contextuales de firma que lee y muestra el estado del certificado activo.

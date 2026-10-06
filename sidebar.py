@@ -675,7 +675,7 @@ class SignaturesPanel(QWidget):
         self.mw = mw
         lay = QVBoxLayout(self)
         lay.setContentsMargins(6, 6, 6, 6)
-        lay.addWidget(_panel_header(tr("Firmas Certificadas")))
+        lay.addWidget(_panel_header(tr("Firmas certificadas")))
         self.list = QListWidget()
         self.list.setWordWrap(True)
         self.list.itemClicked.connect(self._clicked)
@@ -807,7 +807,7 @@ class SidePanel(QWidget):
         # (r77, petición de Ricardo: «el icono debería ser el del
         # certificado») Icono del certificado digital, como el botón
         # «Seleccionar un certificado digital…» del panel Firma.
-        ("signatures", icons.glyph("opt_cert"), tr("Firmas Certificadas")),
+        ("signatures", icons.glyph("opt_cert"), tr("Firmas certificadas")),
     ]
 
     def __init__(self, mw):

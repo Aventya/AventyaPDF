@@ -262,7 +262,7 @@ class _FileCertTab(QWidget):
         self._pass.setPlaceholderText(tr("Contraseña del certificado…"))
         lay.addWidget(self._pass)
 
-        note = tr("(Windows Credential Manager)") if _KEYRING_OK else tr("(configuración de la app)")
+        note = tr("(Administrador de credenciales de Windows)") if _KEYRING_OK else tr("(configuración de la app)")
         self._remember = QCheckBox(tr("Recordar  {note}").format(note=note))
         self._remember.setChecked(bool(saved_path))
         lay.addWidget(self._remember)

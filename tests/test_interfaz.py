@@ -796,8 +796,8 @@ class TestVentanaPrincipal(unittest.TestCase):
         w.combine_open_documents()
         self.assertEqual((len(w._sessions), w.pdf_path), (1, a))
 
-    def test_combinar_ficheros_con_seleccion_multiple(self):
-        """(r123) Organizar › Combinar PDF › Combinar ficheros…: diálogo de
+    def test_combinar_archivos_con_seleccion_multiple(self):
+        """(r123) Organizar › Combinar PDF › Combinar archivos…: diálogo de
         selección múltiple; se combinan en orden natural de nombre."""
         from PyQt6.QtWidgets import QFileDialog
         w = self.w

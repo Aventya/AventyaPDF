@@ -152,7 +152,7 @@ criptográfico**; si hace falta validez legal, se firma además digitalmente.
 
 ## Relación con otros Documentos
 
-Este fichero se relaciona directamente con:
+Este archivo se relaciona directamente con:
 * **[Arquitectura General (arquitectura.md)](arquitectura.md)**: Vista general del motor `pyHanko` y flujo criptográfico.
 * **[Gestión de Certificados Digitales (gestion_certificados.md)](gestion_certificados.md)**: Origen de los datos del certificado PFX/P12 y la contraseña segura.
 * **[Interfaz Gráfica y Visor (interfaz_grafica.md)](interfaz_grafica.md)**: El visor interactivo donde el usuario dibuja la caja de firma visible.

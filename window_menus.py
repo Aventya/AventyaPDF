@@ -155,7 +155,7 @@ class MenusMixin:
         A(m, tr("Miniaturas de página"), lambda: self.sidebar.show_panel("thumbs"), needs_doc=False)
         A(m, tr("Marcadores"), lambda: self.sidebar.show_panel("bookmarks"), needs_doc=False)
         A(m, tr("Comentarios"), lambda: self.sidebar.show_panel("comments"), needs_doc=False)
-        A(m, tr("Firmas Certificadas"), lambda: self.sidebar.show_panel("signatures"), needs_doc=False)
+        A(m, tr("Firmas certificadas"), lambda: self.sidebar.show_panel("signatures"), needs_doc=False)
         self._act_highlight_fields = A(m, tr("Resaltar campos de formulario"),
                                        self.toggle_highlight_fields, needs_doc=False)
         self._act_highlight_fields.setCheckable(True)
@@ -201,7 +201,7 @@ class MenusMixin:
         sub = m.addMenu(tr("Combinar PDF…"))
         self._act_combine_open = A(sub, tr("Combinar abiertos"), self.combine_open_documents,
                                    needs_doc=False)
-        A(sub, tr("Combinar ficheros…"), self.combine_files_dialog, needs_doc=False)
+        A(sub, tr("Combinar archivos…"), self.combine_files_dialog, needs_doc=False)
         sub.aboutToShow.connect(
             lambda: self._act_combine_open.setEnabled(len(self._sessions) >= 2))
         A(m, tr("Duplicar página actual"), self.copy_page)
@@ -512,18 +512,18 @@ class MenusMixin:
             self._select_tool("SIGN")
 
     def combine_files_dialog(self):
-        """(r123) Organizar › Combinar PDF › Combinar ficheros…: elige varios
+        """(r123) Organizar › Combinar PDF › Combinar archivos…: elige varios
         archivos (PDF, imágenes o Word) y los combina en un PDF nuevo sin
         guardar, en una pestaña nueva. Se combinan en el orden natural de sus
         nombres (el diálogo de Windows no devuelve el orden en que se pulsaron);
         después se pueden reordenar las páginas en el panel lateral."""
         paths, _ = QFileDialog.getOpenFileNames(
-            self, tr("Combinar ficheros en un PDF"), self._start_dir(),
+            self, tr("Combinar archivos en un PDF"), self._start_dir(),
             conversion_office.FILTRO_ABRIR)
         if not paths:
             return
         if len(paths) < 2:
-            QMessageBox.warning(self, tr("Combinar ficheros"),
+            QMessageBox.warning(self, tr("Combinar archivos"),
                                 tr("Selecciona al menos dos archivos para combinarlos "
                                 "(con Ctrl o Mayús pulsada)."))
             return

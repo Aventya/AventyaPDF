@@ -55,7 +55,7 @@ Para facilitar la navegación directa al código, a continuación se listan los 
 
 ## Relación de Documentos
 
-Este fichero se relaciona directamente con:
+Este archivo se relaciona directamente con:
 * [Arquitectura General](arquitectura.md)
 * [Interfaz Gráfica y Visor](interfaz_grafica.md)
 * [Edición y Manipulación de PDF](edicion_pdf.md)
