@@ -13,17 +13,20 @@ licencia [GNU AGPL-3.0](LICENSE)
 
 <table>
 <tr>
-<td width="50%"><img src="docs/capturas/01_vista_general.png" alt="Vista general, con el panel de miniaturas"></td>
-<td width="50%"><img src="docs/capturas/09_recortar.png" alt="Comentar y recortar páginas"></td>
+<td width="50%"><img src="docs/capturas/ventana.png" alt="Vista general, con el panel de miniaturas"></td>
+<td width="50%"><img src="docs/capturas/recortar.png" alt="Comentar y recortar páginas"></td>
 </tr>
 <tr>
-<td width="50%"><img src="docs/capturas/10_formulario.png" alt="Rellenar un formulario"></td>
-<td width="50%"><img src="docs/capturas/16_ocr.png" alt="Reconocer texto (OCR)"></td>
+<td width="50%"><img src="docs/capturas/formulario.png" alt="Rellenar un formulario"></td>
+<td width="50%"><img src="docs/capturas/ocr.png" alt="Reconocer texto (OCR)"></td>
 </tr>
 </table>
 
 Manual con todas las herramientas, cada una con su captura, en
-[docs/MANUAL.pdf](docs/MANUAL.pdf).
+[español](docs/manual/MANUAL_es.pdf), [English](docs/manual/MANUAL_en.pdf),
+[français](docs/manual/MANUAL_fr.pdf), [italiano](docs/manual/MANUAL_it.pdf),
+[català](docs/manual/MANUAL_ca.pdf), [galego](docs/manual/MANUAL_gl.pdf) y
+[euskara](docs/manual/MANUAL_eu.pdf).
 
 ## Descargar
 

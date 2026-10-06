@@ -135,3 +135,23 @@ Pg.Suiv / Pg.Préc (AvPág / RePág), molette (rueda).
   minúscula, «Signatures certifiées».
 - Se usan a la vez «ficheros» y «archivos» («Combinar ficheros…» frente a «Archivos PDF»);
   en francés todo es «fichiers».
+
+## Términos añadidos (r138: presentación, manual)
+
+| Español | Francés | Motivo |
+|---|---|---|
+| sello visible (de la firma) | signature visible | se evita «cachet», que en eIDAS es el sello electrónico de persona jurídica |
+| libre distribución | libre diffusion | en la presentación de bienvenida ya se usó «gratuite» |
+| Quitar seguridad | Supprimer la sécurité | Acrobat FR |
+| Quitar firma | Retirer la signature | |
+| Manual de AventyaPDF | Manuel d'AventyaPDF | |
+| marcado de texto | marquage du texte | |
+| firmador (de PDF) | outil de signature | |
+| CONFIDENCIAL (marca de agua) | CONFIDENTIEL | |
+| sufijo `_firmado` | `_signé` | nombre de archivo al guardar firmado |
+| menú Inicio | menu Démarrer | Windows FR |
+| Abrir \| Abrir con \| Compartir | Ouvrir \| Ouvrir avec \| Partager | Windows 11 FR |
+| Elegir otra aplicación / Usar siempre esta aplicación | Choisir une autre application / Toujours utiliser cette application | Windows FR |
+| índice (del manual) | Sommaire | |
+| Consejo / Importante (recuadros) | Conseil / Important | |
+| Rueda (Ctrl+rueda) | molette (Ctrl+molette) | |

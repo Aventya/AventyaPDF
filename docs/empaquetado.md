@@ -170,7 +170,7 @@ Visual Studio con C++ y el Windows SDK.
 * `dependencias.carpeta_instalada()` reconoce la instalación (carpeta con
   `AventyaPDF.exe` y `runtime\` por encima de `app\`); ahí
   `asegurar_o_salir()` no hace nada —el instalador ya puso las versiones
-  exactas y su Python no lleva pip— y `open_pdf` busca `MANUAL.pdf` junto al
+  exactas y su Python no lleva pip— y `open_pdf` busca el manual (`manual\MANUAL_<idioma>.pdf`, r138) junto al
   lanzador.
 * Los módulos calculan sus rutas con `__file__`: en la instalación, `app\`
   tiene el mismo árbol que el proyecto.

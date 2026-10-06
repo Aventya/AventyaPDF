@@ -117,7 +117,13 @@ def main() -> None:
     shutil.rmtree(a.destino, ignore_errors=True)
     shutil.copytree(a.completo, a.destino,
                     ignore=shutil.ignore_patterns("menu-contextual"))
-    shutil.copy2(os.path.join(RAIZ, "docs", "MANUAL.pdf"), a.destino)
+    # (r138) Todos los manuales: en la versión de la Store no hay instalador
+    # que elija uno, y se puede cambiar de idioma en cualquier momento.
+    manuales = os.path.join(a.destino, "manual")
+    os.makedirs(manuales, exist_ok=True)
+    for nombre in os.listdir(os.path.join(RAIZ, "docs", "manual")):
+        if nombre.startswith("MANUAL_") and nombre.endswith(".pdf"):
+            shutil.copy2(os.path.join(RAIZ, "docs", "manual", nombre), manuales)
     n = _tesseract(a.destino)
     _imagenes(a.destino)
     _manifiesto(a.destino, a)

@@ -168,3 +168,28 @@ Los marcadores que escribe el usuario en encabezado y pie se dejan como en el pr
 ## Erratas del original
 
 No se han encontrado erratas en el texto español. Observación (no es errata): «Firmas Certificadas» lleva mayúscula en la segunda palabra, a diferencia del resto de la interfaz; en inglés se ha puesto *Digital signatures* (ver arriba).
+
+## Añadidos con el manual (r138)
+
+| Español | Inglés | Motivo |
+|---|---|---|
+| Manual de AventyaPDF | AventyaPDF manual | Mismo patrón que *AventyaPDF tour* (sentence case) |
+| Quitar seguridad | Remove security | Acrobat (*Remove Security*) |
+| Quitar firma | Remove signature | |
+| libre distribución | freely distributed | |
+| firmador (de PDF) | signing tool | *Signer* es la persona que firma (ver «firmante») |
+| Moverse (por el documento) | navigate | |
+| Consejo / Importante (recuadros) | Tip / Important | Microsoft |
+| Tecla / Acción (tabla de atajos) | Key / Action | |
+| Inicio (menú de Windows) | Start menu | Microsoft |
+| Abrir con › Elegir otra aplicación | Open with › Choose another app | Windows 11 |
+| Usar siempre esta aplicación | Always use this app to open .pdf files | Windows 10/11 |
+| Abrir \| Abrir con \| Compartir (menú del botón derecho) | Open \| Open with \| Share | Windows 11 |
+| Ctrl+rueda | Ctrl+Wheel | Como en la tabla de atajos |
+| herramientas de comentario | commenting tools | Acrobat |
+| prestadores cualificados (de servicios de confianza) | qualified trust service providers | eIDAS, art. 3 |
+| papelera (icono) | bin | en-GB |
+| documentos de la Administración | government forms | |
+| DNIe | DNIe (Spanish electronic ID card) | Se explica la primera vez en el manual |
+| CONFIDENCIAL (marca de agua por defecto) | CONFIDENTIAL | |
+| _firmado (sufijo del archivo firmado) | _signed | «Contract.pdf» → «Contract_signed.pdf» |

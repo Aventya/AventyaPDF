@@ -19,6 +19,11 @@
 ;  * (r109) /DPrueba compila una variante para construir.ps1
 ;    -ProbarInstalacion: otro AppId y solo archivos (sin accesos directos,
 ;    registro, menú contextual ni «Abrir AventyaPDF» al acabar).
+;  * (r138) Manual en PDF del idioma elegido (docs\manual\MANUAL_<código>.pdf,
+;    en {app}\manual) y, mientras instala, diapositivas con las herramientas
+;    de la aplicación: imagen (empaquetado\diapositivas, de
+;    docs\manual\crear_manual.py) y texto de la presentación de inicio
+;    (mensajes.iss). Ver [Code] «Diapositivas».
 ;  * Integración con Windows: acceso directo en el menú Inicio (siempre) y en el
 ;    escritorio (casilla), y AventyaPDF en «Abrir con» de los PDF. Windows 11
 ;    no deja que un programa se imponga como predeterminado: queda registrado
@@ -134,14 +139,24 @@ Name: "escritorio"; Description: "{cm:TareaEscritorio}"; GroupDescription: "{cm:
 ; Lo propio va DESPUÉS de las descargas (componentes.iss): así su
 ; runtime\python3XX._pth sustituye al que trae el Python descargado.
 Source: "{#DistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; (r103, petición de Ricardo) El manual, junto al .exe (no dentro de
-; _internal): así se ve nada más abrir el diálogo «Abrir PDF» la primera
-; vez, antes de que haya una carpeta reciente — ver window_document.open_pdf.
-Source: "..\docs\MANUAL.pdf"; DestDir: "{app}"; Flags: ignoreversion
+; (r103, petición de Ricardo) El manual, fuera de app\: así se ve nada más
+; abrir el diálogo «Abrir PDF» la primera vez, antes de que haya una carpeta
+; reciente — ver window_document.open_pdf. (r138) Uno por idioma, solo el del
+; idioma elegido; Ayuda › Manual ofrece el de la web si se cambia de idioma.
+Source: "..\docs\manual\MANUAL_es.pdf"; DestDir: "{app}\manual"; Languages: es; Flags: ignoreversion
+Source: "..\docs\manual\MANUAL_en.pdf"; DestDir: "{app}\manual"; Languages: en; Flags: ignoreversion
+Source: "..\docs\manual\MANUAL_fr.pdf"; DestDir: "{app}\manual"; Languages: fr; Flags: ignoreversion
+Source: "..\docs\manual\MANUAL_it.pdf"; DestDir: "{app}\manual"; Languages: it; Flags: ignoreversion
+Source: "..\docs\manual\MANUAL_ca.pdf"; DestDir: "{app}\manual"; Languages: ca; Flags: ignoreversion
+Source: "..\docs\manual\MANUAL_gl.pdf"; DestDir: "{app}\manual"; Languages: gl; Flags: ignoreversion
+Source: "..\docs\manual\MANUAL_eu.pdf"; DestDir: "{app}\manual"; Languages: eu; Flags: ignoreversion
 #ifndef Prueba
 ; (r127) Para quitar el menú de la versión anterior antes de copiar nada
 ; (PrepareToInstall, con ExtractTemporaryFile): las anteriores no lo tenían.
 Source: "{#DistDir}\menu-contextual\AventyaPDF-MenuContextual.exe"; Flags: dontcopy
+; (r138) Imágenes de las diapositivas (<código>_NN.png): solo se extraen las
+; del idioma elegido, a {tmp}.
+Source: "diapositivas\*.png"; Flags: dontcopy
 #endif
 
 [InstallDelete]
@@ -153,6 +168,10 @@ Type: filesandordirs; Name: "{app}\tesseract"
 ; (r109) Python, paquetes y código: siempre desde cero, sin restos de la versión anterior.
 Type: filesandordirs; Name: "{app}\runtime"
 Type: filesandordirs; Name: "{app}\app"
+; (r138) El manual ya no va suelto junto al .exe sino en manual\, uno por
+; idioma: fuera el de antes y el del idioma de la instalación anterior.
+Type: files; Name: "{app}\MANUAL.pdf"
+Type: filesandordirs; Name: "{app}\manual"
 
 [Run]
 ; (r109) Precompila el código de Python ahora y no en el primer arranque, que
@@ -459,6 +478,122 @@ begin
   if (GetPreviousData('Idioma', '') <> ActiveLanguage) or
      not RegQueryStringValue(HKCU, ClaveIdioma, 'idioma', Actual) then
     RegWriteStringValue(HKCU, ClaveIdioma, 'idioma', ActiveLanguage);
+end;
+
+// ── (r138) Diapositivas mientras instala ──────────────────────────────── //
+// Petición de Ricardo: «en el instalador deben ir apareciendo las
+// descripciones de las herramientas de la aplicación usando texto e
+// imágenes; los textos pueden obtenerse de la pantalla de inicio». Debajo de
+// la barra de progreso: la imagen a la izquierda y el título y el texto de la
+// diapositiva a la derecha; cambia cada 7 s con un temporizador de Windows
+// (SetTimer + CreateCallback, como el ejemplo CodeDll.iss de Inno Setup).
+// Las imágenes se extraen todas al empezar: el temporizador salta mientras
+// Inno descomprime los archivos y no debe volver a descomprimir nada.
+// Necesita Inno Setup 6.5.2 o posterior (PngImage).
+const
+  DiapoMs = 7000;
+
+var
+  DiapoImagen: TBitmapImage;
+  DiapoTitulo, DiapoTexto: TNewStaticText;
+  DiapoActual: Integer;
+  DiapoTimer: UINT_PTR;
+
+function SetTimer(hWnd: HWND; nIDEvent: UINT_PTR; uElapse: UINT; lpTimerFunc: NativeInt): UINT_PTR;
+external 'SetTimer@user32.dll stdcall';
+
+function KillTimer(hWnd: HWND; nIDEvent: UINT_PTR): BOOL;
+external 'KillTimer@user32.dll stdcall';
+
+function NombreDiapositiva(N: Integer): String;
+begin
+  Result := ActiveLanguage + '_' + Format('%.2d', [N]) + '.png';
+end;
+
+procedure MostrarDiapositiva(N: Integer);
+begin
+  try
+    DiapoImagen.PngImage.LoadFromFile(ExpandConstant('{tmp}\') + NombreDiapositiva(N));
+  except
+    // Sin imagen la diapositiva sigue saliendo con su texto.
+  end;
+  DiapoTitulo.Caption := CustomMessage(Format('Diapo%.2dTitulo', [N]));
+  DiapoTexto.Caption := CustomMessage(Format('Diapo%.2dTexto', [N]));
+end;
+
+procedure SiguienteDiapositiva(Arg1: HWND; Arg2: UINT; Arg3: UINT_PTR; Arg4: DWORD);
+begin
+  DiapoActual := DiapoActual mod {#NumDiapositivas} + 1;
+  MostrarDiapositiva(DiapoActual);
+end;
+
+procedure PararDiapositivas;
+begin
+  if DiapoTimer <> 0 then
+    KillTimer(0, DiapoTimer);
+  DiapoTimer := 0;
+end;
+
+procedure CrearDiapositivas;
+var
+  Pagina: TNewNotebookPage;
+  Arriba, Ancho, Alto, AnchoImg, AltoImg, Hueco, I: Integer;
+begin
+  for I := 1 to {#NumDiapositivas} do
+    try
+      ExtractTemporaryFile(NombreDiapositiva(I));
+    except
+    end;
+  Pagina := WizardForm.InstallingPage;
+  Arriba := WizardForm.ProgressGauge.Top + WizardForm.ProgressGauge.Height + ScaleY(20);
+  Ancho := WizardForm.ProgressGauge.Width;
+  Alto := Pagina.ClientHeight - Arriba - ScaleY(4);
+  Hueco := ScaleX(14);
+  // Imagen 420 × 260 (proporción 1,615), a lo sumo el 55 % del ancho.
+  AltoImg := Alto;
+  AnchoImg := AltoImg * 420 div 260;
+  if AnchoImg > Ancho * 55 div 100 then begin
+    AnchoImg := Ancho * 55 div 100;
+    AltoImg := AnchoImg * 260 div 420;
+  end;
+  DiapoImagen := TBitmapImage.Create(WizardForm);
+  DiapoImagen.Parent := Pagina;
+  DiapoImagen.SetBounds(WizardForm.ProgressGauge.Left, Arriba, AnchoImg, AltoImg);
+  DiapoImagen.Stretch := True;
+  DiapoTitulo := TNewStaticText.Create(WizardForm);
+  DiapoTitulo.Parent := Pagina;
+  DiapoTitulo.AutoSize := False;
+  DiapoTitulo.WordWrap := True;
+  DiapoTitulo.Font.Style := [fsBold];
+  DiapoTitulo.Font.Size := DiapoTitulo.Font.Size + 2;
+  DiapoTitulo.SetBounds(DiapoImagen.Left + AnchoImg + Hueco, Arriba,
+                        Ancho - AnchoImg - Hueco, ScaleY(40));
+  DiapoTexto := TNewStaticText.Create(WizardForm);
+  DiapoTexto.Parent := Pagina;
+  DiapoTexto.AutoSize := False;
+  DiapoTexto.WordWrap := True;
+  DiapoTexto.SetBounds(DiapoTitulo.Left, Arriba + ScaleY(44), DiapoTitulo.Width,
+                       Alto - ScaleY(44));
+  DiapoActual := 1;
+  MostrarDiapositiva(DiapoActual);
+end;
+
+procedure InitializeWizard;
+begin
+  CrearDiapositivas;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if (CurPageID = wpInstalling) and (DiapoTimer = 0) then
+    DiapoTimer := SetTimer(0, 0, DiapoMs, CreateCallback(@SiguienteDiapositiva))
+  else if CurPageID <> wpInstalling then
+    PararDiapositivas;
+end;
+
+procedure DeinitializeSetup;
+begin
+  PararDiapositivas;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);

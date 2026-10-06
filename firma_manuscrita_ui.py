@@ -277,7 +277,7 @@ class HandSignatureDialog(QDialog):
         b_load = QPushButton(tr("Cargar imagen…"))
         b_load.clicked.connect(self._load_image)
         fila.addWidget(b_load)
-        self._bg_chk = QCheckBox("Quitar el fondo blanco del papel")
+        self._bg_chk = QCheckBox(tr("Quitar el fondo blanco del papel"))
         self._bg_chk.setChecked(True)
         self._bg_chk.toggled.connect(self._reload_image)
         fila.addWidget(self._bg_chk)

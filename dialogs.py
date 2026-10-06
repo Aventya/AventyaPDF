@@ -122,7 +122,7 @@ class WatermarkDialog(_RangeMixin, QDialog):
         super().__init__(parent)
         self.setWindowTitle(tr("Añadir marca de agua"))
         form = QFormLayout(self)
-        self._text = QLineEdit("CONFIDENCIAL")
+        self._text = QLineEdit(tr("CONFIDENCIAL"))
         form.addRow(tr("Texto:"), self._text)
         self._size = QSpinBox(); self._size.setRange(8, 250); self._size.setValue(64)
         form.addRow(tr("Tamaño (pt):"), self._size)
@@ -308,8 +308,8 @@ class PropertiesDialog(QDialog):
             (tr("Páginas"), str(len(doc))),
             (tr("Tamaño de página"), tr("{valor:.0f} × {valor2:.0f} mm").format(valor=p0.width / 72 * 25.4, valor2=p0.height / 72 * 25.4)),
             (tr("Versión PDF"), meta.get("format") or "—"),
-            (tr("Cifrado"), meta.get("encryption") or "No"),
-            (tr("Formulario"), tr("Sí") if doc.is_form_pdf else "No"),
+            (tr("Cifrado"), meta.get("encryption") or tr("No")),
+            (tr("Formulario"), tr("Sí") if doc.is_form_pdf else tr("No")),
             (tr("Firmas digitales"), str(n_signatures)),
             (tr("Creado"), meta.get("creationDate") or "—"),
             (tr("Modificado"), meta.get("modDate") or "—"),
@@ -510,7 +510,16 @@ class OcrDialog(QDialog):
         return v
 
 
-def show_shortcuts(parent):
+def shortcuts_box(parent) -> QMessageBox:
+    """La tabla de atajos (F1), sin mostrar (r138: también la usan las
+    capturas del manual)."""
     rows = "".join(f"<tr><td style='padding:3px 16px 3px 0'><b>{k}</b></td><td>{v}</td></tr>"
                    for k, v in SHORTCUTS)
-    QMessageBox.information(parent, tr("Atajos de teclado"), f"<table>{rows}</table>")
+    box = QMessageBox(QMessageBox.Icon.Information, tr("Atajos de teclado"),
+                      f"<table>{rows}</table>", QMessageBox.StandardButton.Ok, parent)
+    box.setTextFormat(Qt.TextFormat.RichText)
+    return box
+
+
+def show_shortcuts(parent):
+    shortcuts_box(parent).exec()

@@ -223,7 +223,7 @@ class MenusMixin:
 
         m = mb.addMenu(tr("&Proteger"))
         A(m, tr("Proteger con contraseña…"), self.protect_document)
-        A(m, "Quitar seguridad", self.remove_security)
+        A(m, tr("Quitar seguridad"), self.remove_security)
 
         m = mb.addMenu(tr("&Firmar"))
         A(m, tr("Firmar documento (dibujar área)"), lambda: self._select_tool("SIGN"))
@@ -235,6 +235,7 @@ class MenusMixin:
 
         m = mb.addMenu(tr("A&yuda"))
         A(m, tr("Atajos de teclado"), lambda: dialogs.show_shortcuts(self), "F1", needs_doc=False)
+        A(m, tr("Manual de AventyaPDF"), self.open_manual, needs_doc=False)
         A(m, tr("Presentación de AventyaPDF"), self.show_welcome, needs_doc=False)
         # (r136) Idioma de la aplicación: cada idioma con su propio nombre.
         lang = m.addMenu(tr("Idioma"))
@@ -905,11 +906,11 @@ class MenusMixin:
         protected = self._orig_encrypted or (
             self._encrypt_opts and self._encrypt_opts.get("encryption") != fitz.PDF_ENCRYPT_NONE)
         if not protected:
-            QMessageBox.information(self, "Quitar seguridad", tr("El documento no está protegido."))
+            QMessageBox.information(self, tr("Quitar seguridad"), tr("El documento no está protegido."))
             return
         self._encrypt_opts = {"encryption": fitz.PDF_ENCRYPT_NONE}
         self.mark_modified()
-        QMessageBox.information(self, "Quitar seguridad",
+        QMessageBox.information(self, tr("Quitar seguridad"),
                                 tr("El cifrado se eliminará al guardar el documento (Ctrl+S)."))
 
     # ── firmar ─────────────────────────────────────────────────────────── #
@@ -925,6 +926,22 @@ class MenusMixin:
         self.sidebar.show_panel("signatures")
 
     # ── ayuda ──────────────────────────────────────────────────────────── #
+
+    def open_manual(self):
+        """(r138) Ayuda › Manual: el del idioma de la aplicación, en una pestaña."""
+        ruta = dependencias.ruta_manual(idioma.ACTUAL, otro_idioma=False)
+        if ruta:
+            self.open_paths([ruta])
+            return
+        # El instalador solo copia el manual del idioma elegido al instalar: si
+        # después se cambia de idioma, se ofrece el de la web.
+        r = QMessageBox.question(
+            self, tr("Manual de AventyaPDF"),
+            tr("El manual en este idioma no está en este equipo. ¿Abrirlo en la web?"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if r == QMessageBox.StandardButton.Yes:
+            QDesktopServices.openUrl(QUrl(
+                f"{APP_REPO}/blob/main/docs/manual/MANUAL_{idioma.ACTUAL}.pdf"))
 
     def show_welcome(self):
         """(r70) Vuelve a abrir la presentación inicial; su casilla permite
@@ -1120,14 +1137,15 @@ class MenusMixin:
         caja.setWindowTitle(tr("Acerca de AventyaPDF"))
         caja.setText(
             f"<h3>AventyaPDF {APP_VERSION}</h3>"
-            "<p>Visor, editor y firmador de PDF para Windows.</p>"
-            "<p>Comentarios y marcado de texto · formularios · organización de páginas · "
-            "marcas de agua, encabezados y Bates · redacción · OCR · cifrado AES-256 · "
-            "firma PAdES con sellado de tiempo y validación de firmas.</p>"
-            f"<p style='color:#605E5C'>PyMuPDF {fitz.VersionBind} · pyHanko {hanko}</p>"
-            f"<p>© {datetime.date.today().year} {APP_OWNER}<br>"
-            "Aplicación de libre distribución (licencia AGPL-3.0).<br>"
-            f"Código fuente: <a href='{APP_REPO}'>{APP_REPO}</a></p>")
+            + "<p>" + tr("Visor, editor y firmador de PDF para Windows.") + "</p><p>"
+            + tr("Comentarios y marcado de texto · edición del contenido · formularios · "
+                 "organización de páginas · combinar y convertir · marcas de agua, "
+                 "encabezados y Bates · OCR · cifrado AES-256 · firma PAdES con sellado "
+                 "de tiempo y validación de firmas.") + "</p>"
+            + f"<p style='color:#605E5C'>PyMuPDF {fitz.VersionBind} · pyHanko {hanko}</p>"
+            + f"<p>© {datetime.date.today().year} {APP_OWNER}<br>"
+            + tr("Aplicación de libre distribución (licencia AGPL-3.0).") + "<br>"
+            + tr("Código fuente:") + f" <a href='{APP_REPO}'>{APP_REPO}</a></p>")
         caja.setTextFormat(Qt.TextFormat.RichText)
         caja.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
         # (r64) El icono de la app a 64 px (el .ico trae 64 a 256 para cada

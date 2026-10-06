@@ -120,3 +120,25 @@ Castellà (Español), Anglès, Català, Gallec, Basc (Euskera), Portuguès, Fran
 - No se han encontrado erratas en los textos en español.
 - «imagen» / «imágenes» (compresión) e «1 emoji» / «{n} emojis» (selector de emojis) ya tienen singular y plural separados en el catálogo: imatge / imatges, 1 emoji / {n} emojis.
 - «Firmas Certificadas» (panel lateral) lleva mayúsculas de título en el original; en catalán se ha puesto «Signatures certificades».
+
+## Añadidos con el manual (r138)
+
+| Español | Catalán | Motivo |
+|---|---|---|
+| Manual de AventyaPDF | Manual d'AventyaPDF | Apostrofación ante vocal. |
+| Quitar seguridad / Quitar firma | Treu la seguretat / Treu la signatura | Imperativo, como el resto de órdenes. |
+| Libre distribución / de libre distribución | Lliure distribució / de lliure distribució | |
+| Código fuente | Codi font | |
+| firmador (programa) | signador | |
+| Explorador de Windows | Explorador de fitxers | Nombre en Windows 10/11 en catalán. |
+| menú Inicio | menú Inicia | Microsoft. |
+| Abrir · Abrir con · Compartir (menú del botón derecho) | Obre · Obre amb · Comparteix | Windows 11. |
+| Elegir otra aplicación / Usar siempre esta aplicación | Tria una altra aplicació / Utilitza sempre aquesta aplicació | Windows. |
+| rango (de páginas) | interval | |
+| escaneo / escaneado | document escanejat | |
+| sufijo «_firmado» | «_signat» | Nombre del archivo firmado. |
+| CONFIDENCIAL (marca de agua) | CONFIDENCIAL | Igual en catalán. |
+| Consejo / Importante (recuadros del manual) | Consell / Important | |
+| Moverse y buscar (diapositiva) | Navegar i cercar | Título corto en infinitivo. |
+| El manual usa el tratamiento de «vós» (Feu clic, Trieu…), como los mensajes de la interfaz. | | |
+| Meses en minúscula y sin «de» («octubre 2026»), con el mismo formato que la portada española. | | |

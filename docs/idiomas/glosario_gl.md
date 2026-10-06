@@ -142,3 +142,22 @@ Español, Español e inglés, Inglés, Catalán, Galego, Éuscaro, Portugués, F
 - `No volver a preguntar (cambiar en Firma › Opciones de firma…)`: o menú chámase «Firmar», non «Firma». Traducido como «Asinar › Opcións de sinatura…».
 - `{text_images} {valor} con texto…` (main_window.py): o singular «imagen» non pasaba por `tr()`. Xa está corrixido no código: «imagen» → «imaxe», «imágenes» → «imaxes».
 - Contador do buscador de emojis: «{n} emoji{valor}» substituíuse por «1 emoji» / «{n} emojis». En galego quedan igual: «1 emoji» / «{n} emojis».
+
+## Engadidos na 2.ª parte (manual e textos novos)
+
+| Español | Galego | Nota |
+|---|---|---|
+| Consejo / Importante (recadros do manual) | Consello / Importante | |
+| comprueba solo (automáticamente) | comproba automaticamente | «só» sería ambiguo («unicamente»). |
+| firmador (de PDF) | asinador | «Visor, editor e asinador de PDF». |
+| código fuente | código fonte | |
+| licencia | licenza | |
+| Quitar seguridad / Quitar firma | Quitar seguridade / Quitar sinatura | |
+| Elegir otra aplicación (Abrir con) | Escoller outra aplicación | Windows 11 gl. |
+| Abrir / Abrir con / Compartir (menú contextual) | Abrir / Abrir con / Compartir | Windows 11 gl. |
+| icono | icona (fem.) | |
+| buscable | que se pode buscar | |
+| meses | xaneiro, febreiro, marzo, abril, maio, xuño, xullo, agosto, setembro, outubro, novembro, decembro | En minúscula: «outubro 2026». |
+| Persona de Ejemplo / Ciudad / correo@ejemplo.com | Persoa de Exemplo / Cidade / correo@exemplo.gal | Datos de mostra das capturas. |
+| «_firmado» (sufixo do ficheiro asinado) | «_asinado» | «Contrato.pdf» → «Contrato_asinado.pdf». |
+| CONFIDENCIAL (marca de auga por defecto) | CONFIDENCIAL | |

@@ -2964,5 +2964,89 @@ class TestIdiomas(unittest.TestCase):
             with mock.patch.dict(os.environ, {"LC_ALL": "gl_ES.UTF-8"}):
                 self.assertEqual(idioma.idioma_del_sistema(), "gl")
 
+
+class TestManualYDiapositivas(unittest.TestCase):
+    """(r138) Un manual por idioma y las diapositivas del instalador."""
+
+    @classmethod
+    def setUpClass(cls):
+        sys.path.insert(0, os.path.join(RAIZ, "docs", "manual"))
+        import crear_manual
+        cls.cm = crear_manual
+
+    def test_cada_traduccion_del_manual_tiene_la_estructura_del_original(self):
+        """Mismos capítulos, secciones, listas, recuadros y capturas que
+        docs/manual/es.md. Si falla: python docs/manual/crear_manual.py --revisar."""
+        import idioma
+        for codigo in idioma.IDIOMAS:
+            if codigo != "es":
+                with self.subTest(idioma=codigo):
+                    self.assertEqual(self.cm.revisar(codigo), [])
+
+    def test_hay_un_manual_por_idioma(self):
+        """Los PDF generados están en el proyecto (el instalador los lleva).
+        Si falla: python docs/manual/crear_manual.py."""
+        import idioma
+        for codigo in idioma.IDIOMAS:
+            with self.subTest(idioma=codigo):
+                ruta = os.path.join(RAIZ, "docs", "manual", f"MANUAL_{codigo}.pdf")
+                self.assertTrue(os.path.isfile(ruta))
+                with fitz.open(ruta) as doc:
+                    meta, bloques = self.cm.leer(codigo)
+                    self.assertEqual(doc.metadata["title"], meta["titulo"])
+                    # La portada lleva la versión: al subir APP_VERSION hay que
+                    # regenerarlos (§8 «Publicar una versión», paso 1).
+                    from window_menus import APP_VERSION
+                    self.assertIn(APP_VERSION, doc[0].get_text())
+                    capitulos = [b[1] for b in bloques if b[0] == "h1"]
+                    self.assertEqual([t for nivel, t, _p in doc.get_toc() if nivel == 1],
+                                     [f"{i}. {c}" for i, c in enumerate(capitulos, 1)])
+
+    def test_las_capturas_no_se_agrandan_y_caben(self):
+        """Ninguna captura pasa de 0,62 pt por píxel (su tamaño en pantalla) ni
+        de la mitad del alto útil de la página."""
+        cm = self.cm
+        with fitz.open(os.path.join(RAIZ, "docs", "manual", "MANUAL_es.pdf")) as doc:
+            for page in doc.pages(1):
+                for info in page.get_image_info():
+                    caja = fitz.Rect(info["bbox"])
+                    self.assertLessEqual(caja.height, cm.ALTO_FIGURA_MAX + 1)
+                    self.assertLessEqual(caja.width, cm.ANCHO + 1)
+                    self.assertGreaterEqual(caja.y0, cm.MS - 1)
+                    self.assertLessEqual(caja.y1, cm.H - cm.MB + 1)
+
+    def test_diapositivas_del_instalador(self):
+        """Una imagen por diapositiva e idioma y sus textos en mensajes.iss,
+        que salen de la presentación de inicio."""
+        import herramientas_idioma as h
+        import idioma
+        import presentacion
+        diapos = h.diapositivas()
+        self.assertEqual([d[0] for d in diapos], [s.title for s in presentacion.SLIDES[1:-1]]
+                         if idioma.ACTUAL == "es" else [d[0] for d in diapos])
+        with open(h.MENSAJES_ISS, encoding="utf-8-sig") as f:
+            iss = f.read()
+        self.assertIn(f"#define NumDiapositivas {len(diapos)}", iss)
+        for codigo in idioma.IDIOMAS:
+            textos = idioma.cargar_textos(codigo)
+            for i, (titulo, texto, _c) in enumerate(diapos, start=1):
+                with self.subTest(idioma=codigo, diapositiva=i):
+                    self.assertTrue(os.path.isfile(os.path.join(
+                        RAIZ, "empaquetado", "diapositivas", f"{codigo}_{i:02d}.png")))
+                    self.assertIn(f"{codigo}.Diapo{i:02d}Titulo={textos.get(titulo, titulo)}\n",
+                                  iss)
+        with open(os.path.join(RAIZ, "empaquetado", "AventyaPDF.iss"), encoding="utf-8-sig") as f:
+            principal = f.read()
+        for codigo in idioma.IDIOMAS:
+            self.assertIn(f'MANUAL_{codigo}.pdf"; DestDir: "{{app}}\\manual"; '
+                          f'Languages: {codigo};', principal)
+
+    def test_ruta_del_manual(self):
+        import dependencias
+        self.assertTrue(dependencias.ruta_manual("es").endswith("MANUAL_es.pdf"))
+        with mock.patch.object(os.path, "isfile", side_effect=lambda r: r.endswith("_es.pdf")):
+            self.assertIsNone(dependencias.ruta_manual("fr", otro_idioma=False))
+            self.assertTrue(dependencias.ruta_manual("fr").endswith("MANUAL_es.pdf"))
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

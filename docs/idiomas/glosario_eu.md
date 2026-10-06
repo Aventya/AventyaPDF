@@ -137,3 +137,23 @@ tiene versión oficial en euskera en EUR-Lex.
 - «(Windows Credential Manager)» aparece en inglés en el original; se ha traducido al nombre
   de Windows en euskera: *Windows-en Kredentzial-kudeatzailea*.
 - Conviven «ficheros» y «archivos» («Combinar ficheros…»); en euskera todo es *fitxategiak*.
+
+## Manual y textos de r138
+
+| Español | Euskera | Motivo |
+|---|---|---|
+| manual (de usuario) | eskuliburua | Euskalterm; *AventyaPDF-ren eskuliburua*, como *AventyaPDF-ren aurkezpena*. |
+| Consejo / Importante (recuadros) | Aholkua / Garrantzitsua | |
+| Quitar firma / Quitar seguridad | Kendu sinadura / Kendu segurtasuna | |
+| libre distribución | banaketa librea / banaketa libreko | |
+| código fuente | iturburu-kodea | |
+| Abrir con › Elegir otra aplicación | Ireki honekin › Aukeratu beste aplikazio bat | Windows 11 en euskera. |
+| Usar siempre esta aplicación | Erabili beti aplikazio hau | Windows 11 en euskera. |
+| menú Inicio / Descargas | Hasiera menua / Deskargak | |
+| Compartir (menú contextual) | Partekatu | |
+| fondo (de una imagen) | atzealdea | |
+| CONFIDENCIAL (marca de agua) | KONFIDENTZIALA | |
+| sufijo «_firmado» | «_sinatua» | Sin espacios; *Kontratua_sinatua.pdf*. |
+| DNIe | DNIe | Se mantiene, como en el resto de la interfaz (*NANe* sería la forma vasca). |
+| prestadores cualificados | zerbitzu-emaile kualifikatuak | |
+| Manual de AventyaPDF (portada del PDF) | AventyaPDF eskuliburua | En la portada, *AventyaPDF-ren eskuliburua* no cabe a 34 pt y no se dibujaba; en el menú se mantiene el genitivo. |

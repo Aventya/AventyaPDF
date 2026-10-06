@@ -3094,6 +3094,26 @@ class TestVentanaPrincipal(unittest.TestCase):
         finally:
             self.app.setStyleSheet(anterior)
 
+    def test_ayuda_manual_abre_el_del_idioma(self):
+        """(r138) Ayuda › Manual de AventyaPDF abre el manual en una pestaña;
+        si el del idioma no está en el equipo, ofrece el de la web."""
+        import dependencias
+        acciones = [a for m in self.w.menuBar().actions() if m.menu()
+                    for a in m.menu().actions()]
+        manual = next(a for a in acciones if a.text() == "Manual de AventyaPDF")
+        antes = len(self.w._sessions)
+        manual.trigger()
+        self.app.processEvents()
+        self.assertEqual(len(self.w._sessions), antes + 1)
+        self.assertTrue(self.w.pdf_path.endswith("MANUAL_es.pdf"))
+        self.w.close_document()
+        with mock.patch.object(dependencias, "ruta_manual", return_value=None), \
+                mock.patch.object(QMessageBox, "question",
+                                  return_value=QMessageBox.StandardButton.Yes), \
+                mock.patch("window_menus.QDesktopServices.openUrl") as abrir:
+            self.w.open_manual()
+        self.assertTrue(abrir.call_args[0][0].toString().endswith("/docs/manual/MANUAL_es.pdf"))
+
     def test_presentacion_inicial_y_no_volver_a_mostrar(self):
         """(r70) Presentación al arrancar: recorre las características, avanza
         sola, y «No volver a mostrar» impide que salga en el siguiente inicio;
@@ -3158,6 +3178,18 @@ class TestVentanaPrincipal(unittest.TestCase):
             d.reject()
             self.app.processEvents()
             self.assertTrue(pr.should_show())
+
+            # (r138) El texto de cada diapositiva cabe en su recuadro en todos
+            # los idiomas (también sale en el instalador, que no lo comprueba).
+            import idioma
+            d = pr.WelcomeDialog(self.w)
+            caja = d._slide_text
+            for codigo in idioma.IDIOMAS:
+                for sl in pr.SLIDES:
+                    with self.subTest(idioma=codigo, diapositiva=sl.title):
+                        caja.setText(idioma.tr_en(codigo, sl.text))
+                        self.assertLessEqual(caja.heightForWidth(caja.width()), caja.height())
+            d.reject()
         finally:
             if habia:
                 s.setValue(pr.KEY_SHOW, antes)

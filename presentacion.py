@@ -47,49 +47,78 @@ class Slide:
     icon: str            # nombre de Fluent UI System Icons (icons.glyph)
     title: str
     text: str
+    # (r138) Captura que la ilustra en el instalador y en el manual
+    # (docs/manual/capturas.py); vacía si no tiene.
+    captura: str = ""
 
 
+# (r138) Fuente única de la descripción de las funciones: la presentación, las
+# diapositivas que enseña el instalador mientras instala
+# (`herramientas_idioma.py instalador`) y el resumen del manual. Cada texto
+# cabe en cuatro líneas de la presentación también en francés: unos 230
+# caracteres en español como mucho (lo comprueba una prueba).
 SLIDES: tuple[Slide, ...] = (
     Slide("document_pdf", tr("Bienvenido a AventyaPDF"),
           tr("Ver, comentar, organizar, proteger, convertir y firmar PDF en una sola "
-          "aplicación de libre distribución, con su código abierto en GitHub. Esta "
-          "presentación te enseña lo principal en un minuto.")),
-    Slide("folder_open", tr("Abrir y moverse por el documento"),
-          tr("Abre varios PDF a la vez (Ctrl+O o arrastrándolos a la ventana) y pasa de "
-          "uno a otro con Ctrl+Tab. Panel lateral con miniaturas, marcadores, comentarios "
-          "y firmas (F4), búsqueda con Ctrl+F y zoom al ancho o a la página.")),
+             "aplicación de libre distribución, con su código abierto en GitHub. Esta "
+             "presentación te enseña lo principal en un minuto."), "ventana"),
+    Slide("tabs", tr("Varios documentos a la vez"),
+          tr("Abre varios PDF, imágenes o documentos de Word a la vez (Ctrl+O o "
+             "arrastrándolos a la ventana). Cada uno va en su pestaña: se reordenan "
+             "arrastrándolas y Ctrl+Tab pasa de una a otra."), "pestanas"),
+    Slide("document_search", tr("Moverse y buscar"),
+          tr("Panel lateral (F4) con miniaturas, marcadores, comentarios y firmas. "
+             "Ctrl+F busca y resalta cada coincidencia; el zoom se ajusta al ancho, a "
+             "la página o al porcentaje que escribas."), "buscar"),
     Slide("text_add_t", tr("Comentar sobre la página"),
           tr("Texto que se escribe directamente donde va a quedar, notas adhesivas, "
-          "resaltar, subrayar o tachar (sobre el texto o a mano alzada), rectángulos, "
-          "emojis y borrador. Todo se deshace con Ctrl+Z.")),
+             "resaltar, subrayar o tachar (sobre el texto o a mano alzada), rectángulos, "
+             "emojis y borrador. Todo se deshace con Ctrl+Z."), "comentar"),
     Slide("edit", tr("Editar el contenido del PDF"),
           tr("Cambia el texto y las imágenes que ya están en el documento: el párrafo se "
-          "reajusta a su cuadro y las imágenes se mueven, se sustituyen o se borran "
-          "(tecla C).")),
+             "reajusta a su cuadro y las imágenes se mueven, se sustituyen o se borran "
+             "(tecla C)."), "editar"),
     Slide("form", tr("Rellenar formularios"),
           tr("Los campos se resaltan en azul; se escriben en el propio campo, las casillas "
-          "se marcan con un clic y los cálculos y validaciones funcionan como en Acrobat.")),
+             "se marcan con un clic y los cálculos y validaciones funcionan como en Acrobat."),
+          "formulario"),
     Slide("document_multiple", tr("Organizar páginas"),
-          tr("Arrastra miniaturas para reordenar y gira, duplica, elimina, inserta o extrae "
-          "páginas. Combina varios PDF, divide uno en partes o crea un PDF desde imágenes, "
-          "también desde el menú contextual del Explorador.")),
+          tr("Arrastra miniaturas para reordenar y gira, duplica, elimina, inserta, "
+             "extrae o recorta páginas, todo con deshacer. También divide un documento "
+             "en partes."), "organizar"),
+    Slide("merge", tr("Combinar y convertir"),
+          tr("Combina en un PDF los documentos abiertos o una selección de PDF, imágenes "
+             "y Word. Crea un PDF desde imágenes y exporta a Word, a imágenes o a texto."),
+          "combinar"),
+    Slide("cursor_click", tr("Desde el Explorador de Windows"),
+          tr("Con el botón derecho sobre los archivos, el submenú AventyaPDF firma, "
+             "combina en un PDF o convierte a PDF sin abrir antes la aplicación."),
+          "explorador"),
     Slide("certificate", tr("Firma digital PAdES"),
-          tr("Firma con los certificados de Windows o con un archivo .pfx, con sellado de "
-          "tiempo y certificación. Las firmas del documento se verifican solas contra el "
-          "almacén de Windows y la lista de confianza de España.")),
+          tr("Firma con los certificados de Windows (también DNIe y tarjetas) o con un "
+             "archivo .pfx, con sellado de tiempo y certificación. El sello visible sale "
+             "en el idioma de la aplicación."), "firmar"),
+    Slide("shield_checkmark", tr("Firmas verificadas"),
+          tr("El panel Firmas certificadas comprueba automáticamente cada firma: si el documento se "
+             "ha alterado y si el certificado es de confianza, según Windows y la lista "
+             "de confianza de España."), "firmas"),
     Slide("calligraphy_pen", tr("Firma manuscrita"),
           tr("Desde la barra de Firma, la plumilla: dibuja tu firma con el ratón, con trazo "
-          "de estilográfica y el color y grosor que quieras, o carga la imagen de tu "
-          "firma escaneada.")),
+             "de estilográfica y el color y grosor que quieras, o carga la imagen de tu "
+             "firma escaneada."), "manuscrita"),
     Slide("document_search", tr("Reconocimiento de texto (OCR)"),
           tr("Convierte los escaneos y las fotos en PDF con texto que se puede buscar y "
-          "copiar. Endereza la página y corrige la orientación antes de leerla.")),
+             "copiar. Endereza la página y corrige la orientación antes de leerla."), "ocr"),
     Slide("lock_closed", tr("Proteger y preparar"),
           tr("Contraseña AES-256 y permisos, marca de agua, encabezado y pie, numeración "
-          "Bates, compresión y exportación a Word, imágenes o texto.")),
+             "Bates, compresión y exportación a Word, imágenes o texto."), "proteger"),
+    Slide("translate", tr("En tu idioma"),
+          tr("AventyaPDF está en español, inglés, francés, italiano, catalán, gallego y "
+             "euskera. Se cambia en Ayuda › Idioma, y el manual completo está en "
+             "Ayuda › Manual de AventyaPDF."), "idioma"),
     Slide("keyboard", tr("Listo para empezar"),
           tr("F1 muestra todos los atajos de teclado. Puedes volver a ver esta presentación "
-          "cuando quieras desde Ayuda › Presentación de AventyaPDF.")),
+             "cuando quieras desde Ayuda › Presentación de AventyaPDF."), "atajos"),
 )
 
 
@@ -258,8 +287,8 @@ class WelcomeDialog(QDialog):
 
         # (r71) Titular y licencia libre, con el enlace al repositorio.
         from window_menus import APP_OWNER, APP_REPO
-        pie = QLabel(f"© {datetime.date.today().year} {APP_OWNER} · Libre distribución · "
-                     f"<a href='{APP_REPO}' style='color:#17355E;'>GitHub</a>")
+        pie = QLabel(f"© {datetime.date.today().year} {APP_OWNER} · " + tr("Libre distribución")
+                     + f" · <a href='{APP_REPO}' style='color:#17355E;'>GitHub</a>")
         pie.setToolTip(APP_REPO)
         pie.setTextFormat(Qt.TextFormat.RichText)
         pie.setOpenExternalLinks(True)

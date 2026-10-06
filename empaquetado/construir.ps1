@@ -125,11 +125,12 @@ Write-Host "  Lo propio, lo único que va dentro del instalador: $mb MB" -Foregr
 # Setup suma los archivos descargados (que se borran tras descomprimirlos) a lo
 # descomprimido y registraba ~494 MB para ~336 reales. Se mide la copia
 # completa ya precompilada como en la instalación ([Run] compileall), más el
-# manual y el desinstalador (unins000.exe/.dat, ~5,3 MB).
+# manual (el del idioma elegido; se mide el español) y el desinstalador
+# (unins000.exe/.dat, ~5,3 MB).
 & (Join-Path $Completo 'runtime\python.exe') -m compileall -q -j 0 `
     (Join-Path $Completo 'app') (Join-Path $Completo 'runtime\Lib\site-packages') | Out-Null
 $Tamano = (Get-ChildItem $Completo -Recurse -File | Measure-Object Length -Sum).Sum +
-          (Get-Item (Join-Path $Raiz 'docs\MANUAL.pdf')).Length + [long](5.3 * 1MB)
+          (Get-Item (Join-Path $Raiz 'docs\manual\MANUAL_es.pdf')).Length + [long](5.3 * 1MB)
 Write-Host ("  Tamaño instalado: {0:N0} MB" -f ($Tamano / 1MB)) -ForegroundColor Green
 if ($SinInstalador) { exit 0 }
 
@@ -165,7 +166,7 @@ try {
     $lista = {
         param($dir)
         Get-ChildItem $dir -Recurse -File | ForEach-Object { $_.FullName.Substring($dir.Length + 1) } |
-            Where-Object { $_ -notmatch '__pycache__|\.pyc$|^unins000\.|^MANUAL\.pdf$' }
+            Where-Object { $_ -notmatch '__pycache__|\.pyc$|^unins000\.|^manual\\' }
     }
     $dif = Compare-Object @(& $lista $Completo) @(& $lista (Resolve-Path $destino).Path)
     if ($dif) {

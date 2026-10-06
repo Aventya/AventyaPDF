@@ -144,3 +144,26 @@ Ctrl, Maiusc, Canc, PgSu / PgGiù, Home / Fine, Invio, Esc, rotellina (del mouse
 
 - «1 emoji» / «{n} emojis» → «1 emoji» / «{n} emoji» (in italiano «emoji» è invariabile).
 - «imagen» / «imágenes» → «immagine» / «immagini».
+
+## Aggiunte r138 (presentazione e manuale)
+
+| Spagnolo | Italiano | Motivo |
+|---|---|---|
+| Quitar seguridad (menu Proteger) | Rimuovi protezione | Dicitura di Adobe Acrobat |
+| Quitar firma | Rimuovi firma | Coerente con «Rimuovi questa firma…» |
+| Manual de AventyaPDF | Manuale di AventyaPDF | |
+| Libre distribución / de libre distribución | Distribuzione libera / a distribuzione libera | Come nella diapositiva di benvenuto |
+| Código fuente | Codice sorgente | |
+| sello visible (de la firma) | timbro visibile | Vedi «Testo del timbro visibile» |
+| tarjeta (criptográfica) | smart card | |
+| DNIe | DNIe (nel manuale: «la carta d'identità elettronica spagnola») | Nome proprio spagnolo |
+| Desde el Explorador de Windows (titolo) | Da Esplora file | Nome ufficiale Windows |
+| Elegir otra aplicación / Usar siempre esta aplicación | Scegli un'altra app / Usa sempre questa app | Finestra «Apri con» di Windows 11 |
+| Abrir / Abrir con / Compartir (menu contestuale) | Apri / Apri con / Condividi | Windows 11 |
+| menú Inicio | menu Start | Windows in italiano |
+| Consejo (riquadro del manuale) | Suggerimento | |
+| marcado de texto | marcatura del testo | |
+| validación de firmas | convalida delle firme | Vedi «validación» |
+| Titoli delle diapositive | infinito («Combinare e convertire», «Spostarsi e cercare») | Come le diapositive già tradotte |
+| CONFIDENCIAL (filigrana predefinita) | RISERVATO | |
+| _firmado (suffisso del file firmato) | _firmato | |

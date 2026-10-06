@@ -103,6 +103,24 @@ def textos_instalador() -> dict[str, dict[str, str]]:
     return out
 
 
+def diapositivas() -> list[tuple[str, str, str]]:
+    """(r138) Las diapositivas de la presentación (presentacion.SLIDES) que
+    enseña el instalador mientras instala: (título, texto, captura) en español,
+    leídas del código sin importar Qt. Todas salvo la primera («Bienvenido…»)
+    y la última («Listo para empezar»): la misma regla que
+    docs/manual/crear_manual.py, que hace sus imágenes."""
+    with open(os.path.join(RAIZ, "presentacion.py"), encoding="utf-8") as f:
+        arbol = ast.parse(f.read())
+    out = []
+    for nodo in ast.walk(arbol):
+        if isinstance(nodo, ast.Call) and getattr(nodo.func, "id", "") == "Slide":
+            titulo, texto = (a.args[0].value for a in nodo.args[1:3])
+            captura = nodo.args[3].value if len(nodo.args) > 3 else ""
+            out.append((nodo.lineno, titulo, texto, captura))
+    out.sort()
+    return [(t, x, c) for _l, t, x, c in out][1:-1]
+
+
 def _cpp(texto: str) -> str:
     return 'L"' + "".join(c if 32 <= ord(c) < 127 and c not in '"\\' else
                           f"\\u{ord(c):04X}" for c in texto) + '"'
@@ -111,13 +129,23 @@ def _cpp(texto: str) -> str:
 def generar_instalador() -> tuple[str, str]:
     """(mensajes.iss, textos_menu.h), sin escribirlos."""
     textos = textos_instalador()
+    sys.path.insert(0, RAIZ)
+    import idioma
+    diapos = diapositivas()
     iss = ["; Generado por «python herramientas_idioma.py instalador» a partir de",
-           "; empaquetado/idiomas/*.json: no editar a mano (r136).", "", "[Messages]"]
+           "; empaquetado/idiomas/*.json y de las diapositivas de presentacion.py",
+           "; (traducidas en idiomas/*.json): no editar a mano (r136, r138).", "",
+           f"#define NumDiapositivas {len(diapos)}", "", "[Messages]"]
     for codigo, datos in textos.items():
         iss += [f"{codigo}.{k}={v}" for k, v in datos.items() if k in MENSAJES_INNO]
     iss += ["", "[CustomMessages]"]
     for codigo, datos in textos.items():
         iss += [f"{codigo}.{k}={v}" for k, v in datos.items() if k not in MENSAJES_INNO]
+    for codigo in textos:
+        traducidos = {} if codigo == "es" else idioma.cargar_textos(codigo)
+        for i, (titulo, texto, _c) in enumerate(diapos, start=1):
+            iss.append(f"{codigo}.Diapo{i:02d}Titulo={traducidos.get(titulo, titulo)}")
+            iss.append(f"{codigo}.Diapo{i:02d}Texto={traducidos.get(texto, texto)}")
     h = ["// Generado por «python herramientas_idioma.py instalador» a partir de",
          "// empaquetado/idiomas/*.json: no editar a mano (r136).", "#pragma once", "",
          "struct TextosMenu { const wchar_t* codigo; const wchar_t* firmar;",

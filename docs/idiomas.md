@@ -34,6 +34,8 @@ También salen en el idioma elegido:
 | `docs/idiomas/glosario_<código>.md` | Términos elegidos en cada idioma (firma, certificado, sellado de tiempo…), para que las correcciones y los textos nuevos sean coherentes. |
 | `empaquetado/idiomas/instalador*.json` | Textos del instalador y del menú del botón derecho. |
 | `empaquetado/idiomas/mensajes.iss`, `shell/textos_menu.h` | Generados a partir de los anteriores para el instalador y el menú de Windows 11. No se editan a mano. |
+| `docs/manual/<código>.md` | (r138) El manual de cada idioma (el español es el original). `python docs/manual/crear_manual.py` genera `MANUAL_<código>.pdf`, con capturas de la aplicación en ese idioma, y las imágenes de las diapositivas del instalador (`empaquetado/diapositivas/`); `--revisar` comprueba que cada traducción tiene la estructura del original. |
+| `presentacion.py` (`SLIDES`) | (r138) Las diapositivas de la presentación de inicio; el instalador enseña sus textos traducidos mientras instala (`herramientas_idioma.py instalador`). |
 | `empaquetado/idiomas/Galician.isl`, `Basque.isl` | Mensajes estándar del instalador en gallego y euskera (traducciones no oficiales de Inno Setup). |
 
 ## Corregir una traducción

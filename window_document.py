@@ -36,6 +36,7 @@ import icons
 from cert_manager import CertPickerDialog, load_saved_cert
 from history import Snapshot, UndoStack
 from tsa import TSA_PRESETS
+import idioma
 from idioma import tr
 
 SETTINGS = ("aventyapdf", "config")
@@ -302,8 +303,9 @@ class DocumentMixin:
             # seleccionado en el propio diálogo, no solo en su carpeta:
             # pasarle la ruta del archivo, no solo la de la carpeta, hace
             # que Qt lo abra ahí y lo deje resaltado.
-            manual = os.path.join(instalada, "MANUAL.pdf")
-            if os.path.isfile(manual):
+            # (r138) Uno por idioma, en la carpeta manual\.
+            manual = dependencias.ruta_manual(idioma.ACTUAL)
+            if manual:
                 start = manual
         # (r123, petición de Ricardo) Siempre se pueden elegir varios archivos,
         # de todo lo que la aplicación sabe mostrar: cada PDF en su pestaña, y
@@ -1116,10 +1118,10 @@ class DocumentMixin:
         ok, motivo = self.can_remove_signature()
         if not ok:
             if motivo:
-                QMessageBox.information(self, "Quitar firma", motivo)
+                QMessageBox.information(self, tr("Quitar firma"), motivo)
             return False
         r = QMessageBox.question(
-            self, "Quitar firma",
+            self, tr("Quitar firma"),
             tr("¿Quitar la firma «{field_name}»?\n\n"
             "Su recuadro quedará vacío en el mismo sitio: haz clic en él para firmar "
             "de nuevo, con otro certificado si quieres. Las demás firmas no se tocan.\n\n"
@@ -1135,7 +1137,7 @@ class DocumentMixin:
             doc = self._open_bytes(nuevo)
         except (SigningError, Exception) as e:  # noqa: BLE001
             traceback.print_exc()
-            QMessageBox.critical(self, "Quitar firma", tr("No se pudo quitar la firma:\n{e}").format(e=e))
+            QMessageBox.critical(self, tr("Quitar firma"), tr("No se pudo quitar la firma:\n{e}").format(e=e))
             return False
         page = min(self.current_page, len(doc) - 1)
         self._set_document(doc, self.pdf_path, self._clean_bytes, self._password,
@@ -1310,7 +1312,7 @@ class DocumentMixin:
         base = (os.path.splitext(self.pdf_path)[0] if self.pdf_path else
                 os.path.join(QSettings(*SETTINGS).value("recent/dir", ""), "documento"))
         out_path, _ = QFileDialog.getSaveFileName(
-            self, tr("Guardar documento firmado"), base + "_firmado.pdf", tr("Archivos PDF (*.pdf)"))
+            self, tr("Guardar documento firmado"), base + tr("_firmado") + ".pdf", tr("Archivos PDF (*.pdf)"))
         if not out_path:
             self._finish_action()
             return
