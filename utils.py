@@ -5,6 +5,7 @@ import re as _re
 import fitz
 
 import icons
+from idioma import tr
 
 # Mensajes emergentes (tooltips): fondo amarillo crema en toda la aplicación.
 # Un `setStyleSheet` local sin selector («background: …;») se aplica también al
@@ -24,7 +25,9 @@ class PDFUtils:
         "mono":  "monospace",
     }
     # Etiqueta del combo ↔ opción
-    FONT_LABELS = {"Documento": "doc", "Noto Sans": "sans", "Noto Serif": "serif",
+    # (r136) La etiqueta «Documento» se traduce; el combo y las búsquedas usan este
+    # mismo diccionario, así que la clave traducida vale igual en todas partes.
+    FONT_LABELS = {tr("Documento"): "doc", "Noto Sans": "sans", "Noto Serif": "serif",
                    "Noto Sans Mono": "mono"}
     CSS_LABELS = {"sans-serif": "Noto Sans", "serif": "Noto Serif", "monospace": "Noto Sans Mono"}
 

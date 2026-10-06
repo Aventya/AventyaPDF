@@ -8,6 +8,7 @@ import math
 import os
 import shutil
 import struct
+import re
 import sys
 import tempfile
 import unittest
@@ -18,6 +19,8 @@ if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# (r136) Las pruebas comprueban los textos en español, el idioma de referencia.
+os.environ["AVENTYAPDF_IDIOMA"] = "es"
 
 import fitz  # noqa: E402
 
@@ -2881,6 +2884,85 @@ class TestConversionOffice(_ConCarpeta):
             d.save(protegido, encryption=fitz.PDF_ENCRYPT_AES_256, user_pw="x", owner_pw="y")
         with self.assertRaisesRegex(ValueError, "protegido.pdf"):
             co.combinar_archivos(rutas[:2] + [protegido])
+
+
+class TestIdiomas(unittest.TestCase):
+    """(r136) Textos de la aplicación en varios idiomas (idioma.py)."""
+
+    def test_el_catalogo_esta_al_dia(self):
+        """Todo tr("…") del código está en idiomas/es.json y no sobra nada.
+        Si falla: python herramientas_idioma.py catalogo (y traducir lo nuevo)."""
+        import herramientas_idioma as h
+        self.assertEqual(list(h.textos_del_codigo()), list(h.leer("es")))
+
+    def test_cada_idioma_tiene_todos_los_textos_y_sus_marcadores(self):
+        import herramientas_idioma as h
+        import idioma
+        catalogo = h.leer("es")
+        for codigo in idioma.IDIOMAS:
+            if codigo == "es":
+                continue
+            with self.subTest(idioma=codigo):
+                self.assertEqual(h.problemas(codigo, catalogo), [])
+
+    def test_las_traducciones_se_pueden_rellenar(self):
+        """Cada traducción con marcadores admite los mismos datos que el
+        original (no hay un {nombre} cambiado que haría fallar .format)."""
+        import herramientas_idioma as h
+        import idioma
+        for codigo in idioma.IDIOMAS:
+            datos = h.leer(codigo)
+            for es, traducido in datos.items():
+                nombres = re.findall(r"\{(\w+)[^{}]*\}", es.replace("{{", "").replace("}}", ""))
+                if not nombres or "%(" in es:
+                    continue
+                valores = {n: 1 for n in nombres}
+                with self.subTest(idioma=codigo, texto=es[:40]):
+                    traducido.format(**valores)
+
+    def test_textos_del_instalador_al_dia(self):
+        """mensajes.iss y shell/textos_menu.h salen de empaquetado/idiomas.
+        Si falla: python herramientas_idioma.py instalador."""
+        import herramientas_idioma as h
+        iss, cabecera = h.generar_instalador()
+        with open(h.MENSAJES_ISS, encoding="utf-8-sig") as f:
+            self.assertEqual(f.read(), iss)
+        with open(h.TEXTOS_MENU_H, encoding="utf-8") as f:
+            self.assertEqual(f.read(), cabecera)
+        for codigo, textos in h.textos_instalador().items():
+            for clave, texto in textos.items():
+                with self.subTest(idioma=codigo, clave=clave):
+                    self.assertEqual(h.marcadores(texto), h.marcadores(
+                        h.textos_instalador()["es"][clave]))
+
+    def test_tr_traduce_y_si_falta_deja_el_espanol(self):
+        import idioma
+        self.assertEqual(idioma.ACTUAL, "es")
+        self.assertEqual(idioma.tr("Abrir"), "Abrir")
+        self.assertEqual(idioma.tr("texto que no está en el catálogo"),
+                         "texto que no está en el catálogo")
+        for codigo in idioma.IDIOMAS:
+            if codigo != "es":
+                self.assertNotEqual(idioma.tr_en(codigo, "Cancelar"), "",
+                                    codigo)
+
+    def test_eleccion_del_idioma(self):
+        """Entorno > ajuste guardado > idioma del sistema > inglés."""
+        import idioma
+        with mock.patch.dict(os.environ, {"AVENTYAPDF_IDIOMA": "fr"}):
+            self.assertEqual(idioma.elegido(), "fr")
+        with mock.patch.dict(os.environ, {"AVENTYAPDF_IDIOMA": ""}), \
+                mock.patch.object(idioma, "_ajuste_guardado", return_value="ca"):
+            self.assertEqual(idioma.elegido(), "ca")
+        with mock.patch.dict(os.environ, {"AVENTYAPDF_IDIOMA": ""}), \
+                mock.patch.object(idioma, "_ajuste_guardado", return_value=""), \
+                mock.patch.object(idioma, "idioma_del_sistema", return_value="eu"):
+            self.assertEqual(idioma.elegido(), "eu")
+        if sys.platform != "win32":
+            with mock.patch.dict(os.environ, {"LC_ALL": "de_DE.UTF-8"}):
+                self.assertEqual(idioma.idioma_del_sistema(), "en")
+            with mock.patch.dict(os.environ, {"LC_ALL": "gl_ES.UTF-8"}):
+                self.assertEqual(idioma.idioma_del_sistema(), "gl")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

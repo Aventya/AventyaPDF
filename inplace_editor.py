@@ -21,6 +21,7 @@ que `MainWindow._on_escape` tiene que cancelar el editor abierto él mismo
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont, QTextOption
 from PyQt6.QtWidgets import QPlainTextEdit
+from idioma import tr
 
 # Alineación de `PDFUtils` (0=izquierda 1=centro 2=derecha 3=justificado).
 _ALIGN = {
@@ -79,9 +80,9 @@ class InPlaceEditor(QPlainTextEdit):
         # familia y tamaño y manda sobre setFont(): sin repetirlos aquí se
         # escribía con Segoe UI a 13 px y la fuente elegida solo aparecía al
         # confirmar. Invariante 55.
-        self._font_css = (f"font-family:'{family}'; font-size:{f.pixelSize()}px;"
-                          f" font-weight:{700 if bold else 400};"
-                          f" font-style:{'italic' if italic else 'normal'};")
+        self._font_css = tr(("font-family:'{family}'; font-size:{pixelSize}px;"
+                          " font-weight:{valor};"
+                          " font-style:{valor2};")).format(family=family, pixelSize=f.pixelSize(), valor=700 if bold else 400, valor2='italic' if italic else 'normal')
         opt = QTextOption(_ALIGN.get(align, _ALIGN[0]))
         opt.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
         self.document().setDefaultTextOption(opt)

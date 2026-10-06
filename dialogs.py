@@ -20,15 +20,16 @@ from PyQt6.QtWidgets import (
 import color_picker
 import doc_tools
 import icons
+from idioma import tr
 
 _SETTINGS = ("aventyapdf", "config")
 
 
-def _button_box(dlg: QDialog, ok_text: str = "Aceptar") -> QDialogButtonBox:
+def _button_box(dlg: QDialog, ok_text: str | None = None) -> QDialogButtonBox:
     bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok |
                           QDialogButtonBox.StandardButton.Cancel)
-    bb.button(QDialogButtonBox.StandardButton.Ok).setText(ok_text)
-    bb.button(QDialogButtonBox.StandardButton.Cancel).setText("Cancelar")
+    bb.button(QDialogButtonBox.StandardButton.Ok).setText(ok_text or tr("Aceptar"))
+    bb.button(QDialogButtonBox.StandardButton.Cancel).setText(tr("Cancelar"))
     bb.accepted.connect(dlg.accept)
     bb.rejected.connect(dlg.reject)
     return bb
@@ -38,12 +39,12 @@ class ColorButton(QPushButton):
     """Muestra y edita un color como tupla RGB 0–1 (formato PyMuPDF)."""
 
     def __init__(self, color: tuple = (0, 0, 0), parent=None,
-                 opacity: float | None = None, titulo: str = "Color"):
+                 opacity: float | None = None, titulo: str | None = None):
         super().__init__(parent)
         self.setFixedSize(icons.CONTROL, icons.CONTROL)
         self._color = tuple(color)
         self._opacity = opacity              # (r41) None = sin transparencia
-        self._titulo = titulo
+        self._titulo = titulo or tr("Color")
         self._paint()
         self.clicked.connect(self._pick)
 
@@ -73,14 +74,14 @@ class ColorButton(QPushButton):
 # ── Rango de páginas ─────────────────────────────────────────────────────── #
 
 def _range_hint(page_count: int) -> str:
-    return f"Ej.: 1-3, 5, 8-   ·   vacío = todas ({page_count} páginas)"
+    return tr("Ej.: 1-3, 5, 8-   ·   vacío = todas ({page_count} páginas)").format(page_count=page_count)
 
 
 def ask_page_range(parent, title: str, page_count: int, default: str = "") -> list[int] | None:
     dlg = QDialog(parent)
     dlg.setWindowTitle(title)
     lay = QVBoxLayout(dlg)
-    lay.addWidget(QLabel("Páginas:"))
+    lay.addWidget(QLabel(tr("Páginas:")))
     edit = QLineEdit(default)
     lay.addWidget(edit)
     hint = QLabel(_range_hint(page_count))
@@ -100,7 +101,7 @@ class _RangeMixin:
         self._page_count = page_count
         self._range = QLineEdit(default)
         self._range.setPlaceholderText(_range_hint(page_count))
-        form.addRow("Páginas:", self._range)
+        form.addRow(tr("Páginas:"), self._range)
 
     def _pages(self) -> list[int] | None:
         try:
@@ -119,25 +120,25 @@ class _RangeMixin:
 class WatermarkDialog(_RangeMixin, QDialog):
     def __init__(self, parent, page_count: int):
         super().__init__(parent)
-        self.setWindowTitle("Añadir marca de agua")
+        self.setWindowTitle(tr("Añadir marca de agua"))
         form = QFormLayout(self)
         self._text = QLineEdit("CONFIDENCIAL")
-        form.addRow("Texto:", self._text)
+        form.addRow(tr("Texto:"), self._text)
         self._size = QSpinBox(); self._size.setRange(8, 250); self._size.setValue(64)
-        form.addRow("Tamaño (pt):", self._size)
+        form.addRow(tr("Tamaño (pt):"), self._size)
         # (r41) El color y la opacidad se eligen juntos, en la tabla común.
         self._color = ColorButton((0.75, 0.1, 0.1), opacity=0.25,
-                                  titulo="Color de la marca de agua")
-        form.addRow("Color y opacidad:", self._color)
+                                  titulo=tr("Color de la marca de agua"))
+        form.addRow(tr("Color y opacidad:"), self._color)
         self._angle = QSpinBox(); self._angle.setRange(-180, 180); self._angle.setValue(45)
         self._angle.setSuffix("°")
-        form.addRow("Ángulo:", self._angle)
+        form.addRow(tr("Ángulo:"), self._angle)
         self._add_range_row(form, page_count)
-        form.addRow(_button_box(self, "Aplicar"))
+        form.addRow(_button_box(self, tr("Aplicar")))
 
     def accept(self):
         if not self._text.text().strip():
-            QMessageBox.warning(self, self.windowTitle(), "Escribe el texto de la marca de agua.")
+            QMessageBox.warning(self, self.windowTitle(), tr("Escribe el texto de la marca de agua."))
             return
         super().accept()
 
@@ -152,47 +153,47 @@ class WatermarkDialog(_RangeMixin, QDialog):
 class HeaderFooterDialog(_RangeMixin, QDialog):
     def __init__(self, parent, page_count: int):
         super().__init__(parent)
-        self.setWindowTitle("Encabezado, pie de página y numeración")
+        self.setWindowTitle(tr("Encabezado, pie de página y numeración"))
         self.resize(620, 0)
         lay = QVBoxLayout(self)
 
-        grid_box = QGroupBox("Contenido")
+        grid_box = QGroupBox(tr("Contenido"))
         grid = QGridLayout(grid_box)
-        for c, name in enumerate(("Izquierda", "Centro", "Derecha")):
+        for c, name in enumerate((tr("Izquierda"), tr("Centro"), tr("Derecha"))):
             lbl = QLabel(name); lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             grid.addWidget(lbl, 0, c + 1)
         self._slots = {}
-        for r, (prefix, name) in enumerate((("h", "Encabezado"), ("f", "Pie"))):
+        for r, (prefix, name) in enumerate((("h", tr("Encabezado")), ("f", tr("Pie")))):
             grid.addWidget(QLabel(name), r + 1, 0)
             for c, pos in enumerate("lcr"):
                 e = QLineEdit()
                 self._slots[prefix + pos] = e
                 grid.addWidget(e, r + 1, c + 1)
-        self._slots["fc"].setText("Página {n} de {total}")
+        self._slots["fc"].setText(tr("Página {n} de {total}"))
         lay.addWidget(grid_box)
-        tokens = QLabel("Variables: {n} página · {total} total · {fecha} hoy · {bates} número Bates")
+        tokens = QLabel(tr("Variables: {n} página · {total} total · {fecha} hoy · {bates} número Bates"))
         tokens.setStyleSheet("color:#605E5C;")
         lay.addWidget(tokens)
 
         form = QFormLayout()
         self._size = QSpinBox(); self._size.setRange(5, 48); self._size.setValue(9)
-        form.addRow("Tamaño (pt):", self._size)
+        form.addRow(tr("Tamaño (pt):"), self._size)
         self._color = ColorButton((0.2, 0.2, 0.2))
-        form.addRow("Color:", self._color)
+        form.addRow(tr("Color:"), self._color)
         self._margin = QSpinBox(); self._margin.setRange(6, 144); self._margin.setValue(28)
         self._margin.setSuffix(" pt")
-        form.addRow("Margen:", self._margin)
+        form.addRow(tr("Margen:"), self._margin)
         bates = QHBoxLayout()
-        self._bprefix = QLineEdit(); self._bprefix.setPlaceholderText("Prefijo (ej. EXP-)")
+        self._bprefix = QLineEdit(); self._bprefix.setPlaceholderText(tr("Prefijo (ej. EXP-)"))
         self._bstart = QSpinBox(); self._bstart.setRange(0, 99_999_999); self._bstart.setValue(1)
         self._bdigits = QSpinBox(); self._bdigits.setRange(1, 12); self._bdigits.setValue(6)
-        bates.addWidget(self._bprefix); bates.addWidget(QLabel("Inicio:"))
-        bates.addWidget(self._bstart); bates.addWidget(QLabel("Dígitos:"))
+        bates.addWidget(self._bprefix); bates.addWidget(QLabel(tr("Inicio:")))
+        bates.addWidget(self._bstart); bates.addWidget(QLabel(tr("Dígitos:")))
         bates.addWidget(self._bdigits)
-        form.addRow("Bates:", bates)
+        form.addRow(tr("Bates:"), bates)
         self._add_range_row(form, page_count)
         lay.addLayout(form)
-        lay.addWidget(_button_box(self, "Aplicar"))
+        lay.addWidget(_button_box(self, tr("Aplicar")))
 
     def values(self) -> dict:
         spec = {k: e.text() for k, e in self._slots.items()}
@@ -207,33 +208,33 @@ class HeaderFooterDialog(_RangeMixin, QDialog):
 class SecurityDialog(QDialog):
     def __init__(self, parent):
         super().__init__(parent)
-        self.setWindowTitle("Proteger con contraseña")
+        self.setWindowTitle(tr("Proteger con contraseña"))
         lay = QVBoxLayout(self)
 
-        box_open = QGroupBox("Contraseña para abrir el documento (opcional)")
+        box_open = QGroupBox(tr("Contraseña para abrir el documento (opcional)"))
         f1 = QFormLayout(box_open)
         self._user = QLineEdit(); self._user.setEchoMode(QLineEdit.EchoMode.Password)
         self._user2 = QLineEdit(); self._user2.setEchoMode(QLineEdit.EchoMode.Password)
-        f1.addRow("Contraseña:", self._user)
-        f1.addRow("Repetir:", self._user2)
+        f1.addRow(tr("Contraseña:"), self._user)
+        f1.addRow(tr("Repetir:"), self._user2)
         lay.addWidget(box_open)
 
-        box_perm = QGroupBox("Restricciones (requieren contraseña de permisos)")
+        box_perm = QGroupBox(tr("Restricciones (requieren contraseña de permisos)"))
         f2 = QFormLayout(box_perm)
         self._owner = QLineEdit(); self._owner.setEchoMode(QLineEdit.EchoMode.Password)
-        f2.addRow("Contraseña de permisos:", self._owner)
-        self._p_print = QCheckBox("Permitir imprimir"); self._p_print.setChecked(True)
-        self._p_copy = QCheckBox("Permitir copiar texto e imágenes"); self._p_copy.setChecked(True)
-        self._p_modify = QCheckBox("Permitir modificar el documento"); self._p_modify.setChecked(True)
-        self._p_annot = QCheckBox("Permitir comentarios y rellenar formularios"); self._p_annot.setChecked(True)
+        f2.addRow(tr("Contraseña de permisos:"), self._owner)
+        self._p_print = QCheckBox(tr("Permitir imprimir")); self._p_print.setChecked(True)
+        self._p_copy = QCheckBox(tr("Permitir copiar texto e imágenes")); self._p_copy.setChecked(True)
+        self._p_modify = QCheckBox(tr("Permitir modificar el documento")); self._p_modify.setChecked(True)
+        self._p_annot = QCheckBox(tr("Permitir comentarios y rellenar formularios")); self._p_annot.setChecked(True)
         for cb in (self._p_print, self._p_copy, self._p_modify, self._p_annot):
             f2.addRow(cb)
         lay.addWidget(box_perm)
 
-        note = QLabel("Cifrado AES de 256 bits. Se aplica al guardar el documento.")
+        note = QLabel(tr("Cifrado AES de 256 bits. Se aplica al guardar el documento."))
         note.setStyleSheet("color:#605E5C;")
         lay.addWidget(note)
-        lay.addWidget(_button_box(self, "Aplicar"))
+        lay.addWidget(_button_box(self, tr("Aplicar")))
 
     def _restricted(self) -> bool:
         return not all(cb.isChecked() for cb in
@@ -241,18 +242,18 @@ class SecurityDialog(QDialog):
 
     def accept(self):
         if self._user.text() != self._user2.text():
-            QMessageBox.warning(self, self.windowTitle(), "Las contraseñas de apertura no coinciden.")
+            QMessageBox.warning(self, self.windowTitle(), tr("Las contraseñas de apertura no coinciden."))
             return
         if not self._user.text() and not self._owner.text():
-            QMessageBox.warning(self, self.windowTitle(), "Indica al menos una contraseña.")
+            QMessageBox.warning(self, self.windowTitle(), tr("Indica al menos una contraseña."))
             return
         if self._restricted() and not self._owner.text():
             QMessageBox.warning(self, self.windowTitle(),
-                                "Las restricciones necesitan una contraseña de permisos.")
+                                tr("Las restricciones necesitan una contraseña de permisos."))
             return
         if self._owner.text() and self._owner.text() == self._user.text():
             QMessageBox.warning(self, self.windowTitle(),
-                                "La contraseña de permisos debe ser distinta de la de apertura.")
+                                tr("La contraseña de permisos debe ser distinta de la de apertura."))
             return
         super().accept()
 
@@ -276,7 +277,7 @@ class SecurityDialog(QDialog):
 class PropertiesDialog(QDialog):
     def __init__(self, parent, doc: fitz.Document, path: str, n_signatures: int):
         super().__init__(parent)
-        self.setWindowTitle("Propiedades del documento")
+        self.setWindowTitle(tr("Propiedades del documento"))
         self.resize(560, 460)
         lay = QVBoxLayout(self)
         tabs = QTabWidget()
@@ -289,7 +290,7 @@ class PropertiesDialog(QDialog):
             e = QLineEdit(meta.get(key) or "")
             self._edits[key] = e
             f.addRow(label + ":", e)
-        tabs.addTab(desc, "Descripción")
+        tabs.addTab(desc, tr("Descripción"))
 
         info = QWidget(); g = QFormLayout(info)
         size = ""
@@ -302,16 +303,16 @@ class PropertiesDialog(QDialog):
                 if fnt[3]:
                     fonts.add(fnt[3].split("+")[-1])
         rows = [
-            ("Archivo", path or "(sin guardar)"),
-            ("Tamaño", size or "—"),
-            ("Páginas", str(len(doc))),
-            ("Tamaño de página", f"{p0.width / 72 * 25.4:.0f} × {p0.height / 72 * 25.4:.0f} mm"),
-            ("Versión PDF", meta.get("format") or "—"),
-            ("Cifrado", meta.get("encryption") or "No"),
-            ("Formulario", "Sí" if doc.is_form_pdf else "No"),
-            ("Firmas digitales", str(n_signatures)),
-            ("Creado", meta.get("creationDate") or "—"),
-            ("Modificado", meta.get("modDate") or "—"),
+            (tr("Archivo"), path or tr("(sin guardar)")),
+            (tr("Tamaño"), size or "—"),
+            (tr("Páginas"), str(len(doc))),
+            (tr("Tamaño de página"), tr("{valor:.0f} × {valor2:.0f} mm").format(valor=p0.width / 72 * 25.4, valor2=p0.height / 72 * 25.4)),
+            (tr("Versión PDF"), meta.get("format") or "—"),
+            (tr("Cifrado"), meta.get("encryption") or "No"),
+            (tr("Formulario"), tr("Sí") if doc.is_form_pdf else "No"),
+            (tr("Firmas digitales"), str(n_signatures)),
+            (tr("Creado"), meta.get("creationDate") or "—"),
+            (tr("Modificado"), meta.get("modDate") or "—"),
         ]
         for label, value in rows:
             v = QLabel(value); v.setWordWrap(True)
@@ -319,10 +320,10 @@ class PropertiesDialog(QDialog):
             g.addRow(label + ":", v)
         fl = QPlainTextEdit("\n".join(sorted(fonts)) or "(ninguna)")
         fl.setReadOnly(True); fl.setMaximumHeight(110)
-        g.addRow("Fuentes:", fl)
-        tabs.addTab(info, "Información")
+        g.addRow(tr("Fuentes:"), fl)
+        tabs.addTab(info, tr("Información"))
 
-        lay.addWidget(_button_box(self, "Guardar propiedades"))
+        lay.addWidget(_button_box(self, tr("Guardar propiedades")))
 
     def metadata(self) -> dict:
         return {k: e.text() for k, e in self._edits.items()}
@@ -342,24 +343,25 @@ class SignOptionsDialog(QDialog):
     los últimos valores en QSettings."""
 
     def __init__(self, parent, has_signatures: bool, tsa_presets: list[str],
-                 ok_text: str = "Firmar"):
+                 ok_text: str | None = None):
+        ok_text = ok_text or tr("Firmar")
         super().__init__(parent)
-        self.setWindowTitle("Opciones de firma")
+        self.setWindowTitle(tr("Opciones de firma"))
         self.resize(480, 0)
         s = QSettings(*_SETTINGS)
         form = QFormLayout(self)
 
         self._reason = QComboBox(); self._reason.setEditable(True)
-        self._reason.addItems(["", "Aprobación", "Conformidad", "He revisado este documento",
-                               "Soy el autor de este documento"])
+        self._reason.addItems(["", tr("Aprobación"), tr("Conformidad"), tr("He revisado este documento"),
+                               tr("Soy el autor de este documento")])
         self._reason.setCurrentText(s.value("signing/reason", ""))
-        form.addRow("Motivo:", self._reason)
+        form.addRow(tr("Motivo:"), self._reason)
         self._location = QLineEdit(s.value("signing/location", ""))
-        form.addRow("Lugar:", self._location)
+        form.addRow(tr("Lugar:"), self._location)
         self._contact = QLineEdit(s.value("signing/contact", ""))
-        form.addRow("Contacto:", self._contact)
+        form.addRow(tr("Contacto:"), self._contact)
 
-        self._tsa = QCheckBox("Añadir sello de tiempo cualificado (PAdES-B-T)")
+        self._tsa = QCheckBox(tr("Añadir sello de tiempo cualificado (PAdES-B-T)"))
         # (petición de Ricardo) Marcado de entrada: solo el usuario lo quita.
         self._tsa.setChecked(SignOptionsDialog._tsa_on(s))
         form.addRow(self._tsa)
@@ -368,15 +370,15 @@ class SignOptionsDialog(QDialog):
         self._tsa_url.setCurrentText(s.value("signing/tsa_url", tsa_presets[0]))
         self._tsa_url.setEnabled(self._tsa.isChecked())
         self._tsa.toggled.connect(self._tsa_url.setEnabled)
-        form.addRow("Servidor TSA:", self._tsa_url)
+        form.addRow(tr("Servidor TSA:"), self._tsa_url)
 
-        self._certify = QCheckBox("Certificar documento (solo permitirá rellenar formularios y firmar)")
+        self._certify = QCheckBox(tr("Certificar documento (solo permitirá rellenar formularios y firmar)"))
         self._certify.setEnabled(not has_signatures)
         if has_signatures:
-            self._certify.setToolTip("Solo la primera firma de un documento puede certificarlo.")
+            self._certify.setToolTip(tr("Solo la primera firma de un documento puede certificarlo."))
         form.addRow(self._certify)
 
-        self._remember = QCheckBox("No volver a preguntar (cambiar en Firma › Opciones de firma…)")
+        self._remember = QCheckBox(tr("No volver a preguntar (cambiar en Firmar › Opciones de firma…)"))
         self._remember.setChecked(s.value("signing/skip_dialog", "false") == "true")
         form.addRow(self._remember)
         form.addRow(_button_box(self, ok_text))
@@ -421,15 +423,15 @@ class SignOptionsDialog(QDialog):
 class ExportImagesDialog(_RangeMixin, QDialog):
     def __init__(self, parent, page_count: int, current_page: int):
         super().__init__(parent)
-        self.setWindowTitle("Exportar páginas como imágenes")
+        self.setWindowTitle(tr("Exportar páginas como imágenes"))
         form = QFormLayout(self)
         self._fmt = QComboBox(); self._fmt.addItems(["PNG", "JPG"])
-        form.addRow("Formato:", self._fmt)
+        form.addRow(tr("Formato:"), self._fmt)
         self._dpi = QComboBox(); self._dpi.addItems(["72", "96", "150", "200", "300", "600"])
         self._dpi.setCurrentText("150")
-        form.addRow("Resolución (ppp):", self._dpi)
+        form.addRow(tr("Resolución (ppp):"), self._dpi)
         self._add_range_row(form, page_count, "")
-        form.addRow(_button_box(self, "Exportar…"))
+        form.addRow(_button_box(self, tr("Exportar…")))
 
     def values(self) -> dict:
         return dict(fmt=self._fmt.currentText().lower(), dpi=int(self._dpi.currentText()),
@@ -439,30 +441,30 @@ class ExportImagesDialog(_RangeMixin, QDialog):
 # ── Atajos de teclado ────────────────────────────────────────────────────── #
 
 SHORTCUTS = [
-    ("Ctrl+O", "Abrir"), ("Ctrl+S", "Guardar"), ("Ctrl+Mayús+S", "Guardar como"),
-    ("Ctrl+P", "Imprimir"), ("Ctrl+W", "Cerrar documento"),
-    ("Ctrl+Tab / Ctrl+Mayús+Tab", "Documento abierto siguiente / anterior"),
-    ("Ctrl+Z / Ctrl+Y", "Deshacer / Rehacer"), ("Ctrl+F", "Buscar"),
-    ("F3 / Mayús+F3", "Coincidencia siguiente / anterior"),
-    ("Ctrl+C", "Copiar texto seleccionado"),
-    ("Ctrl+Rueda, Ctrl + / Ctrl −", "Zoom"), ("Ctrl+0", "Zoom 100 %"),
-    ("Ctrl+1 / Ctrl+2", "Ajustar ancho / página"),
-    ("AvPág / RePág", "Página siguiente / anterior"),
-    ("Rueda en el borde de la página", "Pasar de página"),
-    ("Inicio / Fin", "Primera / última página"), ("Ctrl+G", "Ir a página"),
-    ("F4", "Mostrar u ocultar panel lateral"), ("Supr", "Eliminar anotación"),
-    ("Esc", "Herramienta de selección"),
-    ("V · T · N · H · R · E", "Selección · Texto · Nota · Resaltar, subrayar o tachar · Rectángulo · Emoji"),
-    ("C", "Editar el texto y las imágenes del PDF"),
+    ("Ctrl+O", tr("Abrir")), ("Ctrl+S", tr("Guardar")), (tr("Ctrl+Mayús+S"), tr("Guardar como")),
+    ("Ctrl+P", tr("Imprimir")), ("Ctrl+W", tr("Cerrar documento")),
+    (tr("Ctrl+Tab / Ctrl+Mayús+Tab"), tr("Documento abierto siguiente / anterior")),
+    (tr("Ctrl+Z / Ctrl+Y"), tr("Deshacer / Rehacer")), ("Ctrl+F", tr("Buscar")),
+    (tr("F3 / Mayús+F3"), tr("Coincidencia siguiente / anterior")),
+    ("Ctrl+C", tr("Copiar texto seleccionado")),
+    (tr("Ctrl+Rueda, Ctrl + / Ctrl −"), "Zoom"), ("Ctrl+0", tr("Zoom 100 %")),
+    (tr("Ctrl+1 / Ctrl+2"), tr("Ajustar ancho / página")),
+    (tr("AvPág / RePág"), tr("Página siguiente / anterior")),
+    (tr("Rueda en el borde de la página"), tr("Pasar de página")),
+    (tr("Inicio / Fin"), tr("Primera / última página")), ("Ctrl+G", tr("Ir a página")),
+    ("F4", tr("Mostrar u ocultar panel lateral")), (tr("Supr"), tr("Eliminar anotación")),
+    ("Esc", tr("Herramienta de selección")),
+    ("V · T · N · H · R · E", tr("Selección · Texto · Nota · Resaltar, subrayar o tachar · Rectángulo · Emoji")),
+    ("C", tr("Editar el texto y las imágenes del PDF")),
 ]
 
 
 # ── Reconocer texto (OCR) ─────────────────────────────────────────────────── #
 
 OCR_LANGUAGE_NAMES = {
-    "spa": "Español", "spa+eng": "Español e inglés", "eng": "Inglés", "cat": "Catalán",
-    "glg": "Gallego", "eus": "Euskera", "por": "Portugués", "fra": "Francés",
-    "deu": "Alemán", "ita": "Italiano",
+    "spa": tr("Español"), "spa+eng": tr("Español e inglés"), "eng": tr("Inglés"), "cat": tr("Catalán"),
+    "glg": tr("Gallego"), "eus": tr("Euskera"), "por": tr("Portugués"), "fra": tr("Francés"),
+    "deu": tr("Alemán"), "ita": tr("Italiano"),
 }
 
 
@@ -471,7 +473,7 @@ class OcrDialog(QDialog):
 
     def __init__(self, parent, languages: list[str], pages_without_text: int, page_count: int):
         super().__init__(parent)
-        self.setWindowTitle("Reconocer texto (OCR)")
+        self.setWindowTitle(tr("Reconocer texto (OCR)"))
         self.setMinimumWidth(460)
         s = QSettings(*_SETTINGS)
         form = QFormLayout()
@@ -479,24 +481,24 @@ class OcrDialog(QDialog):
         for code in languages:
             self._lang.addItem(OCR_LANGUAGE_NAMES.get(code, code), code)
         self._lang.setCurrentIndex(max(0, self._lang.findData(s.value("ocr/lang", languages[0]))))
-        form.addRow("Idioma del documento:", self._lang)
+        form.addRow(tr("Idioma del documento:"), self._lang)
         self._scope = QComboBox()
-        self._scope.addItem(f"Todas las páginas ({page_count}) — recomendado", "all")
-        self._scope.addItem(f"Solo las páginas sin texto ({pages_without_text})", "empty")
-        form.addRow("Páginas:", self._scope)
-        self._orientation = QCheckBox("Detectar la orientación de cada página")
+        self._scope.addItem(tr("Todas las páginas ({page_count}) — recomendado").format(page_count=page_count), "all")
+        self._scope.addItem(tr("Solo las páginas sin texto ({pages_without_text})").format(pages_without_text=pages_without_text), "empty")
+        form.addRow(tr("Páginas:"), self._scope)
+        self._orientation = QCheckBox(tr("Detectar la orientación de cada página"))
         self._orientation.setChecked(s.value("ocr/orientation", True, type=bool))
         form.addRow("", self._orientation)
-        hint = QLabel("«Todas las páginas» reconoce también el texto de imágenes, escaneos, sellos "
+        hint = QLabel(tr("«Todas las páginas» reconoce también el texto de imágenes, escaneos, sellos "
                       "o texto convertido en dibujo dentro de páginas que ya tienen texto.\n"
                       "El texto se añade como capa invisible: la página no cambia de aspecto, "
-                      "se puede buscar y seleccionar, y la operación se puede deshacer.")
+                      "se puede buscar y seleccionar, y la operación se puede deshacer."))
         hint.setWordWrap(True)
         hint.setStyleSheet("color:#605E5C;")
         lay = QVBoxLayout(self)
         lay.addLayout(form)
         lay.addWidget(hint)
-        lay.addWidget(_button_box(self, "Reconocer"))
+        lay.addWidget(_button_box(self, tr("Reconocer")))
 
     def values(self) -> dict:
         v = dict(lang=self._lang.currentData(),
@@ -511,4 +513,4 @@ class OcrDialog(QDialog):
 def show_shortcuts(parent):
     rows = "".join(f"<tr><td style='padding:3px 16px 3px 0'><b>{k}</b></td><td>{v}</td></tr>"
                    for k, v in SHORTCUTS)
-    QMessageBox.information(parent, "Atajos de teclado", f"<table>{rows}</table>")
+    QMessageBox.information(parent, tr("Atajos de teclado"), f"<table>{rows}</table>")

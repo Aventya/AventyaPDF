@@ -48,6 +48,7 @@ import os
 import re
 import sys
 import time
+from idioma import tr
 
 # Acciones del menú contextual (ver main.procesar_argumentos).
 ARG_FIRMAR = "--firmar"
@@ -300,7 +301,7 @@ def reparar() -> tuple[bool, str]:
     import elevar
     archivos = _archivos_menu()
     if archivos is None:
-        return False, "Esta instalación no tiene el menú contextual de Windows 11."
+        return False, tr("Esta instalación no tiene el menú contextual de Windows 11.")
     base, cer, msix, exe = archivos
     if _ayudante(exe, "comprobar", cer)[0] != 0:
         try:
@@ -308,13 +309,13 @@ def reparar() -> tuple[bool, str]:
         except (OSError, TimeoutError):
             pass                                # se comprueba abajo
         if _ayudante(exe, "comprobar", cer)[0] != 0:
-            return False, ("No se ha dado el permiso de administrador: el submenú «AventyaPDF» "
+            return False, tr(("No se ha dado el permiso de administrador: el submenú «AventyaPDF» "
                            "sigue en «Mostrar más opciones». Vuelve a intentarlo y acepta el "
-                           "aviso de Windows.")
+                           "aviso de Windows."))
     codigo, motivo = _ayudante(exe, "registrar", msix, base)
     if codigo != 0:
-        return False, ("Windows no aceptó el paquete del menú contextual."
+        return False, (tr("Windows no aceptó el paquete del menú contextual.")
                        + (f"\n\n{motivo}" if motivo else ""))
-    return True, ("Listo: el submenú «AventyaPDF» está en el menú principal del botón derecho "
+    return True, tr(("Listo: el submenú «AventyaPDF» está en el menú principal del botón derecho "
                   "del Explorador (si no aparece aún, cierra y vuelve a abrir la ventana del "
-                  "Explorador).")
+                  "Explorador)."))

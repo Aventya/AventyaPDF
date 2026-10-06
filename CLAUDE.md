@@ -4,6 +4,7 @@ Visor y editor de PDF para Windows (Python, PyQt6 y PyMuPDF) de Aventya Asesorí
 
 ## Cada cambio
 - Lee `MEMORIA_EVOLUTIVA.md` antes de tocar código —sobre todo los invariantes de §4— y actualízala al terminar según su §9: revisión, fecha y una fila en §10.
+- Textos visibles en siete idiomas: escríbelos en español dentro de `tr("…")` (invariante 61 de la memoria) y, si añades o cambias alguno, `python herramientas_idioma.py catalogo` y tradúcelos en `idiomas/*.json` (guía en `docs/idiomas.md`).
 - Pruebas: `.\run.ps1 -Pruebas` en Windows. En Linux (sesiones en la nube) fallan unas 36 que dependen de Windows (fuentes, Word, Tesseract, certificados): compara con el resultado de antes de tu cambio, no con cero.
 
 ## Ramas

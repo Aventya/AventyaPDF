@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import QInputDialog, QLineEdit, QMenu, QMessageBox, QPlainT
 import doc_tools
 import icons
 import pdf_forms
+from idioma import tr
 
 _HIGHLIGHT = QColor(204, 215, 255, 120)
 
@@ -110,23 +111,23 @@ class FormController:
         if field["type"] == pdf_forms.SIGNATURE:
             if field.get("signed"):
                 self.mw.statusBar().showMessage(
-                    "Este campo ya está firmado (panel Firmas para comprobarla)")
+                    tr("Este campo ya está firmado (panel Firmas para comprobarla)"))
             else:                                   # (r38) firmar en el recuadro
                 self.mw.sign_in_field(field)
             return
         if field["readonly"]:
-            self.mw.statusBar().showMessage("Campo de solo lectura")
+            self.mw.statusBar().showMessage(tr("Campo de solo lectura"))
             return
         kind = field["type"]
         if kind == pdf_forms.TEXT:
             self.open_editor(field)
         elif kind in (pdf_forms.CHECKBOX, pdf_forms.RADIO):
-            self._apply("Rellenar formulario",
+            self._apply(tr("Rellenar formulario"),
                         lambda doc, page: (True, pdf_forms.toggle(doc, page, field["xref"])))
         elif kind in (pdf_forms.COMBOBOX, pdf_forms.LISTBOX):
             self._choose(field)
         elif kind == pdf_forms.BUTTON:
-            self._apply(f"Botón «{field['label']}»",
+            self._apply(tr("Botón «{field}»").format(field=field['label']),
                         lambda doc, page: (True, pdf_forms.press(doc, page, field["xref"])))
 
     def _apply(self, label: str, fn) -> bool:
@@ -157,20 +158,20 @@ class FormController:
             act.setCheckable(True)
             act.setChecked(field["value"] in (export, shown))
             act.setData(export)
-        other = menu.addAction("Escribir otro valor…") if field["editable"] else None
+        other = menu.addAction(tr("Escribir otro valor…")) if field["editable"] else None
         where = self.viewer._to_screen_rect(field["rect"]).bottomLeft()
         chosen = menu.exec(self.viewer.mapToGlobal(where))
         if chosen is None:
             return
         if chosen is other:
-            value, ok = QInputDialog.getText(self.viewer, "Rellenar campo",
+            value, ok = QInputDialog.getText(self.viewer, tr("Rellenar campo"),
                                              field["label"] + ":", text=field["value"])
             if not ok:
                 return
         else:
             value = chosen.data()
         if value != field["value"]:
-            self._apply("Rellenar formulario",
+            self._apply(tr("Rellenar formulario"),
                         lambda doc, page: pdf_forms.choose(doc, page, field["xref"], value))
 
     # ── edición en línea ───────────────────────────────────────────────── #
@@ -215,7 +216,7 @@ class FormController:
         editor.deleteLater()
         try:
             if commit and text != field["value"]:
-                self._apply("Rellenar formulario",
+                self._apply(tr("Rellenar formulario"),
                             lambda doc, page: pdf_forms.set_text(doc, page, field["xref"], text))
         finally:
             self._busy = False
@@ -234,14 +235,14 @@ class FormController:
         for event in events:
             kind, text = event.kind, event.text
             if kind == "alert":
-                QMessageBox.information(mw, "Mensaje del documento", text)
+                QMessageBox.information(mw, tr("Mensaje del documento"), text)
             elif kind == "response":
-                QMessageBox.information(mw, "Pregunta del documento",
-                                        f"{text}\n\n(AventyaPDF no permite responder "
-                                        "preguntas de formularios.)")
+                QMessageBox.information(mw, tr("Pregunta del documento"),
+                                        tr("{text}\n\n(AventyaPDF no permite responder "
+                                        "preguntas de formularios.)").format(text=text))
             elif kind == "url" and text:
-                r = QMessageBox.question(mw, "Abrir enlace",
-                                         f"El documento quiere abrir:\n{text}\n\n¿Abrirlo?")
+                r = QMessageBox.question(mw, tr("Abrir enlace"),
+                                         tr("El documento quiere abrir:\n{text}\n\n¿Abrirlo?").format(text=text))
                 if r == QMessageBox.StandardButton.Yes:
                     QDesktopServices.openUrl(QUrl(text))
             elif kind == "mail":
@@ -261,10 +262,10 @@ class FormController:
                     pass
             elif kind == "submit":
                 QMessageBox.information(
-                    mw, "Enviar formulario",
-                    f"El formulario pide enviarse a:\n{text or '(destino no indicado)'}\n\n"
+                    mw, tr("Enviar formulario"),
+                    tr("El formulario pide enviarse a:\n{valor}\n\n"
                     "AventyaPDF no envía formularios por Internet: guarda el PDF "
-                    "relleno y envíalo tú.")
+                    "relleno y envíalo tú.").format(valor=text or tr('(destino no indicado)')))
             elif kind == "launch":
-                QMessageBox.warning(mw, "Abrir archivo",
-                                    f"Por seguridad no se abren archivos desde un formulario:\n{text}")
+                QMessageBox.warning(mw, tr("Abrir archivo"),
+                                    tr("Por seguridad no se abren archivos desde un formulario:\n{text}").format(text=text))

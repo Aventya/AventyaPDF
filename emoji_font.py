@@ -30,6 +30,7 @@ import re
 import unicodedata
 
 import fitz
+from idioma import tr
 
 RAIZ = os.path.dirname(os.path.abspath(__file__))
 FONT_PATH = os.path.join(RAIZ, "vendor", "fonts", "noto-emoji", "NotoEmoji-Regular.ttf")
@@ -56,15 +57,15 @@ AP_MARKER = b"% AG-EMOJI"
 _IGNORED = {0xFE0E, 0xFE0F}          # selectores de variación (p. ej. «⚠️»)
 
 GROUPS_ES = {
-    "Smileys & Emotion": "Caras y emociones",
-    "People & Body": "Personas y cuerpo",
-    "Animals & Nature": "Animales y naturaleza",
-    "Food & Drink": "Comida y bebida",
-    "Travel & Places": "Viajes y lugares",
-    "Activities": "Actividades",
-    "Objects": "Objetos",
-    "Symbols": "Símbolos",
-    "Flags": "Banderas",
+    "Smileys & Emotion": tr("Caras y emociones"),
+    "People & Body": tr("Personas y cuerpo"),
+    "Animals & Nature": tr("Animales y naturaleza"),
+    "Food & Drink": tr("Comida y bebida"),
+    "Travel & Places": tr("Viajes y lugares"),
+    "Activities": tr("Actividades"),
+    "Objects": tr("Objetos"),
+    "Symbols": tr("Símbolos"),
+    "Flags": tr("Banderas"),
 }
 
 
@@ -86,7 +87,7 @@ def _plain(text: str) -> str:
 @functools.lru_cache(maxsize=1)
 def font() -> fitz.Font:
     if not os.path.isfile(FONT_PATH):
-        raise EmojiFontError(f"Falta la fuente de emojis: {FONT_PATH}")
+        raise EmojiFontError(tr("Falta la fuente de emojis: {FONT_PATH}").format(FONT_PATH=FONT_PATH))
     return fitz.Font(fontfile=FONT_PATH)
 
 
@@ -95,8 +96,8 @@ def catalog() -> tuple[dict, ...]:
     """Todos los emojis disponibles, en el orden de Unicode."""
     if not os.path.isfile(EMOJI_JSON):
         raise EmojiFontError(
-            "Falta el índice de emojis (vendor/emoji/emojis.json). "
-            "Genéralo con: python create_emoji_index.py")
+            tr("Falta el índice de emojis (vendor/emoji/emojis.json). "
+            "Genéralo con: python create_emoji_index.py"))
     with open(EMOJI_JSON, encoding="utf-8") as fh:
         items = json.load(fh)
     for e in items:
@@ -206,8 +207,8 @@ def add_emoji_annot(doc: fitz.Document, page_num: int, point: fitz.Point,
     e = find(text)
     if e is None:
         raise EmojiFontError(
-            f"El emoji «{text}» no está en Noto Emoji (las banderas de países y "
-            "las combinaciones con ZWJ no se pueden insertar).")
+            tr("El emoji «{text}» no está en Noto Emoji (las banderas de países y "
+            "las combinaciones con ZWJ no se pueden insertar).").format(text=text))
     f = font()
     glifo = f.has_glyph(ord(e["emoji"]))
     w, h = box_size(e["emoji"], fontsize)
@@ -219,8 +220,8 @@ def add_emoji_annot(doc: fitz.Document, page_num: int, point: fitz.Point,
     base = -f.descender * fontsize                 # línea base dentro de la caja
     ops = (f"q /AGEa gs {r:.4f} {g:.4f} {b:.4f} rg BT /AGE {fontsize:g} Tf "
            f"0 {base:.4f} Td <{glifo:04x}> Tj ET Q")
-    recursos = (f"<</Font<</AGE {fxref} 0 R>>"
-                f"/ExtGState<</AGEa<</Type/ExtGState/ca {alfa:.4f}/CA {alfa:.4f}>>>>>>")
+    recursos = tr(("<</Font<</AGE {fxref} 0 R>>"
+                "/ExtGState<</AGEa<</Type/ExtGState/ca {alfa:.4f}/CA {alfa:.4f}>>>>>>")).format(fxref=fxref, alfa=alfa)
 
     import doc_tools
     # (r105) `point` va como se ve la página; el /Rect, sin girar.

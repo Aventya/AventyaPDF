@@ -28,6 +28,7 @@ import os
 import ssl
 from dataclasses import dataclass
 from io import BytesIO
+from idioma import tr
 
 TRUST_LIST = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                           "vendor", "trust", "es_tsl.pem")
@@ -65,32 +66,32 @@ class SignatureReport:
 
 _VERDICT_TEXT = {
     False: {
-        "ok": "Firma válida y de confianza",
-        "untrusted": "Firma íntegra, identidad no verificada",
-        "invalid": "Firma NO válida (documento alterado o firma dañada)",
-        "error": "No se pudo validar",
+        "ok": tr("Firma válida y de confianza"),
+        "untrusted": tr("Firma íntegra, identidad no verificada"),
+        "invalid": tr("Firma NO válida (documento alterado o firma dañada)"),
+        "error": tr("No se pudo validar"),
     },
     True: {
-        "ok": "Sello de tiempo válido y de confianza",
-        "untrusted": "Sello de tiempo íntegro, identidad no verificada",
-        "invalid": "Sello de tiempo NO válido (documento alterado o sello dañado)",
-        "error": "No se pudo validar",
+        "ok": tr("Sello de tiempo válido y de confianza"),
+        "untrusted": tr("Sello de tiempo íntegro, identidad no verificada"),
+        "invalid": tr("Sello de tiempo NO válido (documento alterado o sello dañado)"),
+        "error": tr("No se pudo validar"),
     },
 }
 
 
 _COVERAGE = {
-    "ENTIRE_FILE": "Todo el documento",
-    "ENTIRE_REVISION": "Revisión completa (hay cambios posteriores)",
-    "CONTIGUOUS_BLOCK_FROM_START": "Parcial",
-    "UNCLEAR": "No determinada",
+    "ENTIRE_FILE": tr("Todo el documento"),
+    "ENTIRE_REVISION": tr("Revisión completa (hay cambios posteriores)"),
+    "CONTIGUOUS_BLOCK_FROM_START": tr("Parcial"),
+    "UNCLEAR": tr("No determinada"),
 }
 _MODIFICATION = {
-    "NONE": "Sin cambios posteriores",
-    "LTA_UPDATES": "Solo datos de validación (LTV)",
-    "FORM_FILLING": "Relleno de formularios / firmas posteriores",
-    "ANNOTATIONS": "Comentarios añadidos después",
-    "OTHER": "Cambios no permitidos después de firmar",
+    "NONE": tr("Sin cambios posteriores"),
+    "LTA_UPDATES": tr("Solo datos de validación (LTV)"),
+    "FORM_FILLING": tr("Relleno de formularios / firmas posteriores"),
+    "ANNOTATIONS": tr("Comentarios añadidos después"),
+    "OTHER": tr("Cambios no permitidos después de firmar"),
 }
 
 

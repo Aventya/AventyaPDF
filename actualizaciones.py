@@ -16,6 +16,7 @@ import os
 import re
 import urllib.error
 import urllib.request
+from idioma import tr
 
 # Repositorio donde se publica todo (código y versiones).
 OWNER, REPO = "Aventya", "AventyaPDF"
@@ -71,12 +72,12 @@ def fetch_latest(timeout: float = TIMEOUT) -> dict:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             data = json.load(resp)
     except urllib.error.HTTPError as e:
-        raise UpdateError(f"GitHub respondió con el error {e.code}.") from e
+        raise UpdateError(tr("GitHub respondió con el error {code}.").format(code=e.code)) from e
     except (urllib.error.URLError, TimeoutError, OSError) as e:
         motivo = getattr(e, "reason", e)
-        raise UpdateError(f"No hay conexión con GitHub ({motivo}).") from e
+        raise UpdateError(tr("No hay conexión con GitHub ({motivo}).").format(motivo=motivo)) from e
     except ValueError as e:
-        raise UpdateError("GitHub devolvió una respuesta que no se entiende.") from e
+        raise UpdateError(tr("GitHub devolvió una respuesta que no se entiende.")) from e
     return release_info(data)
 
 
@@ -151,7 +152,7 @@ def download_installer(info: dict, progress=None, timeout: float = 60,
     el mismo, no lo vuelve a bajar. `progress(bytes, total)` opcional.
     Devuelve la ruta; lanza UpdateError si algo falla."""
     if not info.get("installer_name"):
-        raise UpdateError("La publicación no tiene instalador.")
+        raise UpdateError(tr("La publicación no tiene instalador."))
     carpeta = carpeta or carpeta_descargas()
     hecho = instalador_descargado(info, carpeta)
     if hecho:
@@ -174,12 +175,12 @@ def download_installer(info: dict, progress=None, timeout: float = 60,
                 if progress:
                     progress(hecho, total)
     except (urllib.error.URLError, TimeoutError, OSError) as e:
-        raise UpdateError(f"No se pudo descargar el instalador ({getattr(e, 'reason', e)}).") from e
+        raise UpdateError(tr("No se pudo descargar el instalador ({getattr}).").format(getattr=getattr(e, 'reason', e))) from e
     esperado = info.get("installer_sha256", "")
     if esperado and h.hexdigest() != esperado.lower():
         os.remove(destino + ".part")
-        raise UpdateError("El instalador descargado no coincide con el publicado (huella SHA-256): "
-                          "se ha borrado.")
+        raise UpdateError(tr("El instalador descargado no coincide con el publicado (huella SHA-256): "
+                          "se ha borrado."))
     os.replace(destino + ".part", destino)
     return destino
 

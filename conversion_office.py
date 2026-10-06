@@ -22,6 +22,7 @@ import tempfile
 import fitz
 
 import doc_tools
+from idioma import tr
 
 WORD_EXTS = {".doc", ".docx"}
 # Mismo conjunto que window_document.IMAGE_EXTS (y que la extensión del
@@ -31,10 +32,10 @@ IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tif", ".tiff", ".webp"}
 # (r123) Diálogos de abrir varios archivos: todo lo que la aplicación sabe
 # mostrar (PDF, y también imágenes y Word, que se convierten a PDF).
 _PATRON = " ".join("*" + e for e in sorted(IMAGE_EXTS))
-FILTRO_ABRIR = (f"Todos los admitidos (*.pdf {_PATRON} *.doc *.docx);;"
+FILTRO_ABRIR = tr(("Todos los admitidos (*.pdf {_PATRON} *.doc *.docx);;"
                 "Archivos PDF (*.pdf);;"
-                f"Imágenes ({_PATRON});;"
-                "Documentos de Word (*.doc *.docx)")
+                "Imágenes ({_PATRON});;"
+                "Documentos de Word (*.doc *.docx)")).format(_PATRON=_PATRON)
 
 _SIN_VENTANA = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 _TIEMPO_MAX = 300          # segundos para toda una tanda de documentos
@@ -71,7 +72,7 @@ def _con_word(pares: list[tuple[str, str]], tmp: str) -> str:
             timeout=_TIEMPO_MAX, creationflags=_SIN_VENTANA)
     except (OSError, subprocess.TimeoutExpired) as e:
         return str(e)
-    return "" if r.returncode == 0 else (r.stderr or r.stdout or f"código {r.returncode}").strip()
+    return "" if r.returncode == 0 else (r.stderr or r.stdout or tr("código {codigo}").format(codigo=r.returncode)).strip()
 
 
 def _con_libreoffice(soffice: str, origen: str, destino: str, tmp: str) -> str:
@@ -85,7 +86,7 @@ def _con_libreoffice(soffice: str, origen: str, destino: str, tmp: str) -> str:
         return str(e)
     hecho = os.path.join(salida, os.path.splitext(os.path.basename(origen))[0] + ".pdf")
     if not os.path.isfile(hecho):
-        return (r.stderr or r.stdout or "LibreOffice no generó el PDF").strip()
+        return (r.stderr or r.stdout or tr("LibreOffice no generó el PDF")).strip()
     os.replace(hecho, destino)
     return ""
 
@@ -104,14 +105,14 @@ def word_a_pdfs(paths: list[str]) -> list[fitz.Document]:
             errores = []
             for origen, destino in pendientes:
                 e = (_con_libreoffice(soffice, origen, destino, tmp) if soffice
-                     else "no está instalado LibreOffice")
+                     else tr("no está instalado LibreOffice"))
                 if e:
                     errores.append(f"«{os.path.basename(origen)}»: {e}")
             if errores:
                 raise ConversionError(
-                    "No se pudo convertir a PDF:\n" + "\n".join(errores)
-                    + ("\n\nMicrosoft Word: " + error_word.splitlines()[-1] if error_word else "")
-                    + "\n\nHace falta Microsoft Word o LibreOffice instalado.")
+                    tr("No se pudo convertir a PDF:\n") + "\n".join(errores)
+                    + (tr("\n\nMicrosoft Word: ") + error_word.splitlines()[-1] if error_word else "")
+                    + tr("\n\nHace falta Microsoft Word o LibreOffice instalado."))
         docs = []
         for _o, destino in pares:
             with open(destino, "rb") as f:
@@ -144,7 +145,7 @@ def archivos_a_pdfs(paths: list[str]) -> list[fitz.Document]:
             src = fitz.open(p)
             if src.needs_pass:
                 src.close()
-                raise ValueError(f"«{os.path.basename(p)}» está protegido con contraseña.")
+                raise ValueError(tr("«{nombre}» está protegido con contraseña.").format(nombre=os.path.basename(p)))
             docs.append(src)
         elif t == "img":
             docs.append(doc_tools.images_to_pdf([p]))
@@ -179,7 +180,7 @@ def combinar_archivos(paths: list[str]) -> fitz.Document:
                     src = fitz.open("pdf", f.read())
                 if src.needs_pass:
                     src.close()
-                    raise ValueError(f"«{os.path.basename(p)}» está protegido con contraseña.")
+                    raise ValueError(tr("«{nombre}» está protegido con contraseña.").format(nombre=os.path.basename(p)))
             elif t == "img":
                 src = doc_tools.images_to_pdf([p])
             else:

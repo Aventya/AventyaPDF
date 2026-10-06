@@ -1,0 +1,17 @@
+{
+ "WelcomeLabel2": "S'instal·larà [name/ver] en aquest ordinador.%n%nDurant la instal·lació es baixaran dels seus llocs oficials Python, els components de Python i els tipus de lletra (uns {#ComponentesMB} MB): cal connexió a Internet.%n%nEs recomana tancar AventyaPDF abans de continuar.",
+ "TareaEscritorio": "Crea una drecera a l'escriptori",
+ "GrupoAccesos": "Dreceres:",
+ "PreparandoArranque": "S'està preparant AventyaPDF per a la primera execució…",
+ "AbrirApp": "Obre %1",
+ "MenuConfianza": "Perquè el submenú «AventyaPDF» aparegui al menú del botó dret de Windows 11, Windows ha de confiar en el certificat d'AventyaPDF.%n%nA continuació Windows demanarà permís d'administrador (només aquesta vegada en aquest ordinador).",
+ "MenuSinPermiso": "No s'ha donat el permís d'administrador.%n%nSense aquest permís, el submenú «AventyaPDF» del botó dret quedarà a «Mostra més opcions». Voleu tornar-lo a demanar?%n%n(També es pot fer més endavant des d'AventyaPDF: Ajuda › Repara el menú contextual de l'Explorador de fitxers.)",
+ "MenuFallo": "No s'ha pogut afegir el submenú «AventyaPDF» al menú principal de Windows 11 (continua a «Mostra més opcions»). Detall a:",
+ "CertQuitar": "Per treure d'aquest ordinador el certificat del menú del botó dret d'AventyaPDF, Windows demanarà permís d'administrador.",
+ "CertNoQuitado": "No s'ha tret el certificat d'AventyaPDF de «Persones de confiança» de l'ordinador (no s'ha donat el permís d'administrador).%n%nEs pot treure manualment: «Administra els certificats de l'ordinador» (certlm.msc) › Persones de confiança › Certificats › «Aventya Asesoria Integral SL».",
+ "MenuFirmar": "Signa digitalment",
+ "MenuCombinar": "Combina en un PDF",
+ "MenuConvertir": "Converteix a PDF",
+ "TipoDocumento": "Document PDF",
+ "DescripcionApp": "Visualitzador i editor de PDF amb signatura digital i OCR"
+}

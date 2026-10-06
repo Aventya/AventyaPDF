@@ -1,0 +1,17 @@
+{
+ "WelcomeLabel2": "[name/ver] ordenagailu honetan instalatuko da.%n%nInstalazioan zehar, Python, Python-en osagaiak eta letra-tipoak deskargatuko dira haien webgune ofizialetatik ({#ComponentesMB} MB inguru): Interneteko konexioa behar da.%n%nAventyaPDF ixtea gomendatzen da jarraitu aurretik.",
+ "TareaEscritorio": "Sortu lasterbide bat mahaigainean",
+ "GrupoAccesos": "Lasterbideak:",
+ "PreparandoArranque": "AventyaPDF lehen abiaraztekoa prestatzen…",
+ "AbrirApp": "Ireki %1",
+ "MenuConfianza": "«AventyaPDF» azpimenua Windows 11ko eskuineko botoiaren menuan ager dadin, Windows-ek AventyaPDF-ren ziurtagiriaz fidatu behar du.%n%nJarraian, Windows-ek administratzaile-baimena eskatuko du (behin bakarrik ordenagailu honetan).",
+ "MenuSinPermiso": "Ez da administratzaile-baimena eman.%n%nBaimen hori gabe, eskuineko botoiaren «AventyaPDF» azpimenua «Erakutsi aukera gehiago» barruan geratuko da. Berriro eskatu?%n%n(Geroago ere egin daiteke AventyaPDF-tik: Laguntza › Konpondu Fitxategi-arakatzailearen laster-menua.)",
+ "MenuFallo": "Ezin izan da «AventyaPDF» azpimenua Windows 11ko menu nagusian gehitu («Erakutsi aukera gehiago» barruan dago oraindik). Xehetasunak hemen:",
+ "CertQuitar": "AventyaPDF-ren eskuineko botoiaren menuko ziurtagiria ordenagailu honetatik kentzeko, Windows-ek administratzaile-baimena eskatuko du.",
+ "CertNoQuitado": "Ez da AventyaPDF-ren ziurtagiria kendu ordenagailuko «Pertsona fidagarriak» biltegitik (ez da administratzaile-baimena eman).%n%nEskuz ken daiteke: «Kudeatu ordenagailuaren ziurtagiriak» (certlm.msc) › Pertsona fidagarriak › Ziurtagiriak › «Aventya Asesoria Integral SL».",
+ "MenuFirmar": "Sinatu digitalki",
+ "MenuCombinar": "Konbinatu PDF bakarrean",
+ "MenuConvertir": "Bihurtu PDF",
+ "TipoDocumento": "PDF dokumentua",
+ "DescripcionApp": "PDF ikustailea eta editorea, sinadura digitalarekin eta OCRarekin"
+}

@@ -108,15 +108,26 @@ ExtraDiskSpaceRequired={#ComponentesBytes}
 UninstallDisplaySize={#TamanoInstalado}
 #endif
 
+; (r136) El instalador pregunta el idioma al empezar (preselecciona el de
+; Windows) y la aplicación arranca en ese idioma (GuardarIdioma, en [Code]).
+; Gallego y euskera no vienen con Inno Setup: sus mensajes están en
+; empaquetado\idiomas (traducciones no oficiales de Inno Setup).
 [Languages]
 Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl"
+Name: "en"; MessagesFile: "compiler:Default.isl"
+Name: "fr"; MessagesFile: "compiler:Languages\French.isl"
+Name: "it"; MessagesFile: "compiler:Languages\Italian.isl"
+Name: "ca"; MessagesFile: "compiler:Languages\Catalan.isl"
+Name: "gl"; MessagesFile: "idiomas\Galician.isl"
+Name: "eu"; MessagesFile: "idiomas\Basque.isl"
 
-[Messages]
-WelcomeLabel2=Se instalará [name/ver] en este equipo.%n%nDurante la instalación se descargarán de sus sitios oficiales Python, los componentes de Python y las fuentes tipográficas (unos {#ComponentesMB} MB): hace falta conexión a Internet.%n%nSe recomienda cerrar AventyaPDF antes de continuar.
+; Textos propios del instalador en cada idioma: los genera
+; «python herramientas_idioma.py instalador» desde empaquetado\idiomas\*.json.
+#include "idiomas\mensajes.iss"
 
 #ifndef Prueba
 [Tasks]
-Name: "escritorio"; Description: "Crear un acceso directo en el escritorio"; GroupDescription: "Accesos directos:"
+Name: "escritorio"; Description: "{cm:TareaEscritorio}"; GroupDescription: "{cm:GrupoAccesos}"
 #endif
 
 [Files]
@@ -147,7 +158,7 @@ Type: filesandordirs; Name: "{app}\app"
 ; (r109) Precompila el código de Python ahora y no en el primer arranque, que
 ; si no tardaría bastante más. Algunos paquetes traen archivos de prueba que
 ; no compilan: no importa, por eso no se mira el código de salida.
-Filename: "{app}\runtime\python.exe"; Parameters: "-m compileall -q -j 0 ""{app}\app"" ""{app}\runtime\Lib\site-packages"""; StatusMsg: "Preparando AventyaPDF para el primer arranque…"; Flags: runhidden
+Filename: "{app}\runtime\python.exe"; Parameters: "-m compileall -q -j 0 ""{app}\app"" ""{app}\runtime\Lib\site-packages"""; StatusMsg: "{cm:PreparandoArranque}"; Flags: runhidden
 
 #ifndef Prueba
 [Icons]
@@ -160,7 +171,7 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; AppUserModelID: "
 ; DefaultIcon aquí a propósito: [Code] lo escribe copiando el que ya
 ; tuvieran los .pdf (Acrobat, Edge…) para que elegir AventyaPDF cambie el
 ; visor, no el dibujo del archivo en el Explorador — ver CopiarIconoDePdf.
-Root: HKA; Subkey: "Software\Classes\{#ProgId}"; ValueType: string; ValueName: ""; ValueData: "Documento PDF"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\{#ProgId}"; ValueType: string; ValueName: ""; ValueData: "{cm:TipoDocumento}"; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\{#ProgId}"; ValueType: string; ValueName: "AppUserModelID"; ValueData: "Aventya.AventyaPDF"
 Root: HKA; Subkey: "Software\Classes\{#ProgId}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
 Root: HKA; Subkey: "Software\Classes\.pdf\OpenWithProgids"; ValueType: string; ValueName: "{#ProgId}"; ValueData: ""; Flags: uninsdeletevalue
@@ -172,12 +183,12 @@ Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\shell\open\command";
 Root: HKA; Subkey: "Software\Aventya"; Flags: uninsdeletekeyifempty
 Root: HKA; Subkey: "Software\Aventya\{#AppName}"; Flags: uninsdeletekeyifempty
 Root: HKA; Subkey: "Software\Aventya\{#AppName}\Capabilities"; ValueType: string; ValueName: "ApplicationName"; ValueData: "{#AppName}"; Flags: uninsdeletekey
-Root: HKA; Subkey: "Software\Aventya\{#AppName}\Capabilities"; ValueType: string; ValueName: "ApplicationDescription"; ValueData: "Visor y editor de PDF con firma digital y OCR"
+Root: HKA; Subkey: "Software\Aventya\{#AppName}\Capabilities"; ValueType: string; ValueName: "ApplicationDescription"; ValueData: "{cm:DescripcionApp}"
 Root: HKA; Subkey: "Software\Aventya\{#AppName}\Capabilities\FileAssociations"; ValueType: string; ValueName: ".pdf"; ValueData: "{#ProgId}"
 Root: HKA; Subkey: "Software\RegisteredApplications"; ValueType: string; ValueName: "{#AppName}"; ValueData: "Software\Aventya\{#AppName}\Capabilities"; Flags: uninsdeletevalue
 
 [Run]
-Filename: "{app}\{#AppExe}"; Description: "Abrir {#AppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExe}"; Description: "{cm:AbrirApp,{#AppName}}"; Flags: nowait postinstall skipifsilent
 ; (r121) Actualización desde la propia aplicación (/SILENT /REINICIAR): al acabar, se vuelve a abrir.
 ; (r127) Desde la 0.9.12 la aplicación ya no lanza el instalador (lo deja en Descargas y lo
 ; instala el usuario), pero la 0.9.11 aún actualiza así: no quitar mientras pueda haberla instalada.
@@ -261,6 +272,14 @@ begin
   Result := (V.Major > 10) or ((V.Major = 10) and (V.Build >= 22000));
 end;
 
+// (r136) Texto propio del instalador en el idioma elegido (mensajes.iss),
+// con «%n» convertido en salto de línea.
+function Msg(const Clave: String): String;
+begin
+  Result := CustomMessage(Clave);
+  StringChangeEx(Result, '%n', #13#10, True);
+end;
+
 procedure Aviso(const Texto: String);
 begin
   if not WizardSilent then
@@ -295,23 +314,15 @@ begin
     // Solo este paso se eleva: el resto, y el registro del paquete, son del
     // usuario que instala (el registro del paquete es por usuario).
     if not Silencioso then
-      MsgBox('Para que el submenú «AventyaPDF» aparezca en el menú del botón derecho de Windows 11, ' +
-             'Windows tiene que confiar en el certificado de AventyaPDF.' + #13#10#13#10 +
-             'A continuación Windows pedirá permiso de administrador (solo esta vez en este equipo).',
-             mbInformation, MB_OK);
+      MsgBox(Msg('MenuConfianza'), mbInformation, MB_OK);
     while Ayudante(Exe, 'confiar "' + Cer + '"', True) <> 0 do begin
-      if Silencioso or (MsgBox('No se ha dado el permiso de administrador.' + #13#10#13#10 +
-                'Sin él, el submenú «AventyaPDF» del botón derecho quedará en «Mostrar más opciones». ' +
-                '¿Volver a pedirlo?' + #13#10#13#10 +
-                '(También se puede hacer más tarde desde AventyaPDF: Ayuda › Reparar el menú ' +
-                'contextual del Explorador.)', mbConfirmation, MB_YESNO) <> IDYES) then
+      if Silencioso or (MsgBox(Msg('MenuSinPermiso'), mbConfirmation, MB_YESNO) <> IDYES) then
         exit;
     end;
   end;
   if Ayudante(Exe, 'registrar "' + Msix + '" "' + ExpandConstant('{app}') + '" "' + Registro + '"',
               False) <> 0 then
-    Aviso('No se pudo añadir el submenú «AventyaPDF» al menú principal de Windows 11 ' +
-          '(sigue en «Mostrar más opciones»). Detalle en:' + #13#10 + Registro);
+    Aviso(Msg('MenuFallo') + #13#10 + Registro);
 end;
 
 procedure OpcionClasica(const Raiz, Verbo, Titulo, Accion: String);
@@ -354,14 +365,14 @@ var
   Raiz, Lista, Ext: String;
 begin
   Raiz := RaizClasica('.pdf');
-  OpcionClasica(Raiz, '01Firmar', 'Firmar digitalmente', '--firmar');
-  OpcionClasica(Raiz, '02Combinar', 'Combinar en un PDF', '--combinar');
+  OpcionClasica(Raiz, '01Firmar', Msg('MenuFirmar'), '--firmar');
+  OpcionClasica(Raiz, '02Combinar', Msg('MenuCombinar'), '--combinar');
   Lista := ExtImagenWord;
   while Lista <> '' do begin
     Ext := SiguienteExt(Lista);
     Raiz := RaizClasica(Ext);
-    OpcionClasica(Raiz, '01Combinar', 'Combinar en un PDF', '--combinar');
-    OpcionClasica(Raiz, '02Convertir', 'Convertir a PDF', '--convertir');
+    OpcionClasica(Raiz, '01Combinar', Msg('MenuCombinar'), '--combinar');
+    OpcionClasica(Raiz, '02Convertir', Msg('MenuConvertir'), '--convertir');
   end;
 end;
 
@@ -427,9 +438,33 @@ begin
   RegWriteStringValue(HKA, 'Software\Classes\{#ProgId}\DefaultIcon', '', Icono);
 end;
 
+// ── (r136) Idioma de la aplicación ─────────────────────────────────────── //
+// AventyaPDF arranca en el idioma de su ajuste «ui/idioma» (idioma.py), en
+// el registro del usuario. Se escribe el elegido en el instalador cuando no
+// hay ninguno o cuando se ha elegido uno distinto del de la instalación
+// anterior; si es el mismo, se respeta el que se haya puesto después desde
+// Ayuda › Idioma (al actualizar, el instalador propone el idioma anterior).
+const
+  ClaveIdioma = 'Software\aventyapdf\config\ui';
+
+procedure RegisterPreviousData(PreviousDataKey: Integer);
+begin
+  SetPreviousData(PreviousDataKey, 'Idioma', ActiveLanguage);
+end;
+
+procedure GuardarIdioma;
+var
+  Actual: String;
+begin
+  if (GetPreviousData('Idioma', '') <> ActiveLanguage) or
+     not RegQueryStringValue(HKCU, ClaveIdioma, 'idioma', Actual) then
+    RegWriteStringValue(HKCU, ClaveIdioma, 'idioma', ActiveLanguage);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then begin
+    GuardarIdioma;
     CopiarIconoDePdfSiHaceFalta;
     InstalarMenuClasico;
     InstalarMenuModerno;
@@ -449,14 +484,9 @@ begin
   if not FileExists(Exe) or (Ayudante(Exe, 'confiados', False) <> 0) then
     exit;
   if not UninstallSilent then
-    MsgBox('Para quitar de este equipo el certificado del menú del botón derecho de AventyaPDF, ' +
-           'Windows pedirá permiso de administrador.', mbInformation, MB_OK);
+    MsgBox(Msg('CertQuitar'), mbInformation, MB_OK);
   if (Ayudante(Exe, 'desconfiar', True) <> 0) and not UninstallSilent then
-    MsgBox('No se ha quitado el certificado de AventyaPDF de «Personas de confianza» del equipo ' +
-           '(no se dio el permiso de administrador).' + #13#10#13#10 +
-           'Se puede quitar a mano: «Administrar certificados de equipo» (certlm.msc) › ' +
-           'Personas de confianza › Certificados › «Aventya Asesoria Integral SL».',
-           mbInformation, MB_OK);
+    MsgBox(Msg('CertNoQuitado'), mbInformation, MB_OK);
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

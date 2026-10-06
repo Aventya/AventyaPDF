@@ -1,0 +1,19 @@
+{
+ "es": {
+  "WelcomeLabel2": "Se instalará [name/ver] en este equipo.%n%nDurante la instalación se descargarán de sus sitios oficiales Python, los componentes de Python y las fuentes tipográficas (unos {#ComponentesMB} MB): hace falta conexión a Internet.%n%nSe recomienda cerrar AventyaPDF antes de continuar.",
+  "TareaEscritorio": "Crear un acceso directo en el escritorio",
+  "GrupoAccesos": "Accesos directos:",
+  "PreparandoArranque": "Preparando AventyaPDF para el primer arranque…",
+  "AbrirApp": "Abrir %1",
+  "MenuConfianza": "Para que el submenú «AventyaPDF» aparezca en el menú del botón derecho de Windows 11, Windows tiene que confiar en el certificado de AventyaPDF.%n%nA continuación Windows pedirá permiso de administrador (solo esta vez en este equipo).",
+  "MenuSinPermiso": "No se ha dado el permiso de administrador.%n%nSin él, el submenú «AventyaPDF» del botón derecho quedará en «Mostrar más opciones». ¿Volver a pedirlo?%n%n(También se puede hacer más tarde desde AventyaPDF: Ayuda › Reparar el menú contextual del Explorador.)",
+  "MenuFallo": "No se pudo añadir el submenú «AventyaPDF» al menú principal de Windows 11 (sigue en «Mostrar más opciones»). Detalle en:",
+  "CertQuitar": "Para quitar de este equipo el certificado del menú del botón derecho de AventyaPDF, Windows pedirá permiso de administrador.",
+  "CertNoQuitado": "No se ha quitado el certificado de AventyaPDF de «Personas de confianza» del equipo (no se dio el permiso de administrador).%n%nSe puede quitar a mano: «Administrar certificados de equipo» (certlm.msc) › Personas de confianza › Certificados › «Aventya Asesoria Integral SL».",
+  "MenuFirmar": "Firmar digitalmente",
+  "MenuCombinar": "Combinar en un PDF",
+  "MenuConvertir": "Convertir a PDF",
+  "TipoDocumento": "Documento PDF",
+  "DescripcionApp": "Visor y editor de PDF con firma digital y OCR"
+ }
+}

@@ -30,6 +30,7 @@ from PyQt6.QtWidgets import (
 )
 
 import icons
+from idioma import tr
 
 _SETTINGS = ("aventyapdf", "config")
 KEY_SHOW = "inicio/presentacion"
@@ -49,46 +50,46 @@ class Slide:
 
 
 SLIDES: tuple[Slide, ...] = (
-    Slide("document_pdf", "Bienvenido a AventyaPDF",
-          "Ver, comentar, organizar, proteger, convertir y firmar PDF en una sola "
+    Slide("document_pdf", tr("Bienvenido a AventyaPDF"),
+          tr("Ver, comentar, organizar, proteger, convertir y firmar PDF en una sola "
           "aplicación de libre distribución, con su código abierto en GitHub. Esta "
-          "presentación te enseña lo principal en un minuto."),
-    Slide("folder_open", "Abrir y moverse por el documento",
-          "Abre varios PDF a la vez (Ctrl+O o arrastrándolos a la ventana) y pasa de "
+          "presentación te enseña lo principal en un minuto.")),
+    Slide("folder_open", tr("Abrir y moverse por el documento"),
+          tr("Abre varios PDF a la vez (Ctrl+O o arrastrándolos a la ventana) y pasa de "
           "uno a otro con Ctrl+Tab. Panel lateral con miniaturas, marcadores, comentarios "
-          "y firmas (F4), búsqueda con Ctrl+F y zoom al ancho o a la página."),
-    Slide("text_add_t", "Comentar sobre la página",
-          "Texto que se escribe directamente donde va a quedar, notas adhesivas, "
+          "y firmas (F4), búsqueda con Ctrl+F y zoom al ancho o a la página.")),
+    Slide("text_add_t", tr("Comentar sobre la página"),
+          tr("Texto que se escribe directamente donde va a quedar, notas adhesivas, "
           "resaltar, subrayar o tachar (sobre el texto o a mano alzada), rectángulos, "
-          "emojis y borrador. Todo se deshace con Ctrl+Z."),
-    Slide("edit", "Editar el contenido del PDF",
-          "Cambia el texto y las imágenes que ya están en el documento: el párrafo se "
+          "emojis y borrador. Todo se deshace con Ctrl+Z.")),
+    Slide("edit", tr("Editar el contenido del PDF"),
+          tr("Cambia el texto y las imágenes que ya están en el documento: el párrafo se "
           "reajusta a su cuadro y las imágenes se mueven, se sustituyen o se borran "
-          "(tecla C)."),
-    Slide("form", "Rellenar formularios",
-          "Los campos se resaltan en azul; se escriben en el propio campo, las casillas "
-          "se marcan con un clic y los cálculos y validaciones funcionan como en Acrobat."),
-    Slide("document_multiple", "Organizar páginas",
-          "Arrastra miniaturas para reordenar y gira, duplica, elimina, inserta o extrae "
+          "(tecla C).")),
+    Slide("form", tr("Rellenar formularios"),
+          tr("Los campos se resaltan en azul; se escriben en el propio campo, las casillas "
+          "se marcan con un clic y los cálculos y validaciones funcionan como en Acrobat.")),
+    Slide("document_multiple", tr("Organizar páginas"),
+          tr("Arrastra miniaturas para reordenar y gira, duplica, elimina, inserta o extrae "
           "páginas. Combina varios PDF, divide uno en partes o crea un PDF desde imágenes, "
-          "también desde el menú contextual del Explorador."),
-    Slide("certificate", "Firma digital PAdES",
-          "Firma con los certificados de Windows o con un archivo .pfx, con sellado de "
+          "también desde el menú contextual del Explorador.")),
+    Slide("certificate", tr("Firma digital PAdES"),
+          tr("Firma con los certificados de Windows o con un archivo .pfx, con sellado de "
           "tiempo y certificación. Las firmas del documento se verifican solas contra el "
-          "almacén de Windows y la lista de confianza de España."),
-    Slide("calligraphy_pen", "Firma manuscrita",
-          "Desde la barra de Firma, la plumilla: dibuja tu firma con el ratón, con trazo "
+          "almacén de Windows y la lista de confianza de España.")),
+    Slide("calligraphy_pen", tr("Firma manuscrita"),
+          tr("Desde la barra de Firma, la plumilla: dibuja tu firma con el ratón, con trazo "
           "de estilográfica y el color y grosor que quieras, o carga la imagen de tu "
-          "firma escaneada."),
-    Slide("document_search", "Reconocimiento de texto (OCR)",
-          "Convierte los escaneos y las fotos en PDF con texto que se puede buscar y "
-          "copiar. Endereza la página y corrige la orientación antes de leerla."),
-    Slide("lock_closed", "Proteger y preparar",
-          "Contraseña AES-256 y permisos, marca de agua, encabezado y pie, numeración "
-          "Bates, compresión y exportación a Word, imágenes o texto."),
-    Slide("keyboard", "Listo para empezar",
-          "F1 muestra todos los atajos de teclado. Puedes volver a ver esta presentación "
-          "cuando quieras desde Ayuda › Presentación de AventyaPDF."),
+          "firma escaneada.")),
+    Slide("document_search", tr("Reconocimiento de texto (OCR)"),
+          tr("Convierte los escaneos y las fotos en PDF con texto que se puede buscar y "
+          "copiar. Endereza la página y corrige la orientación antes de leerla.")),
+    Slide("lock_closed", tr("Proteger y preparar"),
+          tr("Contraseña AES-256 y permisos, marca de agua, encabezado y pie, numeración "
+          "Bates, compresión y exportación a Word, imágenes o texto.")),
+    Slide("keyboard", tr("Listo para empezar"),
+          tr("F1 muestra todos los atajos de teclado. Puedes volver a ver esta presentación "
+          "cuando quieras desde Ayuda › Presentación de AventyaPDF.")),
 )
 
 
@@ -145,7 +146,7 @@ class WelcomeDialog(QDialog):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setWindowTitle("Presentación de AventyaPDF")
+        self.setWindowTitle(tr("Presentación de AventyaPDF"))
         self.setFixedSize(W, H)
         self.index = 0
         self._elapsed = 0
@@ -189,7 +190,7 @@ class WelcomeDialog(QDialog):
         arriba.addStretch()
         self._btn_close = QPushButton(icons.glyph("dismiss"))
         self._btn_close.setObjectName("cerrar")
-        self._btn_close.setToolTip("Cerrar la presentación  (Esc)")
+        self._btn_close.setToolTip(tr("Cerrar la presentación  (Esc)"))
         self._btn_close.clicked.connect(self.accept)
         arriba.addWidget(self._btn_close)
         lay.addLayout(arriba)
@@ -240,11 +241,11 @@ class WelcomeDialog(QDialog):
         lay.addStretch()
 
         abajo = QHBoxLayout()
-        self._chk = QCheckBox("No volver a mostrar al iniciar")
+        self._chk = QCheckBox(tr("No volver a mostrar al iniciar"))
         self._chk.setChecked(not should_show())
         abajo.addWidget(self._chk)
         abajo.addStretch()
-        self._btn_prev = QPushButton("‹ Anterior")
+        self._btn_prev = QPushButton(tr("‹ Anterior"))
         self._btn_prev.clicked.connect(lambda: self.go(self.index - 1))
         abajo.addWidget(self._btn_prev)
         self._btn_next = QPushButton()
@@ -281,10 +282,10 @@ class WelcomeDialog(QDialog):
         self._slide_icon.setText(icons.glyph(s.icon))
         self._slide_title.setText(s.title)
         self._slide_text.setText(s.text)
-        self._counter.setText(f"{self.index + 1} de {len(SLIDES)}")
+        self._counter.setText(tr("{valor} de {n}").format(valor=self.index + 1, n=len(SLIDES)))
         ultima = self.index == len(SLIDES) - 1
         self._btn_prev.setEnabled(self.index > 0)
-        self._btn_next.setText("Empezar" if ultima else "Siguiente ›")
+        self._btn_next.setText(tr("Empezar") if ultima else tr("Siguiente ›"))
         self._update_progress()
 
     def _on_next(self) -> None:

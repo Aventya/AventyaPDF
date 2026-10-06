@@ -15,7 +15,7 @@ import traceback
 
 import fitz
 from PyQt6.QtCore import QObject, Qt, QSettings, QTimer, QUrl, pyqtSignal
-from PyQt6.QtGui import QAction, QDesktopServices, QIcon, QKeySequence, QShortcut
+from PyQt6.QtGui import QAction, QActionGroup, QDesktopServices, QIcon, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication, QCheckBox, QFileDialog, QFrame, QHBoxLayout, QInputDialog, QLabel,
     QLineEdit, QMessageBox, QProgressDialog, QPushButton, QWidget,
@@ -32,11 +32,13 @@ import pdf_ocr
 import tesseract_setup
 import tesseract_ui
 from tsa import TSA_PRESETS
+import idioma
+from idioma import tr
 
 SETTINGS = ("aventyapdf", "config")
 APP_VERSION = "0.9.14"
 # (r71) Titular y repositorio público (AGPL-3.0, libre distribución).
-APP_OWNER = "Aventya Asesoría Integral SL"
+APP_OWNER = tr("Aventya Asesoría Integral SL")
 APP_REPO = "https://github.com/Aventya/AventyaPDF"
 # (petición de Ricardo) Aviso automático de versiones nuevas al iniciar.
 _KEY_AUTO_UPDATE = "updates/check_on_start"
@@ -101,143 +103,163 @@ class MenusMixin:
             self._doc_actions.append(act)
         return act
 
+    def choose_language(self, codigo: str):
+        """(r136) Ayuda › Idioma: se guarda y se aplica al volver a abrir. El
+        aviso sale ya en el idioma elegido."""
+        if codigo == idioma.ACTUAL:
+            return
+        idioma.guardar(codigo)
+        QMessageBox.information(
+            self, idioma.tr_en(codigo, "Idioma"),
+            idioma.tr_en(codigo, "AventyaPDF se mostrará en {idioma} la próxima vez que "
+                                 "lo abras.").format(idioma=idioma.IDIOMAS[codigo]))
+
     def _build_menus(self):
         self._doc_actions = []
         A = self._action
         mb = self.menuBar()
 
-        m = mb.addMenu("&Archivo")
-        A(m, "Nuevo PDF en blanco", self.new_blank_document, "Ctrl+N", needs_doc=False)
-        A(m, "Crear PDF desde imágenes…", self.create_from_images, needs_doc=False)
-        A(m, "Abrir…", self.open_pdf, "Ctrl+O", needs_doc=False)
-        self._menu_recent = m.addMenu("Abrir reciente")
+        m = mb.addMenu(tr("&Archivo"))
+        A(m, tr("Nuevo PDF en blanco"), self.new_blank_document, "Ctrl+N", needs_doc=False)
+        A(m, tr("Crear PDF desde imágenes…"), self.create_from_images, needs_doc=False)
+        A(m, tr("Abrir…"), self.open_pdf, "Ctrl+O", needs_doc=False)
+        self._menu_recent = m.addMenu(tr("Abrir reciente"))
         self._menu_recent.aboutToShow.connect(self._fill_recent_menu)
         m.addSeparator()
-        A(m, "Guardar", self.save_pdf, "Ctrl+S")
-        A(m, "Guardar como…", self.save_pdf_as, "Ctrl+Shift+S")
-        exp = m.addMenu("Exportar")
-        A(exp, "Páginas como imágenes…", self.export_images)
-        A(exp, "Texto (.txt)…", self.export_text)
-        A(exp, "Documento de Word (.docx)…", self.export_word)
-        A(exp, "Extraer páginas a PDF…", self.extract_pages_dialog)
+        A(m, tr("Guardar"), self.save_pdf, "Ctrl+S")
+        A(m, tr("Guardar como…"), self.save_pdf_as, "Ctrl+Shift+S")
+        exp = m.addMenu(tr("Exportar"))
+        A(exp, tr("Páginas como imágenes…"), self.export_images)
+        A(exp, tr("Texto (.txt)…"), self.export_text)
+        A(exp, tr("Documento de Word (.docx)…"), self.export_word)
+        A(exp, tr("Extraer páginas a PDF…"), self.extract_pages_dialog)
         m.addSeparator()
-        A(m, "Imprimir…", self.print_pdf, "Ctrl+P")
-        A(m, "Propiedades del documento…", self.show_properties, "Ctrl+D")
+        A(m, tr("Imprimir…"), self.print_pdf, "Ctrl+P")
+        A(m, tr("Propiedades del documento…"), self.show_properties, "Ctrl+D")
         m.addSeparator()
-        A(m, "Cerrar documento", self.close_document, "Ctrl+W")
-        A(m, "Salir", self.close, "Ctrl+Q", needs_doc=False)
+        A(m, tr("Cerrar documento"), self.close_document, "Ctrl+W")
+        A(m, tr("Salir"), self.close, "Ctrl+Q", needs_doc=False)
 
-        m = mb.addMenu("&Edición")
-        self._act_undo = A(m, "Deshacer", self.undo, "Ctrl+Z")
-        self._act_redo = A(m, "Rehacer", self.redo, ["Ctrl+Y", "Ctrl+Shift+Z"])
+        m = mb.addMenu(tr("&Edición"))
+        self._act_undo = A(m, tr("Deshacer"), self.undo, "Ctrl+Z")
+        self._act_redo = A(m, tr("Rehacer"), self.redo, ["Ctrl+Y", "Ctrl+Shift+Z"])
         m.addSeparator()
-        A(m, "Copiar texto seleccionado", self.copy_selected_text, "Ctrl+C")
+        A(m, tr("Copiar texto seleccionado"), self.copy_selected_text, "Ctrl+C")
         m.addSeparator()
-        A(m, "Buscar…", self.show_find, "Ctrl+F")
-        A(m, "Buscar siguiente", self.find_next, "F3")
-        A(m, "Buscar anterior", self.find_prev, "Shift+F3")
+        A(m, tr("Buscar…"), self.show_find, "Ctrl+F")
+        A(m, tr("Buscar siguiente"), self.find_next, "F3")
+        A(m, tr("Buscar anterior"), self.find_prev, "Shift+F3")
 
-        m = mb.addMenu("&Ver")
-        A(m, "Mostrar u ocultar panel lateral", self.sidebar_toggle, "F4", needs_doc=False)
-        A(m, "Miniaturas de página", lambda: self.sidebar.show_panel("thumbs"), needs_doc=False)
-        A(m, "Marcadores", lambda: self.sidebar.show_panel("bookmarks"), needs_doc=False)
-        A(m, "Comentarios", lambda: self.sidebar.show_panel("comments"), needs_doc=False)
-        A(m, "Firmas Certificadas", lambda: self.sidebar.show_panel("signatures"), needs_doc=False)
-        self._act_highlight_fields = A(m, "Resaltar campos de formulario",
+        m = mb.addMenu(tr("&Ver"))
+        A(m, tr("Mostrar u ocultar panel lateral"), self.sidebar_toggle, "F4", needs_doc=False)
+        A(m, tr("Miniaturas de página"), lambda: self.sidebar.show_panel("thumbs"), needs_doc=False)
+        A(m, tr("Marcadores"), lambda: self.sidebar.show_panel("bookmarks"), needs_doc=False)
+        A(m, tr("Comentarios"), lambda: self.sidebar.show_panel("comments"), needs_doc=False)
+        A(m, tr("Firmas Certificadas"), lambda: self.sidebar.show_panel("signatures"), needs_doc=False)
+        self._act_highlight_fields = A(m, tr("Resaltar campos de formulario"),
                                        self.toggle_highlight_fields, needs_doc=False)
         self._act_highlight_fields.setCheckable(True)
         self._act_highlight_fields.setChecked(
             QSettings(*SETTINGS).value("view/highlight_fields", True, type=bool))
         m.addSeparator()
-        A(m, "Acercar", lambda: self.zoom_step(1), ["Ctrl++", "Ctrl+="])
-        A(m, "Alejar", lambda: self.zoom_step(-1), "Ctrl+-")
-        A(m, "Tamaño real (100 %)", self.zoom_actual, "Ctrl+0")
-        A(m, "Ajustar al ancho", self.zoom_fit_width, "Ctrl+1")
-        A(m, "Ajustar a la página", self.zoom_fit_page, "Ctrl+2")
+        A(m, tr("Acercar"), lambda: self.zoom_step(1), ["Ctrl++", "Ctrl+="])
+        A(m, tr("Alejar"), lambda: self.zoom_step(-1), "Ctrl+-")
+        A(m, tr("Tamaño real (100 %)"), self.zoom_actual, "Ctrl+0")
+        A(m, tr("Ajustar al ancho"), self.zoom_fit_width, "Ctrl+1")
+        A(m, tr("Ajustar a la página"), self.zoom_fit_page, "Ctrl+2")
         m.addSeparator()
-        A(m, "Primera página", self.first_page, "Home")
-        A(m, "Página anterior", self.prev_page, "PgUp")
-        A(m, "Página siguiente", self.next_page, "PgDown")
-        A(m, "Última página", self.last_page, "End")
-        A(m, "Ir a página…", self.ask_go_to_page, "Ctrl+G")
+        A(m, tr("Primera página"), self.first_page, "Home")
+        A(m, tr("Página anterior"), self.prev_page, "PgUp")
+        A(m, tr("Página siguiente"), self.next_page, "PgDown")
+        A(m, tr("Última página"), self.last_page, "End")
+        A(m, tr("Ir a página…"), self.ask_go_to_page, "Ctrl+G")
         m.addSeparator()
-        A(m, "Documento siguiente", self.next_document, "Ctrl+Tab", needs_doc=False)
-        A(m, "Documento anterior", lambda: self.next_document(-1), "Ctrl+Shift+Tab",
+        A(m, tr("Documento siguiente"), self.next_document, "Ctrl+Tab", needs_doc=False)
+        A(m, tr("Documento anterior"), lambda: self.next_document(-1), "Ctrl+Shift+Tab",
           needs_doc=False)
 
-        m = mb.addMenu("&Comentar")
+        m = mb.addMenu(tr("&Comentar"))
         for text, mode, key in [
-            ("Herramienta de selección", "NONE", "V"),
-            ("Añadir texto", "TEXT", "T"),
-            ("Nota adhesiva", "NOTE", "N"),
-            ("Resaltar, subrayar o tachar", "MARKUP", "H"),
-            ("Rectángulo", "RECT", "R"),
+            (tr("Herramienta de selección"), "NONE", "V"),
+            (tr("Añadir texto"), "TEXT", "T"),
+            (tr("Nota adhesiva"), "NOTE", "N"),
+            (tr("Resaltar, subrayar o tachar"), "MARKUP", "H"),
+            (tr("Rectángulo"), "RECT", "R"),
             ("Emoji", "EMOJI", "E"),
-            ("Borrador de anotaciones", "ERASE", None),
+            (tr("Borrador de anotaciones"), "ERASE", None),
         ]:
             A(m, text, lambda md=mode: self._select_tool(md), key)
         m.addSeparator()
-        A(m, "Aplanar anotaciones y formularios…", self.flatten_document)
+        A(m, tr("Aplanar anotaciones y formularios…"), self.flatten_document)
 
-        m = mb.addMenu("&Organizar")
-        A(m, "Organizar páginas en el panel lateral", self.organize_pages)
+        m = mb.addMenu(tr("&Organizar"))
+        A(m, tr("Organizar páginas en el panel lateral"), self.organize_pages)
         m.addSeparator()
-        A(m, "Insertar página en blanco", lambda: self.insert_blank_after(self.current_page))
-        A(m, "Insertar PDF tras la página actual…", self.insert_pdf_after_current)
-        A(m, "Añadir PDF al final…", self.merge_pdf)
-        sub = m.addMenu("Combinar PDF…")
-        self._act_combine_open = A(sub, "Combinar abiertos", self.combine_open_documents,
+        A(m, tr("Insertar página en blanco"), lambda: self.insert_blank_after(self.current_page))
+        A(m, tr("Insertar PDF tras la página actual…"), self.insert_pdf_after_current)
+        A(m, tr("Añadir PDF al final…"), self.merge_pdf)
+        sub = m.addMenu(tr("Combinar PDF…"))
+        self._act_combine_open = A(sub, tr("Combinar abiertos"), self.combine_open_documents,
                                    needs_doc=False)
-        A(sub, "Combinar ficheros…", self.combine_files_dialog, needs_doc=False)
+        A(sub, tr("Combinar ficheros…"), self.combine_files_dialog, needs_doc=False)
         sub.aboutToShow.connect(
             lambda: self._act_combine_open.setEnabled(len(self._sessions) >= 2))
-        A(m, "Duplicar página actual", self.copy_page)
-        A(m, "Eliminar páginas…", self.delete_pages_dialog)
-        A(m, "Extraer páginas…", self.extract_pages_dialog)
-        A(m, "Dividir documento…", self.split_document)
+        A(m, tr("Duplicar página actual"), self.copy_page)
+        A(m, tr("Eliminar páginas…"), self.delete_pages_dialog)
+        A(m, tr("Extraer páginas…"), self.extract_pages_dialog)
+        A(m, tr("Dividir documento…"), self.split_document)
         m.addSeparator()
-        A(m, "Girar página a la derecha", lambda: self.rotate_current(90), "Ctrl+Shift+R")
-        A(m, "Girar página a la izquierda", lambda: self.rotate_current(-90), "Ctrl+Shift+L")
-        A(m, "Girar páginas…", self.rotate_pages_dialog)
+        A(m, tr("Girar página a la derecha"), lambda: self.rotate_current(90), "Ctrl+Shift+R")
+        A(m, tr("Girar página a la izquierda"), lambda: self.rotate_current(-90), "Ctrl+Shift+L")
+        A(m, tr("Girar páginas…"), self.rotate_pages_dialog)
 
-        m = mb.addMenu("&Herramientas")
-        A(m, "Editar texto e imágenes del PDF", lambda: self._select_tool("EDIT"), "C")
+        m = mb.addMenu(tr("&Herramientas"))
+        A(m, tr("Editar texto e imágenes del PDF"), lambda: self._select_tool("EDIT"), "C")
         m.addSeparator()
-        A(m, "Marca de agua…", self.add_watermark)
-        A(m, "Encabezado, pie y numeración Bates…", self.add_header_footer)
-        self._act_ocr = A(m, "Reconocer texto (OCR)…", self.run_ocr)
-        A(m, "Optimizar y comprimir…", self.compress_dialog)
+        A(m, tr("Marca de agua…"), self.add_watermark)
+        A(m, tr("Encabezado, pie y numeración Bates…"), self.add_header_footer)
+        self._act_ocr = A(m, tr("Reconocer texto (OCR)…"), self.run_ocr)
+        A(m, tr("Optimizar y comprimir…"), self.compress_dialog)
 
-        m = mb.addMenu("&Proteger")
-        A(m, "Proteger con contraseña…", self.protect_document)
+        m = mb.addMenu(tr("&Proteger"))
+        A(m, tr("Proteger con contraseña…"), self.protect_document)
         A(m, "Quitar seguridad", self.remove_security)
 
-        m = mb.addMenu("&Firmar")
-        A(m, "Firmar documento (dibujar área)", lambda: self._select_tool("SIGN"))
-        A(m, "Insertar firma manuscrita (dibujada o imagen)…", self._menu_hand_signature)
-        A(m, "Opciones de firma…", self.sign_options, needs_doc=False)
-        A(m, "Certificado de firma…", self._change_cert, needs_doc=False)
+        m = mb.addMenu(tr("&Firmar"))
+        A(m, tr("Firmar documento (dibujar área)"), lambda: self._select_tool("SIGN"))
+        A(m, tr("Insertar firma manuscrita (dibujada o imagen)…"), self._menu_hand_signature)
+        A(m, tr("Opciones de firma…"), self.sign_options, needs_doc=False)
+        A(m, tr("Certificado de firma…"), self._change_cert, needs_doc=False)
         m.addSeparator()
-        A(m, "Ver las firmas (verificadas)", self.show_signatures)
+        A(m, tr("Ver las firmas (verificadas)"), self.show_signatures)
 
-        m = mb.addMenu("A&yuda")
-        A(m, "Atajos de teclado", lambda: dialogs.show_shortcuts(self), "F1", needs_doc=False)
-        A(m, "Presentación de AventyaPDF", self.show_welcome, needs_doc=False)
+        m = mb.addMenu(tr("A&yuda"))
+        A(m, tr("Atajos de teclado"), lambda: dialogs.show_shortcuts(self), "F1", needs_doc=False)
+        A(m, tr("Presentación de AventyaPDF"), self.show_welcome, needs_doc=False)
+        # (r136) Idioma de la aplicación: cada idioma con su propio nombre.
+        lang = m.addMenu(tr("Idioma"))
+        grupo = QActionGroup(self)
+        for codigo, nombre in idioma.IDIOMAS.items():
+            act = lang.addAction(nombre)
+            act.setCheckable(True)
+            act.setChecked(codigo == idioma.ACTUAL)
+            grupo.addAction(act)
+            act.triggered.connect(lambda _c=False, c=codigo: self.choose_language(c))
         m.addSeparator()
         if not dependencias.en_paquete_msix():
             # (r119) En la versión de la Microsoft Store las actualizaciones
             # las instala la propia Store: ni menú ni aviso al iniciar.
-            A(m, "Buscar actualizaciones…", self.check_updates, needs_doc=False)
+            A(m, tr("Buscar actualizaciones…"), self.check_updates, needs_doc=False)
             # (petición de Ricardo) Aviso automático al iniciar, activado de entrada.
-            self._act_auto_update = QAction("Avisar de actualizaciones al iniciar", self)
+            self._act_auto_update = QAction(tr("Avisar de actualizaciones al iniciar"), self)
             self._act_auto_update.setCheckable(True)
             self._act_auto_update.setChecked(self._auto_update_enabled())
             self._act_auto_update.toggled.connect(self._set_auto_update)
             m.addAction(self._act_auto_update)
         if menu_contextual.puede_reparar():
-            A(m, "Reparar el menú contextual del Explorador…",
+            A(m, tr("Reparar el menú contextual del Explorador…"),
               self.repair_context_menu, needs_doc=False)
-        A(m, "Acerca de AventyaPDF", self.show_about, needs_doc=False)
+        A(m, tr("Acerca de AventyaPDF"), self.show_about, needs_doc=False)
 
         self._esc_shortcut = QShortcut(QKeySequence("Escape"), self)
         self._esc_shortcut.activated.connect(self._on_escape)
@@ -275,7 +297,7 @@ class MenusMixin:
         self._find_edit = QLineEdit()
         # (r96, petición de Ricardo) 107 px más estrecho que antes (220) y sin
         # « en el documento»: todo el buscador flotante se estrecha con él.
-        self._find_edit.setPlaceholderText("Buscar…")
+        self._find_edit.setPlaceholderText(tr("Buscar…"))
         self._find_edit.setFixedWidth(113)
         # (r50) Dinámica: cada pulsación relanza la búsqueda (con un pequeño
         # retardo, `_find_live_timer`); Intro ya no hace falta, pero sigue
@@ -289,12 +311,12 @@ class MenusMixin:
         # (petición de Ricardo) Todos los botones del buscador son del mismo
         # tipo que los de la barra principal (`tbr_btn`, 32×32), no `opt_btn`,
         # que es más pequeño: así la X ocupa exactamente el sitio de la lupa.
-        for key, tip, fn in [("find_prev", "Anterior (Mayús+F3)", self.find_prev),
-                             ("find_next", "Siguiente (F3)", self.find_next)]:
+        for key, tip, fn in [("find_prev", tr("Anterior (Mayús+F3)"), self.find_prev),
+                             ("find_next", tr("Siguiente (F3)"), self.find_next)]:
             b = self._glyph_btn(key, tip)
             b.clicked.connect(lambda _c=False, f=fn: f())
             lay.addWidget(b)
-        close = self._glyph_btn("close", "Cerrar (Esc)")
+        close = self._glyph_btn("close", tr("Cerrar (Esc)"))
         close.clicked.connect(lambda _c=False: self.hide_find())
         lay.addWidget(close)
         self._find_bar = box
@@ -364,12 +386,12 @@ class MenusMixin:
             QApplication.restoreOverrideCursor()
             traceback.print_exc()
             self._rollback_last()
-            QMessageBox.critical(self, label, f"No se pudo completar la operación:\n{e}")
+            QMessageBox.critical(self, label, tr("No se pudo completar la operación:\n{e}").format(e=e))
             return None, False
         QApplication.restoreOverrideCursor()
         self.mark_modified(structure=structure)
         self.render_page()
-        self.statusBar().showMessage(f"{label}: hecho")
+        self.statusBar().showMessage(tr("{label}: hecho").format(label=label))
         return result, True
 
     def _rollback_last(self):
@@ -388,12 +410,12 @@ class MenusMixin:
         doc.new_page(width=595, height=842)
         self._begin_new_session()              # en una pestaña nueva
         self._set_document(doc, "", None, modified=True)
-        self.statusBar().showMessage("Nuevo documento en blanco (A4)")
+        self.statusBar().showMessage(tr("Nuevo documento en blanco (A4)"))
 
     def create_from_images(self, paths=None):
         if not paths:
             paths, _ = QFileDialog.getOpenFileNames(
-                self, "Crear PDF desde imágenes", self._start_dir(), doc_tools.IMAGE_FILTER)
+                self, tr("Crear PDF desde imágenes"), self._start_dir(), doc_tools.IMAGE_FILTER)
             if not paths:
                 return
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
@@ -401,12 +423,12 @@ class MenusMixin:
             doc = doc_tools.images_to_pdf(list(paths))
         except Exception as e:
             QApplication.restoreOverrideCursor()
-            QMessageBox.critical(self, "Crear PDF", f"No se pudieron convertir las imágenes:\n{e}")
+            QMessageBox.critical(self, tr("Crear PDF"), tr("No se pudieron convertir las imágenes:\n{e}").format(e=e))
             return
         QApplication.restoreOverrideCursor()
         self._begin_new_session()              # en una pestaña nueva
         self._set_document(doc, "", None, modified=True)
-        self.statusBar().showMessage(f"PDF creado a partir de {len(paths)} imágenes — sin guardar")
+        self.statusBar().showMessage(tr("PDF creado a partir de {n} imágenes — sin guardar").format(n=len(paths)))
 
     def combine_pdfs_from_paths(self, paths):
         """(r55) Menú contextual del Explorador de Windows: combina varios PDF
@@ -416,20 +438,20 @@ class MenusMixin:
         abierto, aquí no hay documento previo: se parte de cero."""
         paths = [p for p in paths if p.lower().endswith(".pdf")]
         if len(paths) < 2:
-            QMessageBox.warning(self, "Combinar PDF",
-                                "Hacen falta al menos dos archivos PDF para combinarlos.")
+            QMessageBox.warning(self, tr("Combinar PDF"),
+                                tr("Hacen falta al menos dos archivos PDF para combinarlos."))
             return
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
             doc = doc_tools.merge_pdfs(paths)
         except Exception as e:
             QApplication.restoreOverrideCursor()
-            QMessageBox.critical(self, "Combinar PDF", f"No se pudieron combinar los archivos:\n{e}")
+            QMessageBox.critical(self, tr("Combinar PDF"), tr("No se pudieron combinar los archivos:\n{e}").format(e=e))
             return
         QApplication.restoreOverrideCursor()
         self._begin_new_session()
         self._set_document(doc, "", None, modified=True)
-        self.statusBar().showMessage(f"PDF combinado a partir de {len(paths)} archivos — sin guardar")
+        self.statusBar().showMessage(tr("PDF combinado a partir de {n} archivos — sin guardar").format(n=len(paths)))
 
     def create_separate_pdfs_from_images(self, paths):
         """(r55) Menú contextual del Explorador de Windows: convierte cada
@@ -443,13 +465,13 @@ class MenusMixin:
             docs = [doc_tools.images_to_pdf([p]) for p in paths]
         except Exception as e:
             QApplication.restoreOverrideCursor()
-            QMessageBox.critical(self, "Convertir imágenes", f"No se pudieron convertir las imágenes:\n{e}")
+            QMessageBox.critical(self, tr("Convertir imágenes"), tr("No se pudieron convertir las imágenes:\n{e}").format(e=e))
             return
         QApplication.restoreOverrideCursor()
         for doc in docs:
             self._begin_new_session()
             self._set_document(doc, "", None, modified=True)
-        self.statusBar().showMessage(f"{len(docs)} PDF creados a partir de imágenes — sin guardar")
+        self.statusBar().showMessage(tr("{n} PDF creados a partir de imágenes — sin guardar").format(n=len(docs)))
 
     def combine_files_to_pdf(self, paths):
         """(r86) Menú contextual del Explorador, «Combinar en un PDF»: PDF,
@@ -457,15 +479,15 @@ class MenusMixin:
         único documento nuevo sin guardar."""
         paths = [p for p in paths if conversion_office.tipo_de(p)]
         if len(paths) < 2:
-            QMessageBox.warning(self, "Combinar en un PDF",
-                                "Hacen falta al menos dos archivos (PDF, imágenes o Word) para combinarlos.")
+            QMessageBox.warning(self, tr("Combinar en un PDF"),
+                                tr("Hacen falta al menos dos archivos (PDF, imágenes o Word) para combinarlos."))
             return
-        doc = self._convert_paths(paths, "Combinar en un PDF", conversion_office.combinar_archivos)
+        doc = self._convert_paths(paths, tr("Combinar en un PDF"), conversion_office.combinar_archivos)
         if doc is None:
             return
         self._begin_new_session()
         self._set_document(doc, "", None, modified=True)
-        self.statusBar().showMessage(f"PDF combinado a partir de {len(paths)} archivos — sin guardar")
+        self.statusBar().showMessage(tr("PDF combinado a partir de {n} archivos — sin guardar").format(n=len(paths)))
 
     def convert_files_to_pdfs(self, paths):
         """(r86) Menú contextual del Explorador, «Convertir a PDF»: cada imagen
@@ -474,13 +496,13 @@ class MenusMixin:
         paths = [p for p in paths if conversion_office.tipo_de(p) in ("img", "word")]
         if not paths:
             return
-        docs = self._convert_paths(paths, "Convertir a PDF")
+        docs = self._convert_paths(paths, tr("Convertir a PDF"))
         if docs is None:
             return
         for doc in docs:
             self._begin_new_session()
             self._set_document(doc, "", None, modified=True)
-        self.statusBar().showMessage(f"{len(docs)} PDF creados — sin guardar")
+        self.statusBar().showMessage(tr("{n} PDF creados — sin guardar").format(n=len(docs)))
 
     def sign_files(self, paths):
         """(r86) Menú contextual del Explorador, «Firmar digitalmente»: abre
@@ -496,14 +518,14 @@ class MenusMixin:
         nombres (el diálogo de Windows no devuelve el orden en que se pulsaron);
         después se pueden reordenar las páginas en el panel lateral."""
         paths, _ = QFileDialog.getOpenFileNames(
-            self, "Combinar ficheros en un PDF", self._start_dir(),
+            self, tr("Combinar ficheros en un PDF"), self._start_dir(),
             conversion_office.FILTRO_ABRIR)
         if not paths:
             return
         if len(paths) < 2:
-            QMessageBox.warning(self, "Combinar ficheros",
-                                "Selecciona al menos dos archivos para combinarlos "
-                                "(con Ctrl o Mayús pulsada).")
+            QMessageBox.warning(self, tr("Combinar ficheros"),
+                                tr("Selecciona al menos dos archivos para combinarlos "
+                                "(con Ctrl o Mayús pulsada)."))
             return
         self.combine_files_to_pdf(sorted(paths, key=menu_contextual._orden_natural))
 
@@ -514,19 +536,19 @@ class MenusMixin:
         (también los cambios aún sin guardar); los archivos del disco no se tocan."""
         n = len(self._sessions)
         if n < 2:
-            QMessageBox.information(self, "Combinar abiertos",
-                                    "Hacen falta al menos dos documentos abiertos para combinarlos.")
+            QMessageBox.information(self, tr("Combinar abiertos"),
+                                    tr("Hacen falta al menos dos documentos abiertos para combinarlos."))
             return
         if self._sign_worker is not None and self._sign_worker.isRunning():
-            self.statusBar().showMessage("Espera a que termine la firma en curso")
+            self.statusBar().showMessage(tr("Espera a que termine la firma en curso"))
             return
         dirty = [i for i in range(n) if self._session_dirty(i)]
-        text = f"Se combinarán los {n} documentos abiertos, en el orden de sus pestañas, " \
-               "en un PDF nuevo sin guardar, y se cerrarán sus pestañas."
+        text = tr("Se combinarán los {n} documentos abiertos, en el orden de sus pestañas, " \
+               "en un PDF nuevo sin guardar, y se cerrarán sus pestañas.").format(n=n)
         if dirty:
-            text += (f"\n\n{len(dirty)} de ellos tienen cambios sin guardar: los cambios "
-                     "entran en el PDF combinado, pero no se guardarán en sus archivos.")
-        r = QMessageBox.question(self, "Combinar abiertos", text + "\n\n¿Continuar?",
+            text += tr(("\n\n{n} de ellos tienen cambios sin guardar: los cambios "
+                     "entran en el PDF combinado, pero no se guardarán en sus archivos.")).format(n=len(dirty))
+        r = QMessageBox.question(self, tr("Combinar abiertos"), text + tr("\n\n¿Continuar?"),
                                  QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                                  QMessageBox.StandardButton.Yes)
         if r != QMessageBox.StandardButton.Yes:
@@ -539,7 +561,7 @@ class MenusMixin:
         except Exception as e:
             QApplication.restoreOverrideCursor()
             self._restore_session(self._active)
-            QMessageBox.critical(self, "Combinar abiertos", f"No se pudieron combinar:\n{e}")
+            QMessageBox.critical(self, tr("Combinar abiertos"), tr("No se pudieron combinar:\n{e}").format(e=e))
             return
         QApplication.restoreOverrideCursor()
         for d in docs:
@@ -552,18 +574,18 @@ class MenusMixin:
         self._reset_document_fields()
         self._set_document(out, "", None, modified=True)
         self.statusBar().showMessage(
-            f"PDF combinado a partir de {n} documentos abiertos — sin guardar")
+            tr("PDF combinado a partir de {n} documentos abiertos — sin guardar").format(n=n))
 
     def _convert_paths(self, paths, titulo, fn=conversion_office.archivos_a_pdfs):
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         if any(conversion_office.tipo_de(p) == "word" for p in paths):
-            self.statusBar().showMessage("Convirtiendo documentos de Word…")
+            self.statusBar().showMessage(tr("Convirtiendo documentos de Word…"))
             QApplication.processEvents()
         try:
             return fn(paths)
         except Exception as e:
             QApplication.restoreOverrideCursor()
-            QMessageBox.critical(self, titulo, f"No se pudieron convertir los archivos:\n{e}")
+            QMessageBox.critical(self, titulo, tr("No se pudieron convertir los archivos:\n{e}").format(e=e))
             return None
         finally:
             while QApplication.overrideCursor() is not None:
@@ -585,7 +607,7 @@ class MenusMixin:
             meta["creationDate"] = old["creationDate"]
         meta.update(new)
         meta["modDate"] = fitz.get_pdf_now()
-        self._run_doc_change("Propiedades del documento",
+        self._run_doc_change(tr("Propiedades del documento"),
                              lambda: self.doc.set_metadata(meta), structure=False)
 
     def export_images(self):
@@ -595,7 +617,7 @@ class MenusMixin:
         if not dlg.exec():
             return
         v = dlg.values()
-        folder = QFileDialog.getExistingDirectory(self, "Carpeta de destino", self._start_dir())
+        folder = QFileDialog.getExistingDirectory(self, tr("Carpeta de destino"), self._start_dir())
         if not folder:
             return
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
@@ -604,32 +626,32 @@ class MenusMixin:
                                             v["dpi"], v["fmt"])
         except Exception as e:
             QApplication.restoreOverrideCursor()
-            QMessageBox.critical(self, "Exportar imágenes", f"No se pudo exportar:\n{e}")
+            QMessageBox.critical(self, tr("Exportar imágenes"), tr("No se pudo exportar:\n{e}").format(e=e))
             return
         QApplication.restoreOverrideCursor()
-        QMessageBox.information(self, "Exportar imágenes",
-                                f"{len(files)} imágenes guardadas en:\n{folder}")
+        QMessageBox.information(self, tr("Exportar imágenes"),
+                                tr("{n} imágenes guardadas en:\n{folder}").format(n=len(files), folder=folder))
 
     def export_text(self):
         if self.doc is None:
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "Exportar texto", os.path.join(self._start_dir(), self._base_name() + ".txt"),
-            "Texto (*.txt)")
+            self, tr("Exportar texto"), os.path.join(self._start_dir(), self._base_name() + ".txt"),
+            tr("Texto (*.txt)"))
         if not path:
             return
         try:
             doc_tools.export_text(self.doc, path)
-            self.statusBar().showMessage(f"Texto exportado a {os.path.basename(path)}")
+            self.statusBar().showMessage(tr("Texto exportado a {nombre}").format(nombre=os.path.basename(path)))
         except Exception as e:
-            QMessageBox.critical(self, "Exportar texto", f"No se pudo exportar:\n{e}")
+            QMessageBox.critical(self, tr("Exportar texto"), tr("No se pudo exportar:\n{e}").format(e=e))
 
     def export_word(self):
         if self.doc is None:
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "Exportar a Word", os.path.join(self._start_dir(), self._base_name() + ".docx"),
-            "Documento de Word (*.docx)")
+            self, tr("Exportar a Word"), os.path.join(self._start_dir(), self._base_name() + ".docx"),
+            tr("Documento de Word (*.docx)"))
         if not path:
             return
         tmp = None
@@ -643,7 +665,7 @@ class MenusMixin:
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
             doc_tools.export_docx(src, path)
-            ok, msg = True, f"Documento de Word guardado en:\n{path}"
+            ok, msg = True, tr("Documento de Word guardado en:\n{path}").format(path=path)
         except Exception as e:  # noqa: BLE001
             traceback.print_exc()
             ok, msg = False, str(e)
@@ -655,9 +677,9 @@ class MenusMixin:
                 except Exception:
                     pass
         if ok:
-            QMessageBox.information(self, "Exportar a Word", msg)
+            QMessageBox.information(self, tr("Exportar a Word"), msg)
         else:
-            QMessageBox.warning(self, "Exportar a Word", msg)
+            QMessageBox.warning(self, tr("Exportar a Word"), msg)
 
     # ── organizar ──────────────────────────────────────────────────────── #
 
@@ -668,32 +690,32 @@ class MenusMixin:
     def insert_pdf_after(self, pno: int):
         if self.doc is None:
             return
-        path, _ = QFileDialog.getOpenFileName(self, "Insertar PDF", self._start_dir(),
-                                              "Archivos PDF (*.pdf)")
+        path, _ = QFileDialog.getOpenFileName(self, tr("Insertar PDF"), self._start_dir(),
+                                              tr("Archivos PDF (*.pdf)"))
         if not path:
             return
         try:
             src = fitz.open(path)
         except Exception as e:
-            QMessageBox.warning(self, "Insertar PDF", f"No se pudo abrir:\n{e}")
+            QMessageBox.warning(self, tr("Insertar PDF"), tr("No se pudo abrir:\n{e}").format(e=e))
             return
         if src.needs_pass:
             src.close()
-            QMessageBox.warning(self, "Insertar PDF", "El PDF a insertar está protegido con contraseña.")
+            QMessageBox.warning(self, tr("Insertar PDF"), tr("El PDF a insertar está protegido con contraseña."))
             return
         pos = pno + 1
         n, ok = self._run_doc_change(
-            "Insertar PDF", lambda: doc_tools.insert_pdf_at(self.doc, src, pos))
+            tr("Insertar PDF"), lambda: doc_tools.insert_pdf_at(self.doc, src, pos))
         src.close()
         if ok:
             self.sidebar.thumbs.select_after_rebuild(list(range(pos, pos + n)))
             self.go_to_page(pos)
-            self.statusBar().showMessage(f"{n} páginas insertadas tras la página {pos}")
+            self.statusBar().showMessage(tr("{n} páginas insertadas tras la página {pos}").format(n=n, pos=pos))
 
     def delete_pages_dialog(self):
         if self.doc is None:
             return
-        pages = dialogs.ask_page_range(self, "Eliminar páginas", len(self.doc),
+        pages = dialogs.ask_page_range(self, tr("Eliminar páginas"), len(self.doc),
                                        str(self.current_page + 1))
         if pages:
             self.delete_pages(pages)
@@ -701,7 +723,7 @@ class MenusMixin:
     def extract_pages_dialog(self):
         if self.doc is None:
             return
-        pages = dialogs.ask_page_range(self, "Extraer páginas", len(self.doc),
+        pages = dialogs.ask_page_range(self, tr("Extraer páginas"), len(self.doc),
                                        str(self.current_page + 1))
         if pages:
             self.extract_pages(pages)
@@ -709,22 +731,22 @@ class MenusMixin:
     def rotate_pages_dialog(self):
         if self.doc is None:
             return
-        pages = dialogs.ask_page_range(self, "Girar páginas", len(self.doc), "")
+        pages = dialogs.ask_page_range(self, tr("Girar páginas"), len(self.doc), "")
         if not pages:
             return
-        items = ["90° a la derecha", "90° a la izquierda", "180°"]
-        choice, ok = QInputDialog.getItem(self, "Girar páginas", "Sentido:", items, 0, False)
+        items = [tr("90° a la derecha"), tr("90° a la izquierda"), "180°"]
+        choice, ok = QInputDialog.getItem(self, tr("Girar páginas"), tr("Sentido:"), items, 0, False)
         if ok:
             self.rotate_pages(pages, {items[0]: 90, items[1]: -90, items[2]: 180}[choice])
 
     def split_document(self):
         if self.doc is None:
             return
-        n, ok = QInputDialog.getInt(self, "Dividir documento", "Páginas por archivo:",
+        n, ok = QInputDialog.getInt(self, tr("Dividir documento"), tr("Páginas por archivo:"),
                                     1, 1, max(1, len(self.doc)))
         if not ok:
             return
-        folder = QFileDialog.getExistingDirectory(self, "Carpeta de destino", self._start_dir())
+        folder = QFileDialog.getExistingDirectory(self, tr("Carpeta de destino"), self._start_dir())
         if not folder:
             return
         base = self._base_name()
@@ -737,10 +759,10 @@ class MenusMixin:
                 count = i
         except Exception as e:
             QApplication.restoreOverrideCursor()
-            QMessageBox.critical(self, "Dividir documento", f"No se pudo dividir:\n{e}")
+            QMessageBox.critical(self, tr("Dividir documento"), tr("No se pudo dividir:\n{e}").format(e=e))
             return
         QApplication.restoreOverrideCursor()
-        QMessageBox.information(self, "Dividir documento", f"{count} archivos creados en:\n{folder}")
+        QMessageBox.information(self, tr("Dividir documento"), tr("{count} archivos creados en:\n{folder}").format(count=count, folder=folder))
 
     # ── herramientas ───────────────────────────────────────────────────── #
 
@@ -751,7 +773,7 @@ class MenusMixin:
         if not dlg.exec():
             return
         v = dlg.values()
-        self._run_doc_change("Marca de agua", lambda: doc_tools.add_watermark(
+        self._run_doc_change(tr("Marca de agua"), lambda: doc_tools.add_watermark(
             self.doc, v["pages"], v["text"], v["fontsize"], v["color"], v["opacity"], v["angle"]))
 
     def add_header_footer(self):
@@ -761,7 +783,7 @@ class MenusMixin:
         if not dlg.exec():
             return
         v = dlg.values()
-        self._run_doc_change("Encabezado y pie",
+        self._run_doc_change(tr("Encabezado y pie"),
                              lambda: doc_tools.add_header_footer(self.doc, v["pages"], v["spec"]))
 
     def toggle_highlight_fields(self) -> None:
@@ -777,8 +799,8 @@ class MenusMixin:
         self.ocr_available = available
         act = getattr(self, "_act_ocr", None)
         if act is not None:
-            act.setText("Reconocer texto (OCR)…" if available
-                        else "Reconocer texto (OCR) — Tesseract no instalado")
+            act.setText(tr("Reconocer texto (OCR)…") if available
+                        else tr("Reconocer texto (OCR) — Tesseract no instalado"))
             act.setToolTip(reason)
         self._update_actions()
 
@@ -793,24 +815,24 @@ class MenusMixin:
         v = dlg.values()
         pages = list(range(total)) if v["all_pages"] else without_text
         if not pages:
-            QMessageBox.information(self, "Reconocer texto (OCR)",
-                                    "Todas las páginas ya contienen texto seleccionable.")
+            QMessageBox.information(self, tr("Reconocer texto (OCR)"),
+                                    tr("Todas las páginas ya contienen texto seleccionable."))
             return
         # Tesseract es obligatorio: si falta él o el idioma elegido, se instala ahora.
         if not tesseract_ui.ensure_languages(self, v["lang"]):
             return
-        progress = QProgressDialog("Reconociendo texto…", "Cancelar", 0, len(pages), self)
-        progress.setWindowTitle("Reconocer texto (OCR)")
+        progress = QProgressDialog(tr("Reconociendo texto…"), tr("Cancelar"), 0, len(pages), self)
+        progress.setWindowTitle(tr("Reconocer texto (OCR)"))
         progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.setMinimumDuration(0)
         # La capa de texto se añade sobre las páginas originales (pdf_ocr): un solo
         # paso de deshacer para todo el documento.
-        self.checkpoint("Reconocer texto (OCR)")
+        self.checkpoint(tr("Reconocer texto (OCR)"))
         words = changed = 0
         try:
             for n, i in enumerate(pages):
                 progress.setValue(n)
-                progress.setLabelText(f"Página {i + 1} de {total}…")
+                progress.setLabelText(tr("Página {valor} de {total}…").format(valor=i + 1, total=total))
                 QApplication.processEvents()
                 if progress.wasCanceled():
                     progress.close()
@@ -828,24 +850,24 @@ class MenusMixin:
             self._rollback_last()
             self.render_page()
             QMessageBox.critical(
-                self, "Reconocer texto (OCR)",
-                "No se pudo reconocer el texto.\n\n"
-                f"Tesseract: {tesseract_setup.find_tesseract() or 'no encontrado'}\n"
-                f"Idiomas: {tesseract_setup.TESSDATA_DIR}\n\n"
-                f"Detalle: {e}")
+                self, tr("Reconocer texto (OCR)"),
+                tr("No se pudo reconocer el texto.\n\n"
+                "Tesseract: {valor}\n"
+                "Idiomas: {TESSDATA_DIR}\n\n"
+                "Detalle: {e}").format(valor=tesseract_setup.find_tesseract() or tr('no encontrado'), TESSDATA_DIR=tesseract_setup.TESSDATA_DIR, e=e))
             return
         progress.close()
         if not words:
             self._rollback_last()          # no dejar un paso de deshacer vacío
             self.render_page()
-            QMessageBox.information(self, "Reconocer texto (OCR)",
-                                    "No se ha encontrado texto nuevo que reconocer.")
+            QMessageBox.information(self, tr("Reconocer texto (OCR)"),
+                                    tr("No se ha encontrado texto nuevo que reconocer."))
             return
         self.mark_modified(structure=False)
         self.render_page()
-        QMessageBox.information(self, "Reconocer texto (OCR)",
-                                f"Se han reconocido {words} palabras en {changed} de "
-                                f"{len(pages)} páginas. Ya puedes buscar y seleccionar ese texto.")
+        QMessageBox.information(self, tr("Reconocer texto (OCR)"),
+                                tr("Se han reconocido {words} palabras en {changed} de "
+                                "{n} páginas. Ya puedes buscar y seleccionar ese texto.").format(words=words, changed=changed, n=len(pages)))
 
     def compress_dialog(self):
         if self.doc is None:
@@ -858,12 +880,12 @@ class MenusMixin:
         if self.doc is None:
             return
         r = QMessageBox.question(
-            self, "Aplanar",
-            "Las anotaciones y los campos de formulario pasarán a formar parte del "
-            "contenido y ya no se podrán editar. ¿Continuar?",
+            self, tr("Aplanar"),
+            tr("Las anotaciones y los campos de formulario pasarán a formar parte del "
+            "contenido y ya no se podrán editar. ¿Continuar?"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if r == QMessageBox.StandardButton.Yes:
-            self._run_doc_change("Aplanar", lambda: doc_tools.flatten(self.doc))
+            self._run_doc_change(tr("Aplanar"), lambda: doc_tools.flatten(self.doc))
 
     # ── proteger ───────────────────────────────────────────────────────── #
 
@@ -874,8 +896,8 @@ class MenusMixin:
         if dlg.exec():
             self._encrypt_opts = dlg.values()
             self.mark_modified()
-            QMessageBox.information(self, "Proteger con contraseña",
-                                    "La protección se aplicará al guardar el documento (Ctrl+S).")
+            QMessageBox.information(self, tr("Proteger con contraseña"),
+                                    tr("La protección se aplicará al guardar el documento (Ctrl+S)."))
 
     def remove_security(self):
         if self.doc is None:
@@ -883,18 +905,18 @@ class MenusMixin:
         protected = self._orig_encrypted or (
             self._encrypt_opts and self._encrypt_opts.get("encryption") != fitz.PDF_ENCRYPT_NONE)
         if not protected:
-            QMessageBox.information(self, "Quitar seguridad", "El documento no está protegido.")
+            QMessageBox.information(self, "Quitar seguridad", tr("El documento no está protegido."))
             return
         self._encrypt_opts = {"encryption": fitz.PDF_ENCRYPT_NONE}
         self.mark_modified()
         QMessageBox.information(self, "Quitar seguridad",
-                                "El cifrado se eliminará al guardar el documento (Ctrl+S).")
+                                tr("El cifrado se eliminará al guardar el documento (Ctrl+S)."))
 
     # ── firmar ─────────────────────────────────────────────────────────── #
 
     def sign_options(self):
         has_sigs = self.doc is not None and doc_tools.has_signatures(self.doc)
-        dialogs.SignOptionsDialog(self, has_sigs, TSA_PRESETS, ok_text="Guardar").exec()
+        dialogs.SignOptionsDialog(self, has_sigs, TSA_PRESETS, ok_text=tr("Guardar")).exec()
 
     def show_signatures(self):
         """(r61) Abre el panel Firmas, que las verifica solo."""
@@ -919,12 +941,12 @@ class MenusMixin:
             info = actualizaciones.fetch_latest()
         except actualizaciones.UpdateError as e:
             QApplication.restoreOverrideCursor()
-            caja = QMessageBox(QMessageBox.Icon.Warning, "Buscar actualizaciones",
+            caja = QMessageBox(QMessageBox.Icon.Warning, tr("Buscar actualizaciones"),
                                "", parent=self)
             caja.setText(
-                f"<p>No se pudo comprobar si hay una versión nueva.</p><p>{e}</p>"
-                f"<p>Puedes consultarlas en <a href='{actualizaciones.RELEASES_URL}'>"
-                f"{actualizaciones.RELEASES_URL}</a></p>")
+                tr("<p>No se pudo comprobar si hay una versión nueva.</p><p>{e}</p>"
+                "<p>Puedes consultarlas en <a href='{RELEASES_URL}'>"
+                "{RELEASES_URL}</a></p>").format(e=e, RELEASES_URL=actualizaciones.RELEASES_URL))
             caja.setTextFormat(Qt.TextFormat.RichText)
             caja.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
             caja.exec()
@@ -936,47 +958,47 @@ class MenusMixin:
         """Ventana de actualizaciones. `automatic`: el aviso al iniciar, que
         solo sale si hay versión nueva y ofrece no volver a avisar de ella."""
         nueva = actualizaciones.is_newer(info["version"], APP_VERSION)
-        nombre = info["installer_name"] or "la página de la versión"
+        nombre = info["installer_name"] or tr("la página de la versión")
         enlace = (f"<p>Enlace directo de descarga:<br>"
                   f"<a href='{info['installer_url']}'>{nombre}</a></p>"
                   f"<p style='color:#605E5C'>Novedades: <a href='{info['page_url']}'>"
                   f"AventyaPDF {info['version']}</a></p>")
         caja = QMessageBox(self)
-        caja.setWindowTitle("Actualización disponible" if automatic else "Buscar actualizaciones")
+        caja.setWindowTitle(tr("Actualización disponible") if automatic else tr("Buscar actualizaciones"))
         caja.setIconPixmap(QIcon(icons.APP_ICON).pixmap(64, 64))
         omitir = None
         descargado = actualizaciones.instalador_descargado(info) if nueva else None
         if descargado:
             # (r127) Ya está en Descargas, esperando a que el usuario la instale.
             caja.setText(
-                f"<h3>Hay una versión nueva: AventyaPDF {info['version']}</h3>"
-                f"<p>Tienes la {APP_VERSION}. La nueva <b>ya está descargada</b> y comprobada "
-                f"en tu carpeta Descargas, esperando a que la instales:</p>"
-                f"<p><b>{os.path.basename(descargado)}</b></p>"
-                "<p>Para instalarla, cierra AventyaPDF y ejecuta ese archivo.</p>" + enlace)
-            descargar = caja.addButton("Mostrar en Descargas", QMessageBox.ButtonRole.AcceptRole)
-            caja.addButton("Ahora no" if automatic else "Cerrar", QMessageBox.ButtonRole.RejectRole)
+                tr("<h3>Hay una versión nueva: AventyaPDF {info}</h3>"
+                "<p>Tienes la {APP_VERSION}. La nueva <b>ya está descargada</b> y comprobada "
+                "en tu carpeta Descargas, esperando a que la instales:</p>"
+                "<p><b>{nombre}</b></p>"
+                "<p>Para instalarla, cierra AventyaPDF y ejecuta ese archivo.</p>").format(info=info['version'], APP_VERSION=APP_VERSION, nombre=os.path.basename(descargado)) + enlace)
+            descargar = caja.addButton(tr("Mostrar en Descargas"), QMessageBox.ButtonRole.AcceptRole)
+            caja.addButton(tr("Ahora no") if automatic else tr("Cerrar"), QMessageBox.ButtonRole.RejectRole)
             caja.setDefaultButton(descargar)
             if automatic:
-                omitir = QCheckBox("No volver a avisar de esta versión")
+                omitir = QCheckBox(tr("No volver a avisar de esta versión"))
                 caja.setCheckBox(omitir)
         elif nueva:
             caja.setText(
-                f"<h3>Hay una versión nueva: AventyaPDF {info['version']}</h3>"
-                f"<p>Tienes la {APP_VERSION}. Se descarga en tu carpeta Descargas; "
+                tr("<h3>Hay una versión nueva: AventyaPDF {info}</h3>"
+                "<p>Tienes la {APP_VERSION}. Se descarga en tu carpeta Descargas; "
                 "después cierras AventyaPDF y la instalas ejecutando el archivo "
-                "descargado.</p>" + enlace)
-            descargar = caja.addButton("Descargar", QMessageBox.ButtonRole.AcceptRole)
-            caja.addButton("Ahora no" if automatic else "Cerrar", QMessageBox.ButtonRole.RejectRole)
+                "descargado.</p>").format(info=info['version'], APP_VERSION=APP_VERSION) + enlace)
+            descargar = caja.addButton(tr("Descargar"), QMessageBox.ButtonRole.AcceptRole)
+            caja.addButton(tr("Ahora no") if automatic else tr("Cerrar"), QMessageBox.ButtonRole.RejectRole)
             caja.setDefaultButton(descargar)
             if automatic:
-                omitir = QCheckBox("No volver a avisar de esta versión")
+                omitir = QCheckBox(tr("No volver a avisar de esta versión"))
                 caja.setCheckBox(omitir)
         else:
             caja.setText(
-                f"<h3>Tienes la última versión: AventyaPDF {APP_VERSION}</h3>" + enlace)
+                tr("<h3>Tienes la última versión: AventyaPDF {APP_VERSION}</h3>").format(APP_VERSION=APP_VERSION) + enlace)
             descargar = None
-            caja.addButton("Cerrar", QMessageBox.ButtonRole.RejectRole)
+            caja.addButton(tr("Cerrar"), QMessageBox.ButtonRole.RejectRole)
         caja.setTextFormat(Qt.TextFormat.RichText)
         caja.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
         caja.exec()
@@ -1001,9 +1023,9 @@ class MenusMixin:
         aplicación no utilice PowerShell») avisa de dónde está y lo instala
         el usuario. Hasta r125 la aplicación se cerraba y lo lanzaba con
         PowerShell, y eso hacía que Microsoft Defender la marcara."""
-        progreso = QProgressDialog(f"Descargando AventyaPDF {info['version']}…", "", 0, 100, self)
+        progreso = QProgressDialog(tr("Descargando AventyaPDF {info}…").format(info=info['version']), "", 0, 100, self)
         progreso.setCancelButton(None)
-        progreso.setWindowTitle("Actualizar AventyaPDF")
+        progreso.setWindowTitle(tr("Actualizar AventyaPDF"))
         progreso.setWindowModality(Qt.WindowModality.WindowModal)
         progreso.setMinimumDuration(0)
         progreso.setValue(0)
@@ -1016,21 +1038,21 @@ class MenusMixin:
 
         def fallo(texto: str) -> None:
             progreso.close()
-            QMessageBox.warning(self, "Actualizar AventyaPDF",
-                                f"{texto}\n\nPuedes descargarla a mano desde {info['page_url']}")
+            QMessageBox.warning(self, tr("Actualizar AventyaPDF"),
+                                tr("{texto}\n\nPuedes descargarla a mano desde {info}").format(texto=texto, info=info['page_url']))
 
         def listo(ruta: str) -> None:
             progreso.close()
-            caja = QMessageBox(QMessageBox.Icon.Information, "Actualizar AventyaPDF", "", parent=self)
+            caja = QMessageBox(QMessageBox.Icon.Information, tr("Actualizar AventyaPDF"), "", parent=self)
             caja.setText(
-                f"<p>AventyaPDF {info['version']} está descargada y comprobada en tu carpeta "
-                f"Descargas, esperando a que la instales:</p>"
-                f"<p><b>{os.path.basename(ruta)}</b></p>"
+                tr("<p>AventyaPDF {info} está descargada y comprobada en tu carpeta "
+                "Descargas, esperando a que la instales:</p>"
+                "<p><b>{nombre}</b></p>"
                 "<p>Para instalarla, cierra AventyaPDF y ejecuta ese archivo. Mientras no "
-                "la instales, AventyaPDF te recordará que está ahí.</p>")
+                "la instales, AventyaPDF te recordará que está ahí.</p>").format(info=info['version'], nombre=os.path.basename(ruta)))
             caja.setTextFormat(Qt.TextFormat.RichText)
-            mostrar = caja.addButton("Mostrar en Descargas", QMessageBox.ButtonRole.AcceptRole)
-            caja.addButton("Aceptar", QMessageBox.ButtonRole.RejectRole)
+            mostrar = caja.addButton(tr("Mostrar en Descargas"), QMessageBox.ButtonRole.AcceptRole)
+            caja.addButton(tr("Aceptar"), QMessageBox.ButtonRole.RejectRole)
             caja.setDefaultButton(mostrar)
             caja.exec()
             if caja.clickedButton() is mostrar:
@@ -1051,7 +1073,7 @@ class MenusMixin:
         finally:
             QApplication.restoreOverrideCursor()
         (QMessageBox.information if ok else QMessageBox.warning)(
-            self, "Menú contextual del Explorador", texto)
+            self, tr("Menú contextual del Explorador"), texto)
 
     # ── aviso automático al iniciar (petición de Ricardo) ─────────────── #
 
@@ -1095,7 +1117,7 @@ class MenusMixin:
         except Exception:
             hanko = "?"
         caja = QMessageBox(self)
-        caja.setWindowTitle("Acerca de AventyaPDF")
+        caja.setWindowTitle(tr("Acerca de AventyaPDF"))
         caja.setText(
             f"<h3>AventyaPDF {APP_VERSION}</h3>"
             "<p>Visor, editor y firmador de PDF para Windows.</p>"

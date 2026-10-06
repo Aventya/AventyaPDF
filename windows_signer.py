@@ -16,6 +16,7 @@ from ctypes import wintypes
 from asn1crypto import algos, x509 as asn1_x509
 from pyhanko.sign import signers
 from pyhanko_certvalidator.registry import SimpleCertificateStore
+from idioma import tr
 
 _crypt32 = ctypes.WinDLL("crypt32", use_last_error=True)
 _ncrypt = ctypes.WinDLL("ncrypt")
@@ -94,7 +95,7 @@ class _StoreCert:
             _CERT_SYSTEM_STORE_CURRENT_USER | _CERT_STORE_READONLY_FLAG
             | _CERT_STORE_OPEN_EXISTING_FLAG, "MY")
         if not self._store:
-            raise WindowsStoreError("No se pudo abrir el almacén personal de Windows.")
+            raise WindowsStoreError(tr("No se pudo abrir el almacén personal de Windows."))
         raw = bytes.fromhex(thumbprint)
         buf = (ctypes.c_ubyte * len(raw)).from_buffer_copy(raw)
         blob = _Blob(len(raw), buf)
@@ -103,7 +104,7 @@ class _StoreCert:
         if not self.ctx:
             self.close()
             raise WindowsStoreError(
-                "El certificado ya no está en el almacén de Windows. Elige otro.")
+                tr("El certificado ya no está en el almacén de Windows. Elige otro."))
 
     def der(self) -> bytes:
         c = self.ctx.contents
@@ -153,7 +154,7 @@ class WindowsStoreSigner(signers.Signer):
         self.cert_der = der
         algo = cert.public_key.algorithm
         if algo not in ("rsa", "ec"):
-            raise WindowsStoreError(f"Tipo de clave no admitido para firmar: {algo}.")
+            raise WindowsStoreError(tr("Tipo de clave no admitido para firmar: {algo}.").format(algo=algo))
         self._algo = algo
         super().__init__(
             signing_cert=cert,
@@ -175,7 +176,7 @@ class WindowsStoreSigner(signers.Signer):
             return self._dummy()
         digest_algorithm = digest_algorithm.lower()
         if digest_algorithm not in _CALG:
-            raise WindowsStoreError(f"Algoritmo de resumen no admitido: {digest_algorithm}.")
+            raise WindowsStoreError(tr("Algoritmo de resumen no admitido: {digest_algorithm}.").format(digest_algorithm=digest_algorithm))
         digest = hashlib.new(digest_algorithm, data).digest()
         sc = _StoreCert(self.thumbprint)
         try:
@@ -185,11 +186,11 @@ class WindowsStoreSigner(signers.Signer):
                     ctypes.byref(handle), ctypes.byref(spec), ctypes.byref(free)):
                 err = ctypes.get_last_error()
                 if _cancelled(err):
-                    raise WindowsStoreError("Firma cancelada.")
+                    raise WindowsStoreError(tr("Firma cancelada."))
                 raise WindowsStoreError(
-                    "Windows no da acceso a la clave privada de este certificado "
-                    f"(código 0x{err & 0xFFFFFFFF:08X}).\n\n"
-                    "Si es de una tarjeta o un DNIe, comprueba que está insertado.")
+                    tr("Windows no da acceso a la clave privada de este certificado "
+                    "(código 0x{valor:08X}).\n\n"
+                    "Si es de una tarjeta o un DNIe, comprueba que está insertado.").format(valor=err & 0xFFFFFFFF))
             try:
                 if spec.value == _CERT_NCRYPT_KEY_SPEC:
                     sig = self._sign_ncrypt(handle.value, digest, digest_algorithm)
@@ -220,9 +221,9 @@ class WindowsStoreSigner(signers.Signer):
                                         ctypes.byref(size), flags)
         if st != 0:
             if _cancelled(st):
-                raise WindowsStoreError("Firma cancelada.")
+                raise WindowsStoreError(tr("Firma cancelada."))
             raise WindowsStoreError(
-                f"Windows no pudo firmar con la clave del certificado (código 0x{st & 0xFFFFFFFF:08X}).")
+                tr("Windows no pudo firmar con la clave del certificado (código 0x{valor:08X}).").format(valor=st & 0xFFFFFFFF))
         sig = out.raw[:size.value]
         if self._algo == "ec":   # CNG devuelve r‖s en crudo; CMS lo quiere en DER
             h = len(sig) // 2
@@ -232,15 +233,15 @@ class WindowsStoreSigner(signers.Signer):
 
     def _sign_capi(self, prov, spec: int, digest: bytes, digest_algorithm: str) -> bytes:
         if self._algo != "rsa":
-            raise WindowsStoreError("Clave de curva elíptica en un proveedor antiguo: no admitida.")
+            raise WindowsStoreError(tr("Clave de curva elíptica en un proveedor antiguo: no admitida."))
         h = ctypes.c_size_t()
         if not _advapi32.CryptCreateHash(prov, _CALG[digest_algorithm], 0, 0, ctypes.byref(h)):
             raise WindowsStoreError(
-                "El proveedor criptográfico del certificado no admite SHA-2 "
-                f"(código 0x{ctypes.get_last_error() & 0xFFFFFFFF:08X}).")
+                tr("El proveedor criptográfico del certificado no admite SHA-2 "
+                "(código 0x{valor:08X}).").format(valor=ctypes.get_last_error() & 0xFFFFFFFF))
         try:
             if not _advapi32.CryptSetHashParam(h.value, _HP_HASHVAL, digest, 0):
-                raise WindowsStoreError("No se pudo preparar el resumen para firmar.")
+                raise WindowsStoreError(tr("No se pudo preparar el resumen para firmar."))
             size = wintypes.DWORD()
             ok = _advapi32.CryptSignHashW(h.value, spec, None, 0, None, ctypes.byref(size))
             out = ctypes.create_string_buffer(size.value) if ok else None
@@ -249,9 +250,9 @@ class WindowsStoreSigner(signers.Signer):
             if not ok:
                 err = ctypes.get_last_error()
                 if _cancelled(err):
-                    raise WindowsStoreError("Firma cancelada.")
+                    raise WindowsStoreError(tr("Firma cancelada."))
                 raise WindowsStoreError(
-                    f"Windows no pudo firmar con la clave del certificado (código 0x{err & 0xFFFFFFFF:08X}).")
+                    tr("Windows no pudo firmar con la clave del certificado (código 0x{valor:08X}).").format(valor=err & 0xFFFFFFFF))
         finally:
             _advapi32.CryptDestroyHash(h.value)
         return out.raw[:size.value][::-1]   # CryptoAPI la da en little-endian

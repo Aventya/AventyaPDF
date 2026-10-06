@@ -70,7 +70,8 @@ FUENTES = [
 ]
 
 # Recursos propios que van dentro del instalador (además del código).
-PROPIOS = ["vendor/icono", "vendor/trust", "vendor/emoji", "signature_background.pdf"]
+PROPIOS = ["vendor/icono", "vendor/trust", "vendor/emoji", "signature_background.pdf",
+           "idiomas"]          # (r136) textos de la aplicación en cada idioma
 # Plugins de Qt que se conservan (r110). Qt los carga por su cuenta, no por
 # importación: ventana (windows; offscreen para el autodiagnóstico), estilo,
 # formatos de imagen, iconos SVG, entrada de texto, red/TLS. El resto (QML,
@@ -172,8 +173,12 @@ def _sobrantes(site: str, qt_usados: set[str]) -> tuple[set[str], set[str]]:
     importa el código y, de las DLL de Qt, solo las que esos módulos y los
     plugins que se conservan importan (directa o indirectamente)."""
     qt = os.path.join(site, "PyQt6")
-    carpetas = {"PyQt6/bindings/", "PyQt6/Qt6/qml/", "PyQt6/Qt6/qsci/", "PyQt6/Qt6/translations/"}
-    archivos = set()
+    carpetas = {"PyQt6/bindings/", "PyQt6/Qt6/qml/", "PyQt6/Qt6/qsci/"}
+    # (r136) De las traducciones de Qt solo se queda qtbase de los idiomas de la
+    # aplicación que Qt trae (main._install_qt_translation).
+    trad = os.path.join(qt, "Qt6", "translations")
+    archivos = {f"PyQt6/Qt6/translations/{f}" for f in os.listdir(trad)
+                if f not in {f"qtbase_{c}.qm" for c in ("es", "en", "fr", "it", "ca")}}
     raices = []
     for f in os.listdir(qt):
         m = re.match(r"^(Qt\w+)\.pyd$", f)

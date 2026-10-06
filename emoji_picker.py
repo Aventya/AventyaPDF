@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
 
 import emoji_font
 import icons
+from idioma import tr
 
 ICON_PX = 28
 _ROLE = Qt.ItemDataRole.UserRole
@@ -37,14 +38,14 @@ class EmojiPicker(QWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(4)
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Buscar emoji…")
+        self.search.setPlaceholderText(tr("Buscar emoji…"))
         self.search.setClearButtonEnabled(True)
         self.search.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         self.search.textChanged.connect(lambda _t: self._refill())
         lay.addWidget(self.search)
         self.group = QComboBox()
         self.group.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
-        self.group.addItem("Todos los grupos", "")
+        self.group.addItem(tr("Todos los grupos"), "")
         self.list = QListWidget()
         self.list.setObjectName("emoji_grid")
         self.list.setViewMode(QListWidget.ViewMode.IconMode)
@@ -130,7 +131,7 @@ class EmojiPicker(QWidget):
             if e["key"] == emoji_font.emoji_key(self._current):
                 it.setSelected(True)
         n = len(items)
-        self._count.setText(f"{n} emoji{'s' if n != 1 else ''}" if n else "Ningún emoji coincide")
+        self._count.setText((tr("1 emoji") if n == 1 else tr("{n} emojis").format(n=n)) if n else tr("Ningún emoji coincide"))
         if self._pending:
             self._timer.start()
 

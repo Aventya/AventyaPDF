@@ -21,9 +21,10 @@ from PyQt6.QtWidgets import (
 
 import firma_manuscrita as fm
 from dialogs import ColorButton
+from idioma import tr
 
 _SETTINGS = ("aventyapdf", "config")
-IMAGE_FILTER = "Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)"
+IMAGE_FILTER = tr("Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)")
 MAX_IMAGE_SIDE = 1600          # px: una firma no necesita más
 BG_OPAQUE, BG_CLEAR = 170, 235  # luminancia: ≤ opaca, ≥ fondo transparente
 
@@ -94,7 +95,7 @@ def load_signature_image(path: str, remove_background: bool = True) -> QImage:
     recorta lo que sobra alrededor. Lanza ValueError si no es una imagen."""
     img = QImage(path)
     if img.isNull():
-        raise ValueError("No se pudo leer la imagen (¿formato no admitido?).")
+        raise ValueError(tr("No se pudo leer la imagen (¿formato no admitido?)."))
     if max(img.width(), img.height()) > MAX_IMAGE_SIDE:
         img = img.scaled(MAX_IMAGE_SIDE, MAX_IMAGE_SIDE, Qt.AspectRatioMode.KeepAspectRatio,
                          Qt.TransformationMode.SmoothTransformation)
@@ -112,7 +113,7 @@ def load_signature_image(path: str, remove_background: bool = True) -> QImage:
     px[..., 3] = (tinta * a).astype(np.uint8)
     ys, xs = np.nonzero(px[..., 3] > 12)
     if len(xs) == 0:
-        raise ValueError("La imagen parece estar en blanco: no se ha encontrado tinta.")
+        raise ValueError(tr("La imagen parece estar en blanco: no se ha encontrado tinta."))
     m = 4
     x0, x1 = max(0, xs.min() - m), min(w, xs.max() + 1 + m)
     y0, y1 = max(0, ys.min() - m), min(h, ys.max() + 1 + m)
@@ -210,7 +211,7 @@ class SignatureCanvas(QWidget):
         p.drawText(12, y + 5, "×")
         if not self.strokes:
             p.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter,
-                       "Firma aquí con el ratón")
+                       tr("Firma aquí con el ratón"))
         paint_ink(p, self._pieces + self._live, self.color)
         p.end()
 
@@ -220,7 +221,7 @@ class SignatureCanvas(QWidget):
 class HandSignatureDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Firma manuscrita")
+        self.setWindowTitle(tr("Firma manuscrita"))
         self._image: QImage | None = None
         s = QSettings(*_SETTINGS)
 
@@ -234,17 +235,17 @@ class HandSignatureDialog(QDialog):
         self.canvas = SignatureCanvas()
         dl.addWidget(self.canvas)
         fila = QHBoxLayout()
-        fila.addWidget(QLabel("Color de la tinta:"))
+        fila.addWidget(QLabel(tr("Color de la tinta:")))
         color = s.value("firma/color", "")
         try:
             color = tuple(float(c) for c in json.loads(color)) if color else fm.DEFAULT_COLOR
         except (TypeError, ValueError):
             color = fm.DEFAULT_COLOR
-        self._color_btn = ColorButton(color, titulo="Color de la tinta")
+        self._color_btn = ColorButton(color, titulo=tr("Color de la tinta"))
         self._color_btn.clicked.connect(self._on_pen)   # después de elegir el color
         fila.addWidget(self._color_btn)
         fila.addSpacing(16)
-        fila.addWidget(QLabel("Grosor de la plumilla:"))
+        fila.addWidget(QLabel(tr("Grosor de la plumilla:")))
         self._width_spin = QSpinBox()
         self._width_spin.setRange(*fm.WIDTHS)
         self._width_spin.setSuffix(" px")
@@ -255,25 +256,25 @@ class HandSignatureDialog(QDialog):
         self._width_spin.valueChanged.connect(self._on_pen)
         fila.addWidget(self._width_spin)
         fila.addStretch()
-        b_undo = QPushButton("Deshacer trazo")
+        b_undo = QPushButton(tr("Deshacer trazo"))
         b_undo.clicked.connect(self.canvas.undo_stroke)
         fila.addWidget(b_undo)
-        b_clear = QPushButton("Borrar")
+        b_clear = QPushButton(tr("Borrar"))
         b_clear.clicked.connect(self.canvas.clear)
         fila.addWidget(b_clear)
         dl.addLayout(fila)
-        self._tabs.addTab(dib, "Dibujar")
+        self._tabs.addTab(dib, tr("Dibujar"))
 
         # Pestaña Imagen
         im = QWidget()
         il = QVBoxLayout(im)
-        self._img_lbl = QLabel("Carga la imagen de una firma escaneada o fotografiada")
+        self._img_lbl = QLabel(tr("Carga la imagen de una firma escaneada o fotografiada"))
         self._img_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._img_lbl.setFixedSize(SignatureCanvas.W, SignatureCanvas.H)
         self._img_lbl.setStyleSheet("background:#FFFFFF; border:1px solid #D2D0CE; color:#A19F9D;")
         il.addWidget(self._img_lbl)
         fila = QHBoxLayout()
-        b_load = QPushButton("Cargar imagen…")
+        b_load = QPushButton(tr("Cargar imagen…"))
         b_load.clicked.connect(self._load_image)
         fila.addWidget(b_load)
         self._bg_chk = QCheckBox("Quitar el fondo blanco del papel")
@@ -282,15 +283,15 @@ class HandSignatureDialog(QDialog):
         fila.addWidget(self._bg_chk)
         fila.addStretch()
         il.addLayout(fila)
-        self._tabs.addTab(im, "Imagen")
+        self._tabs.addTab(im, tr("Imagen"))
         self._img_path = ""
 
-        lay.addWidget(QLabel("Al aceptar, haz clic en la página donde irá la firma "
-                             "(o arrastra un recuadro para darle tamaño)."))
+        lay.addWidget(QLabel(tr("Al aceptar, haz clic en la página donde irá la firma "
+                             "(o arrastra un recuadro para darle tamaño).")))
         self._bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok
                                     | QDialogButtonBox.StandardButton.Cancel)
-        self._bb.button(QDialogButtonBox.StandardButton.Ok).setText("Colocar en la página")
-        self._bb.button(QDialogButtonBox.StandardButton.Cancel).setText("Cancelar")
+        self._bb.button(QDialogButtonBox.StandardButton.Ok).setText(tr("Colocar en la página"))
+        self._bb.button(QDialogButtonBox.StandardButton.Cancel).setText(tr("Cancelar"))
         self._bb.accepted.connect(self.accept)
         self._bb.rejected.connect(self.reject)
         lay.addWidget(self._bb)
@@ -316,7 +317,7 @@ class HandSignatureDialog(QDialog):
         self._bb.button(QDialogButtonBox.StandardButton.Ok).setEnabled(listo)
 
     def _load_image(self):
-        ruta, _ = QFileDialog.getOpenFileName(self, "Imagen de la firma", "", IMAGE_FILTER)
+        ruta, _ = QFileDialog.getOpenFileName(self, tr("Imagen de la firma"), "", IMAGE_FILTER)
         if ruta:
             self._img_path = ruta
             self._reload_image()

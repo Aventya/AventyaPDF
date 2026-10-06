@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 from PyQt6.QtCore import Qt, QSettings
+from idioma import tr
 
 try:
     import keyring
@@ -98,7 +99,7 @@ def list_windows_certs() -> list[dict]:
             except Exception:
                 return fallback
 
-        name = _get(NameOID.COMMON_NAME) or _get(NameOID.ORGANIZATION_NAME, "Sin nombre")
+        name = _get(NameOID.COMMON_NAME) or _get(NameOID.ORGANIZATION_NAME, tr("Sin nombre"))
         nif = _clean_id(_get(NameOID.SERIAL_NUMBER, ""))
         org = _get(NameOID.ORGANIZATION_NAME, "")
 
@@ -190,7 +191,7 @@ class _WinCertTab(QWidget):
         lay.setContentsMargins(0, 8, 0, 0)
 
         self._table = QTableWidget(0, 3)
-        self._table.setHorizontalHeaderLabels(["Titular / Nombre", "NIF", "Válido hasta"])
+        self._table.setHorizontalHeaderLabels([tr("Titular / Nombre"), "NIF", tr("Válido hasta")])
         hdr = self._table.horizontalHeader()
         hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
@@ -201,8 +202,8 @@ class _WinCertTab(QWidget):
         lay.addWidget(self._table)
 
         self._empty = QLabel(
-            "No se encontraron certificados de firma en el almacén personal de Windows.\n"
-            "Instala tu certificado (FNMT, ACCV, Camerfirma…) y vuelve a intentarlo."
+            tr("No se encontraron certificados de firma en el almacén personal de Windows.\n"
+            "Instala tu certificado (FNMT, ACCV, Camerfirma…) y vuelve a intentarlo.")
         )
         self._empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._empty.setWordWrap(True)
@@ -242,34 +243,34 @@ class _FileCertTab(QWidget):
         lay.setContentsMargins(0, 8, 0, 0)
         lay.setSpacing(10)
 
-        lay.addWidget(QLabel("Archivo de certificado PKCS#12 (.pfx / .p12):"))
+        lay.addWidget(QLabel(tr("Archivo de certificado PKCS#12 (.pfx / .p12):")))
 
         row = QHBoxLayout()
         self._path_edit = QLineEdit(saved_path)
-        self._path_edit.setPlaceholderText("Ruta al archivo .pfx o .p12…")
+        self._path_edit.setPlaceholderText(tr("Ruta al archivo .pfx o .p12…"))
         self._path_edit.setReadOnly(True)
         row.addWidget(self._path_edit)
-        btn = QPushButton("Examinar…")
+        btn = QPushButton(tr("Examinar…"))
         btn.setFixedWidth(96)
         btn.clicked.connect(self._browse)
         row.addWidget(btn)
         lay.addLayout(row)
 
-        lay.addWidget(QLabel("Contraseña:"))
+        lay.addWidget(QLabel(tr("Contraseña:")))
         self._pass = QLineEdit(saved_password)
         self._pass.setEchoMode(QLineEdit.EchoMode.Password)
-        self._pass.setPlaceholderText("Contraseña del certificado…")
+        self._pass.setPlaceholderText(tr("Contraseña del certificado…"))
         lay.addWidget(self._pass)
 
-        note = "(Windows Credential Manager)" if _KEYRING_OK else "(configuración de la app)"
-        self._remember = QCheckBox(f"Recordar  {note}")
+        note = tr("(Windows Credential Manager)") if _KEYRING_OK else tr("(configuración de la app)")
+        self._remember = QCheckBox(tr("Recordar  {note}").format(note=note))
         self._remember.setChecked(bool(saved_path))
         lay.addWidget(self._remember)
         lay.addStretch()
 
     def _browse(self):
         p, _ = QFileDialog.getOpenFileName(
-            self, "Seleccionar certificado", "", "PKCS#12 (*.pfx *.p12)"
+            self, tr("Seleccionar certificado"), "", tr("PKCS#12 (*.pfx *.p12)")
         )
         if p:
             self._path = p
@@ -297,7 +298,7 @@ class CertPickerDialog(QDialog):
 
     def __init__(self, parent=None, saved_cert: dict = None):
         super().__init__(parent)
-        self.setWindowTitle("Seleccionar certificado de firma")
+        self.setWindowTitle(tr("Seleccionar certificado de firma"))
         self.setMinimumWidth(600)
         self.setMinimumHeight(450)
         self.setModal(True)
@@ -310,7 +311,7 @@ class CertPickerDialog(QDialog):
         lay.setSpacing(10)
 
         info = QLabel(
-            "Selecciona un certificado instalado en el sistema o desde un archivo PKCS#12."
+            tr("Selecciona un certificado instalado en el sistema o desde un archivo PKCS#12.")
         )
         info.setWordWrap(True)
         info.setStyleSheet("color:#605E5C;")
@@ -319,12 +320,12 @@ class CertPickerDialog(QDialog):
         self._tabs = QTabWidget()
 
         self._win_tab = _WinCertTab()
-        self._tabs.addTab(self._win_tab, "🖥️  Almacén de Windows")
+        self._tabs.addTab(self._win_tab, tr("🖥️  Almacén de Windows"))
 
         saved_path = saved.get("path", "") if saved.get("type") == "file" else ""
         saved_pass = saved.get("password", "") if saved.get("type") == "file" else ""
         self._file_tab = _FileCertTab(saved_path, saved_pass)
-        self._tabs.addTab(self._file_tab, "📁  Archivo .pfx / .p12")
+        self._tabs.addTab(self._file_tab, tr("📁  Archivo .pfx / .p12"))
 
         if saved.get("type") == "file":
             self._tabs.setCurrentIndex(1)
@@ -338,8 +339,8 @@ class CertPickerDialog(QDialog):
         btns = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
-        btns.button(QDialogButtonBox.StandardButton.Ok).setText("Usar este certificado")
-        btns.button(QDialogButtonBox.StandardButton.Cancel).setText("Cancelar")
+        btns.button(QDialogButtonBox.StandardButton.Ok).setText(tr("Usar este certificado"))
+        btns.button(QDialogButtonBox.StandardButton.Cancel).setText(tr("Cancelar"))
         btns.accepted.connect(self._on_accept)
         btns.rejected.connect(self.reject)
         lay.addWidget(btns)
@@ -348,8 +349,8 @@ class CertPickerDialog(QDialog):
         if self._tabs.currentIndex() == 0:
             c = self._win_tab.selected()
             if not c:
-                QMessageBox.warning(self, "Selección requerida",
-                                    "Selecciona un certificado de la lista.")
+                QMessageBox.warning(self, tr("Selección requerida"),
+                                    tr("Selecciona un certificado de la lista."))
                 return
             self._result = {
                 "type": "windows",
@@ -361,8 +362,8 @@ class CertPickerDialog(QDialog):
         else:
             tab = self._file_tab
             if not tab.cert_path or not os.path.exists(tab.cert_path):
-                QMessageBox.warning(self, "Certificado requerido",
-                                    "Selecciona un archivo de certificado válido.")
+                QMessageBox.warning(self, tr("Certificado requerido"),
+                                    tr("Selecciona un archivo de certificado válido."))
                 return
             self._result = {
                 "type": "file",

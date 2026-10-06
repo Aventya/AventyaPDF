@@ -1,0 +1,17 @@
+{
+ "WelcomeLabel2": "This will install [name/ver] on your computer.%n%nDuring installation, Python, the Python components and the fonts (about {#ComponentesMB} MB) will be downloaded from their official sites: an Internet connection is required.%n%nIt is recommended that you close AventyaPDF before continuing.",
+ "TareaEscritorio": "Create a desktop shortcut",
+ "GrupoAccesos": "Shortcuts:",
+ "PreparandoArranque": "Preparing AventyaPDF for first launch…",
+ "AbrirApp": "Open %1",
+ "MenuConfianza": "For the “AventyaPDF” submenu to appear in the Windows 11 right-click menu, Windows has to trust the AventyaPDF certificate.%n%nWindows will now ask for administrator permission (only this once on this computer).",
+ "MenuSinPermiso": "Administrator permission wasn't granted.%n%nWithout it, the “AventyaPDF” right-click submenu will stay under “Show more options”. Ask again?%n%n(You can also do this later from AventyaPDF: Help › Repair the File Explorer context menu.)",
+ "MenuFallo": "Couldn't add the “AventyaPDF” submenu to the Windows 11 main menu (it's still under “Show more options”). Details in:",
+ "CertQuitar": "To remove the AventyaPDF right-click menu certificate from this computer, Windows will ask for administrator permission.",
+ "CertNoQuitado": "The AventyaPDF certificate wasn't removed from the computer's “Trusted People” store (administrator permission wasn't granted).%n%nYou can remove it manually: “Manage computer certificates” (certlm.msc) › Trusted People › Certificates › “Aventya Asesoria Integral SL”.",
+ "MenuFirmar": "Sign digitally",
+ "MenuCombinar": "Combine into one PDF",
+ "MenuConvertir": "Convert to PDF",
+ "TipoDocumento": "PDF document",
+ "DescripcionApp": "PDF viewer and editor with digital signature and OCR"
+}

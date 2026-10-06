@@ -8,6 +8,7 @@ from PyQt6.QtCore import QEventLoop, Qt, QThread, pyqtSignal
 from PyQt6.QtWidgets import QMessageBox, QProgressDialog
 
 import tesseract_setup as ts
+from idioma import tr
 
 
 class _Worker(QThread):
@@ -56,18 +57,18 @@ def ensure_at_startup(parent=None) -> tuple[bool, str]:
     try:
         _run_with_progress(
             parent, "Tesseract OCR",
-            "Tesseract OCR es obligatorio en AventyaPDF y no está instalado.\n"
-            "Preparando la instalación…",
+            tr("Tesseract OCR es obligatorio en AventyaPDF y no está instalado.\n"
+            "Preparando la instalación…"),
             lambda report: ts.ensure(ts.CORE_LANGS, report))
         return True, ""
     except Exception as e:  # noqa: BLE001
         reason = str(e) or type(e).__name__
     QMessageBox.warning(
         parent, "Tesseract OCR",
-        "No se pudo instalar Tesseract OCR, necesario para reconocer texto.\n\n"
-        f"{reason}\n\n"
+        tr("No se pudo instalar Tesseract OCR, necesario para reconocer texto.\n\n"
+        "{reason}\n\n"
         "AventyaPDF se abrirá con «Reconocer texto (OCR)» desactivado y "
-        "volverá a instalarlo en el próximo inicio.")
+        "volverá a instalarlo en el próximo inicio.").format(reason=reason))
     return False, reason
 
 
@@ -78,13 +79,13 @@ def ensure_languages(parent, langs) -> bool:
     st = ts.status(langs)
     if st.ready:
         return True
-    what = ("Instalando Tesseract OCR…" if not st.exe
-            else f"Descargando idiomas de OCR: {', '.join(st.missing_langs)}…")
+    what = (tr("Instalando Tesseract OCR…") if not st.exe
+            else tr("Descargando idiomas de OCR: {join}…").format(join=', '.join(st.missing_langs)))
     try:
-        _run_with_progress(parent, "Reconocer texto (OCR)", what,
+        _run_with_progress(parent, tr("Reconocer texto (OCR)"), what,
                            lambda report: ts.ensure(langs, report))
         return True
     except Exception as e:  # noqa: BLE001
-        QMessageBox.warning(parent, "Reconocer texto (OCR)",
-                            f"No se pudo preparar el OCR.\n\n{e}")
+        QMessageBox.warning(parent, tr("Reconocer texto (OCR)"),
+                            tr("No se pudo preparar el OCR.\n\n{e}").format(e=e))
         return False

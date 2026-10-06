@@ -27,6 +27,7 @@
 #include <vector>
 
 #pragma comment(lib, "shlwapi.lib")
+#pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "runtimeobject.lib")
 
@@ -95,13 +96,43 @@ static Seleccion LeerSeleccion(IShellItemArray* items) {
 
 enum class Accion { Firmar, Combinar, Convertir };
 
+// (r136) Títulos en el idioma de AventyaPDF: el guardado en su configuración
+// (HKCU\Software\aventyapdf\config\ui, valor «idioma», lo escriben el
+// instalador y Ayuda › Idioma) o, si no hay, el de Windows; si no está entre
+// los de la aplicación, inglés. Mismo criterio que idioma.py. La tabla la
+// genera herramientas_idioma.py a partir de empaquetado\idiomas\*.json.
+#include "textos_menu.h"
+
+// Se lee cada vez (es un valor del registro): un cambio de idioma se ve en el
+// siguiente clic derecho, aunque dllhost.exe siga con la DLL cargada.
+static const TextosMenu& Textos() {
+    const TextosMenu* elegidos = nullptr;
+    wchar_t codigo[16] = L"";
+    DWORD tam = sizeof(codigo);
+    if (RegGetValueW(HKEY_CURRENT_USER, L"Software\\aventyapdf\\config\\ui", L"idioma",
+                     RRF_RT_REG_SZ, nullptr, codigo, &tam) != ERROR_SUCCESS)
+        codigo[0] = 0;
+    if (!codigo[0]) {
+        LANGID id = GetUserDefaultUILanguage();
+        for (const auto& w : WINDOWS_IDIOMAS)
+            if (PRIMARYLANGID(id) == w.primario) { wcscpy_s(codigo, w.codigo); break; }
+    }
+    elegidos = &TEXTOS_MENU[0];                       // inglés si no se encuentra
+    for (const auto& t : TEXTOS_MENU)
+        if (_wcsicmp(t.codigo, L"en") == 0) elegidos = &t;
+    for (const auto& t : TEXTOS_MENU)
+        if (_wcsicmp(t.codigo, codigo) == 0) { elegidos = &t; break; }
+    return *elegidos;
+}
+
 struct DatosAccion { const wchar_t* titulo; const wchar_t* argumento; };
 
 static DatosAccion Datos(Accion a) {
+    const TextosMenu& t = Textos();
     switch (a) {
-        case Accion::Firmar:   return {L"Firmar digitalmente", L"--firmar"};
-        case Accion::Combinar: return {L"Combinar en un PDF", L"--combinar"};
-        default:               return {L"Convertir a PDF", L"--convertir"};
+        case Accion::Firmar:   return {t.firmar, L"--firmar"};
+        case Accion::Combinar: return {t.combinar, L"--combinar"};
+        default:               return {t.convertir, L"--convertir"};
     }
 }
 

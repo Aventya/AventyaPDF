@@ -17,6 +17,7 @@ from datetime import datetime
 import fitz
 
 import icons
+from idioma import tr
 
 # (r40) Fuente base de la app para el texto que añade ella misma (marcas de
 # agua, encabezados, pies y numeración Bates): Noto Sans, incluida en vendor/.
@@ -54,14 +55,14 @@ def parse_page_range(text: str, page_count: int) -> list[int]:
         elif part.isdigit():
             a = b = int(part)
         else:
-            raise ValueError(f"Rango no válido: «{part}»")
+            raise ValueError(tr("Rango no válido: «{part}»").format(part=part))
         if a < 1 or b > page_count or a > b:
-            raise ValueError(f"Rango fuera del documento (1–{page_count}): «{part}»")
+            raise ValueError(tr("Rango fuera del documento (1–{page_count}): «{part}»").format(page_count=page_count, part=part))
         for i in range(a - 1, b):
             if i not in out:
                 out.append(i)
     if not out:
-        raise ValueError("El rango no contiene ninguna página")
+        raise ValueError(tr("El rango no contiene ninguna página"))
     return out
 
 
@@ -454,7 +455,7 @@ def _lines_to_text(lines: list[list]) -> str:
 
 # ── Conversión y exportación ───────────────────────────────────────────────── #
 
-IMAGE_FILTER = "Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)"
+IMAGE_FILTER = tr("Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)")
 
 
 def images_to_pdf(paths: list[str]) -> fitz.Document:
@@ -481,7 +482,7 @@ def merge_pdfs(paths: list[str]) -> fitz.Document:
         src = fitz.open(path)
         if src.needs_pass:
             src.close()
-            raise ValueError(f"«{os.path.basename(path)}» está protegido con contraseña.")
+            raise ValueError(tr("«{nombre}» está protegido con contraseña.").format(nombre=os.path.basename(path)))
         out.insert_pdf(src)
         src.close()
     return out
@@ -501,7 +502,7 @@ def export_images(doc: fitz.Document, pages: list[int], folder: str,
 def export_text(doc: fitz.Document, path: str) -> None:
     with open(path, "w", encoding="utf-8") as f:
         for pno, page in enumerate(doc):
-            f.write(f"──────── Página {pno + 1} ────────\n")
+            f.write(tr("──────── Página {valor} ────────\n").format(valor=pno + 1))
             f.write(page.get_text("text", sort=True))
             f.write("\n")
 
@@ -512,9 +513,9 @@ def export_docx(pdf_path: str, docx_path: str) -> None:
         from pdf2docx import Converter
     except ImportError as e:
         raise RuntimeError(
-            "La exportación a Word necesita el componente «pdf2docx», que no se ha "
+            tr("La exportación a Word necesita el componente «pdf2docx», que no se ha "
             "podido instalar.\nCierra y vuelve a abrir la aplicación con conexión a "
-            "Internet para que se instale solo.") from e
+            "Internet para que se instale solo.")) from e
     cv = Converter(pdf_path)
     try:
         cv.convert(docx_path)
@@ -565,25 +566,25 @@ def has_signatures(doc: fitz.Document) -> bool:
 def flatten(doc: fitz.Document) -> None:
     """Integra anotaciones y campos en el contenido (dejan de ser editables)."""
     if not hasattr(doc, "bake"):
-        raise RuntimeError("Tu versión de PyMuPDF no permite aplanar (necesita ≥ 1.23.8).")
+        raise RuntimeError(tr("Tu versión de PyMuPDF no permite aplanar (necesita ≥ 1.23.8)."))
     doc.bake(annots=True, widgets=True)
 
 
 METADATA_FIELDS = [
-    ("title", "Título"), ("author", "Autor"), ("subject", "Asunto"),
-    ("keywords", "Palabras clave"), ("creator", "Aplicación creadora"),
-    ("producer", "Productor PDF"),
+    ("title", tr("Título")), ("author", tr("Autor")), ("subject", tr("Asunto")),
+    ("keywords", tr("Palabras clave")), ("creator", tr("Aplicación creadora")),
+    ("producer", tr("Productor PDF")),
 ]
 
 
 def annotation_summary(doc: fitz.Document) -> list[dict]:
     """Lista plana de comentarios para el panel lateral."""
     names = {
-        "FreeText": "Texto", "Text": "Nota", "Ink": "Marca a mano alzada", "Square": "Rectángulo",
-        "Stamp": "Sello", "Highlight": "Resaltado", "Underline": "Subrayado",
-        "StrikeOut": "Tachado", "Squiggly": "Ondulado",
-        "Circle": "Elipse", "Line": "Línea", "Polygon": "Polígono",
-        "PolyLine": "Polilínea", "Caret": "Inserción",
+        "FreeText": tr("Texto"), "Text": tr("Nota"), "Ink": tr("Marca a mano alzada"), "Square": tr("Rectángulo"),
+        "Stamp": tr("Sello"), "Highlight": tr("Resaltado"), "Underline": tr("Subrayado"),
+        "StrikeOut": tr("Tachado"), "Squiggly": tr("Ondulado"),
+        "Circle": tr("Elipse"), "Line": tr("Línea"), "Polygon": tr("Polígono"),
+        "PolyLine": tr("Polilínea"), "Caret": tr("Inserción"),
     }
     out = []
     for pno, page in enumerate(doc):
@@ -596,7 +597,7 @@ def annotation_summary(doc: fitz.Document) -> list[dict]:
             if info.get("subject") in ("EmojiFont", "EmojiImg", "EmojiStamp"):
                 atype_label = "Emoji"
             elif (info.get("subject") or "").startswith("FirmaManuscrita"):
-                atype_label = "Firma manuscrita"
+                atype_label = tr("Firma manuscrita")
             else:
                 atype_label = names.get(atype, atype)
             out.append({

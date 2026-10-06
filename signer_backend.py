@@ -20,6 +20,7 @@ from pyhanko.stamp.text import TextStamp
 
 import doc_tools
 import icons
+from idioma import tr
 
 # Fondo del sello: PDF vectorial generado desde MOSCA.svg con
 # create_signature_background.py (regenerarlo si cambia el SVG).
@@ -68,7 +69,7 @@ def _signer_display_name(given_name: str, surname: str, common_name: str) -> str
     name = _RE_CN_REPR.sub("", common_name or "")
     name = _RE_CN_ID_START.sub("", name)
     name = _RE_CN_ID_END.sub("", name)
-    return name.strip() or (common_name or "").strip() or "Firmante desconocido"
+    return name.strip() or (common_name or "").strip() or tr("Firmante desconocido")
 
 
 def extract_cert_info(pfx_path: str, pfx_password: str) -> dict:
@@ -334,14 +335,14 @@ def _build_stamp_text(cert_info: dict, reason: str = "", location: str = "") -> 
     """Construye el texto del sello con los datos obligatorios del certificado."""
     lines = [cert_info["name"]]
     if cert_info["nif"]:
-        lines.append(f"NIF: {cert_info['nif']}")
+        lines.append(tr("NIF: {cert_info}").format(cert_info=cert_info['nif']))
     if cert_info["org_nif"]:
-        lines.append(f"Repr.: {cert_info['org_nif']}")
+        lines.append(tr("Repr.: {cert_info}").format(cert_info=cert_info['org_nif']))
     if reason:
-        lines.append(f"Motivo: {reason}")
+        lines.append(tr("Motivo: {reason}").format(reason=reason))
     if location:
-        lines.append(f"Lugar: {location}")
-    lines.append("Firmado: %(ts)s")
+        lines.append(tr("Lugar: {location}").format(location=location))
+    lines.append(tr("Firmado: %(ts)s"))
     # «%» literal del usuario no debe romper el formateo del sello.
     return "\n".join(l if "%(ts)s" in l else l.replace("%", "%%") for l in lines)
 
@@ -391,7 +392,7 @@ def _tolerant_writer(pdf_bytes: bytes, doc_password: str) -> IncrementalPdfFileW
     doc = fitz.open("pdf", pdf_bytes)
     try:
         if doc.needs_pass and not (doc_password and doc.authenticate(doc_password)):
-            raise SigningError("El documento está protegido con contraseña.")
+            raise SigningError(tr("El documento está protegido con contraseña."))
         if doc_tools.has_signatures(doc):
             return IncrementalPdfFileWriter(BytesIO(pdf_bytes), strict=False)
         clean = doc.tobytes(garbage=1, deflate=True, encryption=fitz.PDF_ENCRYPT_KEEP)
@@ -446,14 +447,14 @@ class PAdESSigner:
                 cert_info = extract_cert_info(pfx_path, pfx_password)
             except ValueError as e:
                 raise SigningError(
-                    "No se pudo abrir el certificado: la contraseña es incorrecta "
-                    "o el archivo PKCS#12 está dañado.") from e
+                    tr("No se pudo abrir el certificado: la contraseña es incorrecta "
+                    "o el archivo PKCS#12 está dañado.")) from e
 
             cms_signer = signers.SimpleSigner.load_pkcs12(
                 pfx_path, passphrase=pfx_password.encode("utf-8") if pfx_password else None
             )
             if cms_signer is None:   # pyHanko devuelve None en lugar de lanzar
-                raise SigningError("No se pudo cargar la clave privada del certificado.")
+                raise SigningError(tr("No se pudo cargar la clave privada del certificado."))
 
         try:
             w = IncrementalPdfFileWriter(BytesIO(pdf_bytes))
@@ -463,7 +464,7 @@ class PAdESSigner:
             w = _tolerant_writer(pdf_bytes, doc_password)
         if getattr(w.prev, "encrypted", False):
             if not doc_password:
-                raise SigningError("El documento está protegido con contraseña.")
+                raise SigningError(tr("El documento está protegido con contraseña."))
             w.encrypt(doc_password)
 
         existente = field_name and _empty_sig_field(w, field_name)
@@ -509,7 +510,7 @@ class PAdESSigner:
             traceback.print_exc()
             msg = str(e) or e.__class__.__name__
             if tsa_url and ("timestamp" in msg.lower() or "http" in msg.lower()):
-                msg = f"Falló el sellado de tiempo con {tsa_url}:\n{msg}"
+                msg = tr("Falló el sellado de tiempo con {tsa_url}:\n{msg}").format(tsa_url=tsa_url, msg=msg)
             raise SigningError(msg) from e
         return out.getvalue()
 
@@ -571,24 +572,24 @@ def remove_last_signature(pdf_bytes: bytes, field_name: str, doc_password: str =
         reader = PdfFileReader(BytesIO(pdf_bytes), strict=False)
         if getattr(reader, "encrypted", False):
             if not doc_password:
-                raise SigningError("El documento está protegido con contraseña.")
+                raise SigningError(tr("El documento está protegido con contraseña."))
             reader.decrypt(doc_password)
         firmas = list(reader.embedded_signatures)
     except SigningError:
         raise
     except Exception as e:  # noqa: BLE001
-        raise SigningError(f"No se pudieron leer las firmas del documento: {e}") from e
+        raise SigningError(tr("No se pudieron leer las firmas del documento: {e}").format(e=e)) from e
     if not firmas:
-        raise SigningError("El documento no contiene firmas.")
+        raise SigningError(tr("El documento no contiene firmas."))
     ultima = max(firmas, key=lambda f: f.signed_revision)
     if (ultima.field_name or "") != field_name:
         raise SigningError(
-            f"Solo se puede quitar la firma más reciente («{ultima.field_name}»): "
-            "quitar una anterior invalidaría las que se firmaron después.")
+            tr("Solo se puede quitar la firma más reciente («{field_name}»): "
+            "quitar una anterior invalidaría las que se firmaron después.").format(field_name=ultima.field_name))
     if ultima.signed_revision < 1:
         raise SigningError(
-            "Esta firma se hizo al crear el archivo: no hay una versión anterior "
-            "sin ella a la que volver.")
+            tr("Esta firma se hizo al crear el archivo: no hay una versión anterior "
+            "sin ella a la que volver."))
 
     anterior = pdf_bytes[:_revision_end(pdf_bytes, reader, ultima.signed_revision - 1)]
     es_sello = getattr(ultima, "sig_object_type", "/Sig") == "/DocTimeStamp"
@@ -610,7 +611,7 @@ def remove_last_signature(pdf_bytes: bytes, field_name: str, doc_password: str =
                 d.authenticate(doc_password)
             pagina = next((p.number for p in d if p.xref == ref_pagina.idnum), None)
         if pagina is None:
-            raise SigningError("No se encontró la página del recuadro de la firma.")
+            raise SigningError(tr("No se encontró la página del recuadro de la firma."))
         caja = tuple(float(v) for v in campo["/Rect"])
         append_signature_field(w, SigFieldSpec(field_name, on_page=pagina, box=caja))
         out = BytesIO()
@@ -620,4 +621,4 @@ def remove_last_signature(pdf_bytes: bytes, field_name: str, doc_password: str =
         raise
     except Exception as e:  # noqa: BLE001
         traceback.print_exc()
-        raise SigningError(f"No se pudo dejar el recuadro de firma vacío: {e}") from e
+        raise SigningError(tr("No se pudo dejar el recuadro de firma vacío: {e}").format(e=e)) from e

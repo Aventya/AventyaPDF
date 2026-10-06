@@ -23,6 +23,7 @@ from dataclasses import dataclass
 
 import fitz
 from pymupdf import mupdf
+from idioma import tr
 
 TEXT = fitz.PDF_WIDGET_TYPE_TEXT
 CHECKBOX = fitz.PDF_WIDGET_TYPE_CHECKBOX
@@ -313,7 +314,7 @@ def field_boxes(page: fitz.Page) -> list[dict]:
             firmado = bool(page.parent.xref_get_key(w.xref, "V")[0] not in ("null", "unknown"))
             out.append(dict(
                 xref=w.xref, rect=fitz.Rect(w.rect), type=SIGNATURE,
-                name=w.field_name or "", label=w.field_name or "Firma", tooltip="",
+                name=w.field_name or "", label=w.field_name or tr("Firma"), tooltip="",
                 readonly=firmado, signed=firmado, multiline=False, password=False,
                 editable=False, maxlen=0, fontsize=0, value="", choices=[]))
             continue
@@ -327,7 +328,7 @@ def field_boxes(page: fitz.Page) -> list[dict]:
         tooltip = w.field_label if w.field_label and w.field_label != w.field_name else ""
         out.append(dict(
             xref=w.xref, rect=fitz.Rect(w.rect), type=w.field_type, name=w.field_name or "",
-            label=label or tooltip or w.field_name or "Campo", tooltip=tooltip,
+            label=label or tooltip or w.field_name or tr("Campo"), tooltip=tooltip,
             readonly=bool(flags & READ_ONLY),
             multiline=w.field_type == TEXT and bool(flags & MULTILINE),
             password=w.field_type == TEXT and bool(flags & PASSWORD),

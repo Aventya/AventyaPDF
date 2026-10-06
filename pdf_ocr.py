@@ -39,6 +39,7 @@ import fitz
 
 import doc_tools
 import tesseract_setup
+from idioma import tr
 
 if TYPE_CHECKING:
     import numpy as np
@@ -247,8 +248,8 @@ def _text_layer(gray: np.ndarray, dpi: int, language: str,
                          "-c", "tessedit_create_pdf=1", "-c", "textonly_pdf=1"],
                         timeout=900)
         if cp is None or not os.path.isfile(base + ".pdf"):
-            detalle = (cp.stderr.strip()[-400:] if cp is not None else "no se pudo ejecutar")
-            raise RuntimeError(f"Tesseract no generó la capa de texto: {detalle}")
+            detalle = (cp.stderr.strip()[-400:] if cp is not None else tr("no se pudo ejecutar"))
+            raise RuntimeError(tr("Tesseract no generó la capa de texto: {detalle}").format(detalle=detalle))
         with open(base + ".pdf", "rb") as fh:
             ocr = fitz.open("pdf", fh.read())
     page = ocr[0]

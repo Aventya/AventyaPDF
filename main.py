@@ -3,6 +3,8 @@ import faulthandler
 import os
 import sys
 import traceback
+import idioma
+from idioma import tr
 
 # (r67) OpenBLAS (la biblioteca matemática de numpy, que importa el OCR con
 # OpenCV) reserva al importarse un búfer por cada núcleo del procesador:
@@ -468,10 +470,10 @@ def _install_error_handler():
         try:
             while QApplication.overrideCursor() is not None:
                 QApplication.restoreOverrideCursor()
-            box = QMessageBox(QMessageBox.Icon.Critical, "Error inesperado",
-                              "Se ha producido un error y la operación no se completó.\n\n"
-                              f"{exc_type.__name__}: {exc}\n\n"
-                              f"El detalle se ha guardado en:\n{LOG_PATH}",
+            box = QMessageBox(QMessageBox.Icon.Critical, tr("Error inesperado"),
+                              tr("Se ha producido un error y la operación no se completó.\n\n"
+                              "{name__}: {exc}\n\n"
+                              "El detalle se ha guardado en:\n{LOG_PATH}").format(name__=exc_type.__name__, exc=exc, LOG_PATH=LOG_PATH),
                               parent=app.activeWindow())
             box.setDetailedText(text)
             box.exec()
@@ -560,6 +562,21 @@ def _set_app_user_model_id() -> None:
         pass
 
 
+# (r136) Textos propios de Qt (botones «Sí»/«No» estándar, menú contextual de
+# los campos de texto…) en el idioma de la aplicación. Qt no trae gallego ni
+# euskera: con ellos se usan los de español.
+_QT_IDIOMA = {"gl": "es", "eu": "es"}
+
+
+def _install_qt_translation(app) -> None:
+    from PyQt6.QtCore import QLibraryInfo, QTranslator
+    codigo = _QT_IDIOMA.get(idioma.ACTUAL, idioma.ACTUAL)
+    traductor = QTranslator(app)
+    if traductor.load(f"qtbase_{codigo}",
+                      QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)):
+        app.installTranslator(traductor)
+
+
 def main():
     if sys.argv[1:2] == ["--autodiagnostico"]:     # (r62) ver autodiagnostico.py
         import autodiagnostico
@@ -572,6 +589,7 @@ def main():
     app.setWindowIcon(QIcon(icons.APP_ICON))      # (r57) todas las ventanas y diálogos
     app.setStyle("Fusion")
     app.setStyleSheet(STYLESHEET + TOOLTIP_QSS)
+    _install_qt_translation(app)
     # Tesseract OCR es obligatorio: se comprueba al iniciar y, si falta, se
     # instala a la fuerza. Si no se puede, la app sigue con el OCR desactivado.
     ocr_ok, ocr_reason = tesseract_ui.ensure_at_startup()

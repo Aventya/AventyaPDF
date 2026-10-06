@@ -21,6 +21,8 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if RAIZ not in sys.path:
     sys.path.insert(0, RAIZ)
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# (r136) Las pruebas comprueban los textos en español, el idioma de referencia.
+os.environ["AVENTYAPDF_IDIOMA"] = "es"
 
 import fitz  # noqa: E402
 from PyQt6.QtCore import QSettings, Qt  # noqa: E402
@@ -882,6 +884,36 @@ class TestVentanaPrincipal(unittest.TestCase):
                            capture_output=True, text=True, timeout=120)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(r.stdout.strip().splitlines()[-1], "[]")
+
+    def test_la_ventana_arranca_en_cada_idioma(self):
+        """(r136) Con cada idioma la ventana se abre, el menú sale traducido y
+        se pueden abrir los diálogos y paneles principales sin errores (un
+        marcador mal traducido rompería un .format). En procesos aparte: el
+        idioma se elige al importar los módulos."""
+        import subprocess
+        import idioma
+        codigo = (
+            "import sys; from PyQt6.QtWidgets import QApplication, QMessageBox\n"
+            "from unittest import mock\n"
+            "app = QApplication(sys.argv)\n"
+            "import idioma; from main_window import MainWindow\n"
+            "w = MainWindow(); w.resize(1200, 800); w.show(); app.processEvents()\n"
+            "w.new_blank_document(); app.processEvents()\n"
+            "for k in ('thumbs', 'bookmarks', 'comments', 'signatures'):\n"
+            "    w.sidebar.show_panel(k); app.processEvents()\n"
+            "for m in ('TEXT', 'NOTE', 'MARKUP', 'RECT', 'EMOJI', 'EDIT', 'SIGN', 'NONE'):\n"
+            "    w._select_tool(m); app.processEvents()\n"
+            "print(w.menuBar().actions()[0].text())\n")
+        raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        for lengua in idioma.IDIOMAS:
+            with self.subTest(idioma=lengua):
+                env = dict(os.environ, QT_QPA_PLATFORM="offscreen", PYTHONPATH=raiz,
+                           AVENTYAPDF_IDIOMA=lengua)
+                r = subprocess.run([sys.executable, "-c", codigo], cwd=raiz, env=env,
+                                   capture_output=True, text=True, timeout=180)
+                self.assertEqual(r.returncode, 0, r.stderr[-2000:])
+                esperado = idioma.tr_en(lengua, "&Archivo")
+                self.assertEqual(r.stdout.strip().splitlines()[-1], esperado)
 
     def test_icono_de_la_aplicacion_con_todos_los_tamanos(self):
         """(r57) vendor/icono/aventyapdf.ico existe, Qt lo lee y trae los

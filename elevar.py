@@ -14,6 +14,7 @@ import ctypes
 import subprocess
 import sys
 from ctypes import wintypes
+from idioma import tr
 
 _SEE_MASK_NOCLOSEPROCESS = 0x00000040
 _SEE_MASK_NOASYNC = 0x00000100
@@ -51,7 +52,7 @@ def ejecutar_como_administrador(exe: str, args: list[str], timeout: float | None
     su código de salida. Lanza `Cancelado` si no se da el permiso y
     `TimeoutError` si no termina en `timeout` segundos (sigue ejecutándose)."""
     if sys.platform != "win32":
-        raise OSError("Solo en Windows.")
+        raise OSError(tr("Solo en Windows."))
     shell32 = ctypes.WinDLL("shell32", use_last_error=True)
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     shell32.ShellExecuteExW.argtypes = [ctypes.POINTER(_SHELLEXECUTEINFOW)]
@@ -71,14 +72,14 @@ def ejecutar_como_administrador(exe: str, args: list[str], timeout: float | None
     if not shell32.ShellExecuteExW(ctypes.byref(info)):
         err = ctypes.get_last_error()
         if err == _ERROR_CANCELLED:
-            raise Cancelado("No se dio el permiso de administrador.")
+            raise Cancelado(tr("No se dio el permiso de administrador."))
         raise ctypes.WinError(err)
     if not info.hProcess:
-        raise OSError("Windows no devolvió el proceso lanzado.")
+        raise OSError(tr("Windows no devolvió el proceso lanzado."))
     try:
         espera = 0xFFFFFFFF if timeout is None else int(timeout * 1000)
         if kernel32.WaitForSingleObject(info.hProcess, espera) == _WAIT_TIMEOUT:
-            raise TimeoutError(f"«{exe}» no terminó en {timeout} s.")
+            raise TimeoutError(tr("«{exe}» no terminó en {timeout} s.").format(exe=exe, timeout=timeout))
         codigo = wintypes.DWORD()
         kernel32.GetExitCodeProcess(info.hProcess, ctypes.byref(codigo))
         return codigo.value

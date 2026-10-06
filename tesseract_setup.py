@@ -30,6 +30,7 @@ import sys
 import tempfile
 import urllib.request
 from dataclasses import dataclass, field
+from idioma import tr
 
 WINGET_ID = "UB-Mannheim.TesseractOCR"
 INSTALLER_URL = ("https://github.com/UB-Mannheim/tesseract/releases/download/"
@@ -156,7 +157,7 @@ def _download(url: str, dest: str, report, label: str) -> None:
             done += len(chunk)
             pct = done * 100 // total if total else -1
             if pct != last and (pct < 0 or pct % 5 == 0):
-                report(f"Descargando {label}… {pct} %" if pct >= 0 else f"Descargando {label}…")
+                report(tr("Descargando {label}… {pct} %").format(label=label, pct=pct) if pct >= 0 else tr("Descargando {label}…").format(label=label))
                 last = pct
     os.replace(tmp, dest)
 
@@ -164,14 +165,14 @@ def _download(url: str, dest: str, report, label: str) -> None:
 def _install_with_winget(report) -> str:
     winget = shutil.which("winget")
     if not winget:
-        return "winget no está disponible en este equipo"
-    report("Instalando Tesseract OCR con winget…\n(Windows pedirá permiso de administrador)")
+        return tr("winget no está disponible en este equipo")
+    report(tr("Instalando Tesseract OCR con winget…\n(Windows pedirá permiso de administrador)"))
     cp = _run([winget, "install", "--id", WINGET_ID, "--exact", "--silent",
                "--accept-package-agreements", "--accept-source-agreements",
                "--disable-interactivity"], INSTALL_TIMEOUT)
     if cp.returncode != 0:
         detail = (cp.stdout + cp.stderr).strip().splitlines()[-1:] or [""]
-        return f"winget terminó con el código {cp.returncode} {detail[0]}".strip()
+        return tr("winget terminó con el código {codigo} {detalle}").format(codigo=cp.returncode, detalle=detail[0]).strip()
     return ""
 
 
@@ -179,16 +180,16 @@ def _install_with_installer(report) -> str:
     folder = tempfile.mkdtemp(prefix="agpdf_tesseract_")
     try:
         exe = os.path.join(folder, "tesseract-ocr-setup.exe")
-        _download(INSTALLER_URL, exe, report, "el instalador de Tesseract OCR")
-        report("Instalando Tesseract OCR…\n(Windows pedirá permiso de administrador)")
+        _download(INSTALLER_URL, exe, report, tr("el instalador de Tesseract OCR"))
+        report(tr("Instalando Tesseract OCR…\n(Windows pedirá permiso de administrador)"))
         # (r127) Sin PowerShell: permiso de administrador con ShellExecuteExW.
         import elevar
         try:
             codigo = elevar.ejecutar_como_administrador(exe, ["/S"], INSTALL_TIMEOUT)
         except elevar.Cancelado:
-            return "no se dio el permiso de administrador"
+            return tr("no se dio el permiso de administrador")
         if codigo != 0:
-            return f"el instalador oficial terminó con el código {codigo}"
+            return tr("el instalador oficial terminó con el código {codigo}").format(codigo=codigo)
         return ""
     finally:
         shutil.rmtree(folder, ignore_errors=True)
@@ -199,7 +200,7 @@ def install_tesseract(report=None) -> str:
     report = report or (lambda _msg: None)
     errors = []
     for label, installer in (("winget", _install_with_winget),
-                             ("instalador oficial", _install_with_installer)):
+                             (tr("instalador oficial"), _install_with_installer)):
         try:
             error = installer(report)
         except Exception as e:  # noqa: BLE001 — sin red, permiso denegado…
@@ -209,7 +210,7 @@ def install_tesseract(report=None) -> str:
             return exe
         if error:
             errors.append(error)
-    raise TesseractSetupError("No se pudo instalar Tesseract OCR:\n- " + "\n- ".join(errors))
+    raise TesseractSetupError(tr("No se pudo instalar Tesseract OCR:\n- ") + "\n- ".join(errors))
 
 
 def download_langs(langs, report=None) -> None:
@@ -224,7 +225,7 @@ def download_langs(langs, report=None) -> None:
             shutil.copyfile(origen + MODEL_MARKER, dest + MODEL_MARKER)
             continue
         # Siempre «best» (no los de la instalación, que son «fast»).
-        _download(TESSDATA_URL.format(lang=lang), dest, report, f"el idioma «{lang}» (máxima precisión)")
+        _download(TESSDATA_URL.format(lang=lang), dest, report, tr("el idioma «{lang}» (máxima precisión)").format(lang=lang))
         with open(dest + MODEL_MARKER, "w", encoding="utf-8") as fh:
             fh.write(TESSDATA_URL.format(lang=lang))
 
@@ -240,7 +241,7 @@ def ensure_pdf_font() -> str:
     origen = os.path.join(os.path.dirname(exe), "tessdata", PDF_FONT) if exe else ""
     if not os.path.isfile(origen):
         raise TesseractSetupError(
-            f"Falta «{PDF_FONT}» en la instalación de Tesseract ({origen or 'no encontrada'}).")
+            tr("Falta «{PDF_FONT}» en la instalación de Tesseract ({valor}).").format(PDF_FONT=PDF_FONT, valor=origen or tr('no encontrada')))
     os.makedirs(TESSDATA_DIR, exist_ok=True)
     shutil.copyfile(origen, dest)
     return dest
@@ -258,7 +259,7 @@ def ensure(langs=CORE_LANGS, report=None) -> Status:
             download_langs(missing, report)
         except Exception as e:  # noqa: BLE001
             raise TesseractSetupError(
-                f"No se pudieron descargar los idiomas de OCR ({', '.join(missing)}): {e}") from e
+                tr("No se pudieron descargar los idiomas de OCR ({join}): {e}").format(join=', '.join(missing), e=e)) from e
     configure_environment()
     try:
         ensure_pdf_font()
@@ -267,9 +268,9 @@ def ensure(langs=CORE_LANGS, report=None) -> Status:
     st = status(langs)
     if not st.ready:
         raise TesseractSetupError(
-            "Tesseract OCR no quedó listo: "
-            + ("no se encuentra tesseract.exe" if not st.exe
-               else f"faltan los idiomas {', '.join(st.missing_langs)}"))
+            tr("Tesseract OCR no quedó listo: ")
+            + (tr("no se encuentra tesseract.exe") if not st.exe
+               else tr("faltan los idiomas {join}").format(join=', '.join(st.missing_langs))))
     return st
 
 
@@ -285,9 +286,9 @@ def verify_ocr(lang: str = "spa") -> None:
         pdf_ocr.ocr_page(page, lang, detect_orientation=False)
         text = page.get_text()
     except Exception as e:  # noqa: BLE001
-        raise TesseractSetupError(f"El OCR no funciona: {e}") from e
+        raise TesseractSetupError(tr("El OCR no funciona: {e}").format(e=e)) from e
     if "Hola" not in text:
-        raise TesseractSetupError(f"El OCR no reconoce el texto de prueba (obtenido: {text!r}).")
+        raise TesseractSetupError(tr("El OCR no reconoce el texto de prueba (obtenido: {text!r}).").format(text=text))
 
 
 def _imagen_de_prueba(fitz):

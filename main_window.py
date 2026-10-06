@@ -13,6 +13,8 @@ from PyQt6.QtCore import QEvent, Qt, QTimer, QRect, QRectF, QSize
 
 # (r36) Iconos: Fluent UI System Icons (icons.py). Mismas claves que antes.
 import icons  # noqa: E402
+from idioma import tr
+
 _G = {k: icons.glyph(k) for k in icons.ICONS}
 
 from utils import PDFUtils, TOOLTIP_QSS
@@ -70,7 +72,7 @@ class _FontPreviewDelegate(QStyledItemDelegate):
         f = QFont(option.font)
         # «Documento» no es un tipo de letra: va con la fuente de la interfaz.
         f.setFamilies([index.data(self.FAMILY_ROLE)] if index.data(self.FAMILY_ROLE)
-                      else ["Segoe UI Variable", "Segoe UI"])
+                      else [tr("Segoe UI Variable"), tr("Segoe UI")])
         f.setPixelSize(14)
         painter.setFont(f)
         painter.setPen(QColor("#FFFFFF") if sel else QColor("#201F1E"))
@@ -155,7 +157,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._update_title()
 
         self.statusBar().showMessage(
-            "Listo  —  Abre un PDF (Ctrl+O) o arrástralo a la ventana  ·  F1: atajos de teclado")
+            tr("Listo  —  Abre un PDF (Ctrl+O) o arrástralo a la ventana  ·  F1: atajos de teclado"))
 
     @staticmethod
     def _glyph_btn(glyph_key: str, tip: str, checkable: bool = False,
@@ -179,36 +181,36 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         lay.setSpacing(2)
 
         # ── File operations ──────────────────────────────────────────────
-        b_side = self._glyph_btn("sidebar", "Panel lateral  (F4)")
+        b_side = self._glyph_btn("sidebar", tr("Panel lateral  (F4)"))
         b_side.clicked.connect(lambda _c=False: self.sidebar_toggle())
         lay.addWidget(b_side)
         lay.addWidget(self._vline())
 
         for key, tip, handler in [
-            ("open",  "Abrir PDF  (Ctrl+O)",   self.open_pdf),
-            ("save",  "Guardar  (Ctrl+S)", self.save_pdf),
-            ("print", "Imprimir  (Ctrl+P)", self.print_pdf),
+            ("open",  tr("Abrir PDF  (Ctrl+O)"),   self.open_pdf),
+            ("save",  tr("Guardar  (Ctrl+S)"), self.save_pdf),
+            ("print", tr("Imprimir  (Ctrl+P)"), self.print_pdf),
         ]:
             b = self._glyph_btn(key, tip)
             b.clicked.connect(lambda _c=False, h=handler: h())
             lay.addWidget(b)
 
         self._btn_compress = self._glyph_btn(
-            "compress", "Comprimir PDF: opciones en el panel lateral", checkable=True)
+            "compress", tr("Comprimir PDF: opciones en el panel lateral"), checkable=True)
         self._btn_compress.clicked.connect(self._toggle_compress_panel)
         lay.addWidget(self._btn_compress)
 
-        self._btn_undo = self._glyph_btn("undo", "Deshacer  (Ctrl+Z)")
+        self._btn_undo = self._glyph_btn("undo", tr("Deshacer  (Ctrl+Z)"))
         self._btn_undo.clicked.connect(lambda _c=False: self.undo())
         lay.addWidget(self._btn_undo)
-        self._btn_redo = self._glyph_btn("redo", "Rehacer  (Ctrl+Y)")
+        self._btn_redo = self._glyph_btn("redo", tr("Rehacer  (Ctrl+Y)"))
         self._btn_redo.clicked.connect(lambda _c=False: self.redo())
         lay.addWidget(self._btn_redo)
 
         lay.addWidget(self._vline())
 
         # ── Page navigation ──────────────────────────────────────────────
-        btn_prev = self._glyph_btn("prev", "Página anterior  (RePág)", obj_name="nav_btn")
+        btn_prev = self._glyph_btn("prev", tr("Página anterior  (RePág)"), obj_name="nav_btn")
         btn_prev.clicked.connect(self.prev_page)
 
         self._page_edit = QLineEdit("")
@@ -217,7 +219,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         # texto alineado a la derecha, como cualquier campo numérico.
         self._page_edit.setMaxLength(4)
         self._page_edit.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        self._page_edit.setToolTip("Escribe un número de página y pulsa Intro  (Ctrl+G)")
+        self._page_edit.setToolTip(tr("Escribe un número de página y pulsa Intro  (Ctrl+G)"))
         self._page_edit.returnPressed.connect(self._on_page_edit)
 
         self._lbl_page = QLabel("/ —")
@@ -225,7 +227,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._lbl_page.setMinimumWidth(40)
         self._lbl_page.setStyleSheet("font-size:13px; color:#605E5C; background:transparent;")
 
-        btn_next = self._glyph_btn("next", "Página siguiente  (AvPág)", obj_name="nav_btn")
+        btn_next = self._glyph_btn("next", tr("Página siguiente  (AvPág)"), obj_name="nav_btn")
         btn_next.clicked.connect(self.next_page)
 
         lay.addWidget(btn_prev)
@@ -246,7 +248,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         # va a hacer el próximo clic (r48), así que el botón nunca debe quedar
         # marcado como seleccionado tras pulsarlo.
         btype = self._glyph_btn(
-            "type", "Ajustar al ancho / al alto / escala original  (alterna al pulsar)")
+            "type", tr("Ajustar al ancho / al alto / escala original  (alterna al pulsar)"))
         btype.clicked.connect(self._toggle_type_zoom)
         self._zoom_btns["type"] = btype
         self._update_zoom_type_icon()      # (r48) icono según la acción libre, no fijo
@@ -257,13 +259,13 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         # ── Annotation tools (exclusivos) ────────────────────────────────
         self._tool_btns: dict[str, QPushButton] = {}
         for key, mode, tip in [
-            ("text",      "TEXT",      "Añadir texto  (T)"),
-            ("note",      "NOTE",      "Nota adhesiva  (N)"),
-            ("markup",    "MARKUP",    "Resaltar, subrayar o tachar — sobre el texto o a mano alzada  (H)"),
-            ("rect",      "RECT",      "Remarcar con rectángulo  (R)"),
-            ("emoji",     "EMOJI",     "Insertar emoji  (E)"),
-            ("eraser",    "ERASE",     "Borrador — mantén pulsado y arrastra sobre anotaciones"),
-            ("edit",      "EDIT",      "Editar el texto y las imágenes del PDF  (C)"),
+            ("text",      "TEXT",      tr("Añadir texto  (T)")),
+            ("note",      "NOTE",      tr("Nota adhesiva  (N)")),
+            ("markup",    "MARKUP",    tr("Resaltar, subrayar o tachar — sobre el texto o a mano alzada  (H)")),
+            ("rect",      "RECT",      tr("Remarcar con rectángulo  (R)")),
+            ("emoji",     "EMOJI",     tr("Insertar emoji  (E)")),
+            ("eraser",    "ERASE",     tr("Borrador — mantén pulsado y arrastra sobre anotaciones")),
+            ("edit",      "EDIT",      tr("Editar el texto y las imágenes del PDF  (C)")),
         ]:
             b = self._glyph_btn(key, tip, checkable=True)
             b.clicked.connect(lambda _c, m=mode: self._toggle_tool(m))
@@ -275,14 +277,14 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         # ── Firma + Operaciones de página ────────────────────────────────
         # (petición de Ricardo) Icono intercambiado con el de firma manuscrita
         # (_btn_handsign, en el panel lateral): "handsign" aquí, "sign" allí.
-        b_sign = self._glyph_btn("handsign", "Firma", checkable=True)
+        b_sign = self._glyph_btn("handsign", tr("Firma"), checkable=True)
         b_sign.clicked.connect(lambda _c: self._toggle_tool("SIGN"))
         self._tool_btns["SIGN"] = b_sign
         lay.addWidget(b_sign)
 
         # (r27) Sin ventana: miniaturas y acciones en el panel lateral.
         self._btn_pages = self._glyph_btn(
-            "pages", "Operaciones de página: miniaturas y acciones en el panel lateral",
+            "pages", tr("Operaciones de página: miniaturas y acciones en el panel lateral"),
             checkable=True)
         self._btn_pages.clicked.connect(lambda _c=False: self._set_pages_mode(not self._pages_mode))
         lay.addWidget(self._btn_pages)
@@ -295,7 +297,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         # la X vuelve el botón») El botón y la herramienta ocupan el mismo
         # sitio en esta barra y nunca se ven los dos a la vez.
         self._btn_find = self._glyph_btn(
-            "search", "Buscar  (Ctrl+F)  ·  pulsar de nuevo la cierra")
+            "search", tr("Buscar  (Ctrl+F)  ·  pulsar de nuevo la cierra"))
         self._btn_find.clicked.connect(lambda _c=False: self._toggle_find_bar())
         # (petición de Ricardo) Oculta, la lupa conserva su sitio: el buscador
         # flota encima de la barra (no está en el layout) y nada se desplaza.
@@ -393,7 +395,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         ancho y lo empujan hacia abajo, para que la herramienta y lo que ya
         se veía en el panel estén disponibles a la vez."""
         # ── Panel: Operaciones de página (r27, sustituye al organizador) ─
-        self._pages_panel, g = self._side_form("Operaciones de página")
+        self._pages_panel, g = self._side_form(tr("Operaciones de página"))
         self._lbl_pages_sel = self._side_hint(g, "")
         self._pages_btns = []
         # (r31) Una sola fila de iconos; qué hace cada uno, en su tooltip.
@@ -401,14 +403,14 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         page_icons.setContentsMargins(0, 0, 0, 0)
         page_icons.setSpacing(0)
         for glyph, tip, op in [
-            ("rotate_left", "Girar 90° a la izquierda las páginas seleccionadas", "left"),
-            ("rotate_right", "Girar 90° a la derecha las páginas seleccionadas", "right"),
-            ("duplicate", "Duplicar: poner una copia detrás de cada página seleccionada", "dup"),
-            ("delete", "Eliminar las páginas seleccionadas  (Supr)", "del"),
-            ("page_blank", "Insertar una página en blanco detrás de la selección", "blank"),
-            ("insert_pdf", "Insertar las páginas de otro PDF detrás de la selección…", "pdf"),
-            ("extract", "Extraer las páginas seleccionadas a un PDF nuevo…", "extract"),
-            ("crop", "Recortar la página mostrada en el visor…", "crop"),
+            ("rotate_left", tr("Girar 90° a la izquierda las páginas seleccionadas"), "left"),
+            ("rotate_right", tr("Girar 90° a la derecha las páginas seleccionadas"), "right"),
+            ("duplicate", tr("Duplicar: poner una copia detrás de cada página seleccionada"), "dup"),
+            ("delete", tr("Eliminar las páginas seleccionadas  (Supr)"), "del"),
+            ("page_blank", tr("Insertar una página en blanco detrás de la selección"), "blank"),
+            ("insert_pdf", tr("Insertar las páginas de otro PDF detrás de la selección…"), "pdf"),
+            ("extract", tr("Extraer las páginas seleccionadas a un PDF nuevo…"), "extract"),
+            ("crop", tr("Recortar la página mostrada en el visor…"), "crop"),
         ]:
             b = self._opt_icon_btn(glyph, tip)
             b.setObjectName("side_icon_btn")
@@ -417,25 +419,25 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             self._pages_btns.append(b)
         page_icons.addStretch()
         g.addLayout(page_icons, g.rowCount(), 0, 1, 2)
-        self._side_hint(g, "Arrastra una miniatura para moverla")
-        self._side_hint(g, "Ctrl o Mayús para elegir varias")
+        self._side_hint(g, tr("Arrastra una miniatura para moverla"))
+        self._side_hint(g, tr("Ctrl o Mayús para elegir varias"))
 
         # ── Panel: Texto ─────────────────────────────────────────────────
-        self._txt_panel, g = self._side_form("Añadir texto")
+        self._txt_panel, g = self._side_form(tr("Añadir texto"))
         self._txt_size_spin = self._make_spin(6, 96, 12, self._on_txt_size)
-        self._side_row(g, "Tamaño de letra", self._txt_size_spin)
+        self._side_row(g, tr("Tamaño de letra"), self._txt_size_spin)
         self._txt_color_btn = _make_color_btn(QColor(0, 0, 0))
         self._txt_color_btn.clicked.connect(self._on_txt_color)
-        self._side_row(g, "Color del texto", self._txt_color_btn)
-        self._txt_bold_btn = self._make_style_btn("bold", "Negrita", self._on_txt_bold)
-        self._txt_italic_btn = self._make_style_btn("italic", "Cursiva", self._on_txt_italic)
-        self._side_row(g, "Negrita y cursiva", self._txt_bold_btn, self._txt_italic_btn)
+        self._side_row(g, tr("Color del texto"), self._txt_color_btn)
+        self._txt_bold_btn = self._make_style_btn("bold", tr("Negrita"), self._on_txt_bold)
+        self._txt_italic_btn = self._make_style_btn("italic", tr("Cursiva"), self._on_txt_italic)
+        self._side_row(g, tr("Negrita y cursiva"), self._txt_bold_btn, self._txt_italic_btn)
         # Alineación cíclica (izquierda → centro → derecha). (r69) Sin
         # justificado: MuPDF no lo sabe pintar en el texto enriquecido.
         self._txt_align_btn = self._opt_icon_btn(
-            "align_left", "Alineación: izquierda → centro → derecha")
+            "align_left", tr("Alineación: izquierda → centro → derecha"))
         self._txt_align_btn.clicked.connect(self._on_txt_align_cycle)
-        self._side_row(g, "Alineación", self._txt_align_btn)
+        self._side_row(g, tr("Alineación"), self._txt_align_btn)
         self._cb_font = QComboBox()
         self._cb_font.addItems(list(PDFUtils.FONT_LABELS))      # Documento + Noto (r36)
         # (r69) Cada tipo de letra se ve escrito con su propia fuente, en la
@@ -446,7 +448,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
                 self._cb_font.setItemData(i, fam, _FontPreviewDelegate.FAMILY_ROLE)
             else:
                 self._cb_font.setItemData(
-                    i, "La del propio documento (se imita con la Noto más parecida)",
+                    i, tr("La del propio documento (se imita con la Noto más parecida)"),
                     Qt.ItemDataRole.ToolTipRole)
         self._cb_font.setItemDelegate(_FontPreviewDelegate(self._cb_font))
         self._cb_font.setCurrentText("Noto Sans")
@@ -454,75 +456,75 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._cb_font.currentTextChanged.connect(self._show_font_in_combo)
         self._cb_font.currentTextChanged.connect(self._on_txt_font)
         self._show_font_in_combo(self._cb_font.currentText())
-        self._side_row(g, "Tipo de letra", self._cb_font)
-        self._side_hint(g, "Haz clic en la página y escribe")
+        self._side_row(g, tr("Tipo de letra"), self._cb_font)
+        self._side_hint(g, tr("Haz clic en la página y escribe"))
 
         # ── Panel: Nota adhesiva ─────────────────────────────────────────
-        self._note_panel, g = self._side_form("Nota adhesiva")
+        self._note_panel, g = self._side_form(tr("Nota adhesiva"))
         self._note_color_btn = _make_color_btn(QColor(255, 209, 0))
         self._note_color_btn.clicked.connect(self._on_note_color)
-        self._side_row(g, "Color de la nota", self._note_color_btn)
-        self._side_hint(g, "Haz clic donde irá la nota")
+        self._side_row(g, tr("Color de la nota"), self._note_color_btn)
+        self._side_hint(g, tr("Haz clic donde irá la nota"))
 
         # ── Panel: Marcado de texto ──────────────────────────────────────
-        self._markup_panel, g = self._side_form("Resaltar, subrayar o tachar")
+        self._markup_panel, g = self._side_form(tr("Resaltar, subrayar o tachar"))
         self._cb_markup = QComboBox()
-        self._cb_markup.addItem("Resaltar", "highlight")
-        self._cb_markup.addItem("Subrayar", "underline")
-        self._cb_markup.addItem("Tachar", "strike")
-        self._cb_markup.addItem("Ondulado", "squiggly")
+        self._cb_markup.addItem(tr("Resaltar"), "highlight")
+        self._cb_markup.addItem(tr("Subrayar"), "underline")
+        self._cb_markup.addItem(tr("Tachar"), "strike")
+        self._cb_markup.addItem(tr("Ondulado"), "squiggly")
         self._cb_markup.setFixedSize(104, icons.CONTROL)
         self._cb_markup.currentIndexChanged.connect(self._on_markup_kind)
-        self._side_row(g, "Tipo de marca", self._cb_markup)
+        self._side_row(g, tr("Tipo de marca"), self._cb_markup)
         self._markup_color_btn = _make_color_btn(QColor(255, 235, 0))
         self._markup_color_btn.clicked.connect(self._on_markup_color)
-        self._side_row(g, "Color de la marca", self._markup_color_btn)
+        self._side_row(g, tr("Color de la marca"), self._markup_color_btn)
         # (r59) Fuera del texto se marca a mano alzada: grosor de ese trazo.
         self._markup_width_spin = self._make_spin(
             1, 60, int(FREEHAND_WIDTHS["highlight"]), self._on_markup_width)
-        self._side_row(g, "Grosor del trazo", self._markup_width_spin)
-        self._side_hint(g, "Fuera del texto: a mano alzada")
+        self._side_row(g, tr("Grosor del trazo"), self._markup_width_spin)
+        self._side_hint(g, tr("Fuera del texto: a mano alzada"))
 
         # ── Panel: Rectángulo ────────────────────────────────────────────
-        self._rect_panel, g = self._side_form("Remarcar con rectángulo")
+        self._rect_panel, g = self._side_form(tr("Remarcar con rectángulo"))
         self._rect_width_spin = self._make_spin(1, 20, 2, self._on_rect_width)
-        self._side_row(g, "Grosor del borde", self._rect_width_spin)
+        self._side_row(g, tr("Grosor del borde"), self._rect_width_spin)
         self._rect_color_btn = _make_color_btn(QColor(0xD1, 0x34, 0x38))
         self._rect_color_btn.clicked.connect(self._on_rect_color)
-        self._side_row(g, "Color del borde", self._rect_color_btn)
-        self._side_hint(g, "Arrastra para dibujar el rectángulo")
+        self._side_row(g, tr("Color del borde"), self._rect_color_btn)
+        self._side_hint(g, tr("Arrastra para dibujar el rectángulo"))
 
         # ── Panel: Emoji ─────────────────────────────────────────────────
-        self._emoji_panel, g = self._side_form("Insertar emoji")
+        self._emoji_panel, g = self._side_form(tr("Insertar emoji"))
         self._emoji_size_spin = self._make_spin(8, 96, 24, self._on_emoji_size)
-        self._side_row(g, "Tamaño del emoji", self._emoji_size_spin)
+        self._side_row(g, tr("Tamaño del emoji"), self._emoji_size_spin)
         # (r40) Noto Emoji es monocroma: el emoji se escribe con el color y la
         # transparencia que se elijan aquí, como cualquier otro texto.
         self._emoji_color_btn = _make_color_btn(
             QColor(*[int(c * 255) for c in emoji_font.DEFAULT_COLOR]))
         self._emoji_color_btn.clicked.connect(self._on_emoji_color)
-        self._side_row(g, "Color y opacidad", self._emoji_color_btn)
+        self._side_row(g, tr("Color y opacidad"), self._emoji_color_btn)
         # (r36) Todos los emojis del índice, con buscador y grupos.
         self._emoji_picker = EmojiPicker()
         self._emoji_picker.emojiChosen.connect(self._on_emoji_glyph)
         g.addWidget(self._emoji_picker, g.rowCount(), 0, 1, 2)
-        self._side_hint(g, "Elige un emoji y haz clic donde irá")
+        self._side_hint(g, tr("Elige un emoji y haz clic donde irá"))
 
         # ── Panel: Editar contenido ──────────────────────────────────────
-        self._edit_panel, g = self._side_form("Editar texto e imágenes")
+        self._edit_panel, g = self._side_form(tr("Editar texto e imágenes"))
         self._edit_size_spin = self._make_spin(4, 96, 11, self._on_edit_size)
-        self._side_row(g, "Tamaño de letra", self._edit_size_spin)
+        self._side_row(g, tr("Tamaño de letra"), self._edit_size_spin)
         self._edit_color_btn = _make_color_btn(QColor(0, 0, 0))
         self._edit_color_btn.clicked.connect(self._on_edit_color)
-        self._side_row(g, "Color del texto", self._edit_color_btn)
-        self._edit_bold_btn = self._make_style_btn("bold", "Negrita", self._on_edit_bold)
-        self._edit_italic_btn = self._make_style_btn("italic", "Cursiva", self._on_edit_italic)
-        self._side_row(g, "Negrita y cursiva", self._edit_bold_btn, self._edit_italic_btn)
-        self._lbl_edit_hint = self._side_hint(g, "Haz clic en un párrafo o imagen")
-        self._lbl_edit_mixed = self._side_hint(g, "Estilos mezclados: se unifican")
+        self._side_row(g, tr("Color del texto"), self._edit_color_btn)
+        self._edit_bold_btn = self._make_style_btn("bold", tr("Negrita"), self._on_edit_bold)
+        self._edit_italic_btn = self._make_style_btn("italic", tr("Cursiva"), self._on_edit_italic)
+        self._side_row(g, tr("Negrita y cursiva"), self._edit_bold_btn, self._edit_italic_btn)
+        self._lbl_edit_hint = self._side_hint(g, tr("Haz clic en un párrafo o imagen"))
+        self._lbl_edit_mixed = self._side_hint(g, tr("Estilos mezclados: se unifican"))
         self._lbl_edit_mixed.setStyleSheet("color:#C42B1C;")
         self._lbl_edit_mixed.setToolTip(
-            "El párrafo mezcla estilos: se reescribirá entero con uno solo")
+            tr("El párrafo mezcla estilos: se reescribirá entero con uno solo"))
         self._lbl_edit_mixed.hide()
         self._lbl_edit_fit = self._side_hint(g, "")
         self._lbl_edit_fit.hide()
@@ -540,15 +542,15 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         # (enmarcado, para que se lea como aviso y no como herramienta); debajo,
         # dos filas con el texto a la izquierda y su botón a la derecha, los
         # dos botones en la misma columna.
-        self._sign_panel, g = self._side_form("Firma")
+        self._sign_panel, g = self._side_form(tr("Firma"))
         g.setColumnStretch(0, 1)             # el texto se estira; los botones, a la derecha
         g.setColumnStretch(1, 0)
-        notice = QLabel("Antes de firmar digitalmente, dibuja en la página "
-                        "el área donde irá la firma.")
+        notice = QLabel(tr("Antes de firmar digitalmente, dibuja en la página "
+                        "el área donde irá la firma."))
         notice.setObjectName("side_notice")
         notice.setWordWrap(True)
         g.addWidget(notice, g.rowCount(), 0, 1, 2)
-        self._sign_cert_lbl = QLabel("Sin certificado")
+        self._sign_cert_lbl = QLabel(tr("Sin certificado"))
         self._sign_cert_lbl.setObjectName("opt_lbl")
         # Con ajuste de línea: el nombre de un certificado real (el del
         # almacén de Windows) puede ser bastante más largo que los de
@@ -556,13 +558,13 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._sign_cert_lbl.setWordWrap(True)
         r = g.rowCount()
         g.addWidget(self._sign_cert_lbl, r, 0)
-        btn_change_cert = self._opt_icon_btn("opt_cert", "Seleccionar otro certificado digital…")
+        btn_change_cert = self._opt_icon_btn("opt_cert", tr("Seleccionar otro certificado digital…"))
         btn_change_cert.setObjectName("side_icon_btn")
         btn_change_cert.clicked.connect(self._change_cert)
         g.addWidget(btn_change_cert, r, 1, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._btn_handsign = self._opt_icon_btn(
-            "sign", "Firma manuscrita: dibújala con el ratón (plumilla de "
-            "estilográfica) o carga la imagen de tu firma, y colócala en la página")
+            "sign", tr("Firma manuscrita: dibújala con el ratón (plumilla de "
+            "estilográfica) o carga la imagen de tu firma, y colócala en la página"))
         self._btn_handsign.setObjectName("side_icon_btn")
         self._btn_handsign.setCheckable(True)
         self._btn_handsign.setStyleSheet(
@@ -571,7 +573,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         r = g.rowCount()
         # Corta: debe caber en una línea con el ancho mínimo del panel
         # (COLUMN_MIN); lo de dibujarla o cargar la imagen, en el tooltip.
-        hand_lbl = QLabel("Firma manuscrita")
+        hand_lbl = QLabel(tr("Firma manuscrita"))
         hand_lbl.setObjectName("side_lbl")
         g.addWidget(hand_lbl, r, 0)
         g.addWidget(self._btn_handsign, r, 1, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
@@ -584,17 +586,17 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         # `QRadioButton` (círculos nativos) y, debajo, «Guardar copia
         # comprimida» seguido del mismo icono que «Comprimir PDF» en la
         # barra principal (`_btn_compress`, «compress» → folder_zip).
-        self._compress_panel, g = self._side_form("Comprimir PDF")
+        self._compress_panel, g = self._side_form(tr("Comprimir PDF"))
         self._compress_level_key = pdf_compression.DEFAULT_LEVEL
         self._compress_level_btns: dict[str, QRadioButton] = {}
         level_group = QButtonGroup(self._compress_panel)
         level_group.setExclusive(True)
         # Frase corta por nivel; el ppp es el real de cada uno (color_ppi),
         # no un número suelto que se pudiera desincronizar de pdf_compression.
-        calidad = {"baja": "Alta calidad", "recomendada": "Buena calidad",
-                   "extrema": "Máxima reducción"}
+        calidad = {"baja": tr("Alta calidad"), "recomendada": tr("Buena calidad"),
+                   "extrema": tr("Máxima reducción")}
         for lvl in pdf_compression.LEVELS:
-            b = QRadioButton(f"{calidad[lvl.key]}, imágenes {lvl.color_ppi}ppp")
+            b = QRadioButton(tr("{calidad}, imágenes {color_ppi}ppp").format(calidad=calidad[lvl.key], color_ppi=lvl.color_ppi))
             b.setObjectName("side_radio")
             b.setToolTip(lvl.description)
             b.setChecked(lvl.key == self._compress_level_key)
@@ -605,10 +607,10 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         compress_row = QHBoxLayout()
         compress_row.setContentsMargins(0, 0, 0, 0)
         compress_row.setSpacing(6)
-        lbl_do_compress = QLabel("Guardar copia comprimida")
+        lbl_do_compress = QLabel(tr("Guardar copia comprimida"))
         lbl_do_compress.setObjectName("side_lbl")
         compress_row.addWidget(lbl_do_compress)
-        btn_do_compress = self._opt_icon_btn("compress", "Comprimir y guardar una copia del PDF…")
+        btn_do_compress = self._opt_icon_btn("compress", tr("Comprimir y guardar una copia del PDF…"))
         btn_do_compress.setObjectName("side_icon_btn")
         btn_do_compress.clicked.connect(self.compress_pdf)
         compress_row.addWidget(btn_do_compress)
@@ -630,12 +632,12 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         # dentro del panel lateral») Aplicar/cancelar el recorte: dos botones
         # flotantes, hijos del visor (mismo sitio que `inplace_editor`), que
         # `_position_crop_buttons` centra en el recuadro cada vez que cambia.
-        self._crop_apply_btn = self._opt_icon_btn("apply", "Aplicar el recorte")
+        self._crop_apply_btn = self._opt_icon_btn("apply", tr("Aplicar el recorte"))
         self._crop_apply_btn.setObjectName("crop_confirm_btn")
         self._crop_apply_btn.setParent(self.viewer)
         self._crop_apply_btn.clicked.connect(lambda _c=False: self._apply_crop())
         self._crop_apply_btn.hide()
-        self._crop_cancel_btn = self._opt_icon_btn("close", "Cancelar el recorte")
+        self._crop_cancel_btn = self._opt_icon_btn("close", tr("Cancelar el recorte"))
         self._crop_cancel_btn.setObjectName("crop_confirm_btn")
         self._crop_cancel_btn.setParent(self.viewer)
         self._crop_cancel_btn.clicked.connect(lambda _c=False: self._cancel_crop())
@@ -780,9 +782,9 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         n = len(self.doc) if self.doc is not None else 0
         sel = len(self.sidebar.thumbs._selected())
         if sel:
-            self._lbl_pages_sel.setText(f"Seleccionadas: {sel} de {n}")
+            self._lbl_pages_sel.setText(tr("Seleccionadas: {sel} de {n}").format(sel=sel, n=n))
         else:
-            self._lbl_pages_sel.setText(f"Sin selección: se usa la {self.current_page + 1} de {n}")
+            self._lbl_pages_sel.setText(tr("Sin selección: se usa la {valor} de {n}").format(valor=self.current_page + 1, n=n))
         for b in self._pages_btns:
             b.setEnabled(n > 0)
 
@@ -833,7 +835,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             b.setEnabled(False)
         self.viewer.update()
         self.statusBar().showMessage(
-            "Recortar: arrastra los tiradores de los bordes o las esquinas y pulsa Aplicar")
+            tr("Recortar: arrastra los tiradores de los bordes o las esquinas y pulsa Aplicar"))
 
     def _position_crop_buttons(self) -> None:
         """(r100) Los centra en el recuadro de recorte — o en la parte de él
@@ -989,21 +991,21 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self.viewer.setCursor(cursors.get(mode, Qt.CursorShape.ArrowCursor))
 
         hints = {
-            "TEXT":      ("Texto — haz clic (o arrastra un cuadro) y escribe sobre la "
-                          "página  ·  Ctrl+Intro confirma  ·  Esc cancela"),
-            "NOTE":      ("Nota — haz clic donde quieras dejar el comentario y escríbelo "
-                          "sobre la página  ·  Ctrl+Intro confirma  ·  Esc cancela"),
-            "MARKUP":    "Marcar — arrastra sobre el texto, o fuera de él a mano alzada"
-                         "  ·  Esc para terminar",
-            "RECT":      "Remarcar — dibuja un rectángulo",
-            "EMOJI":     "Emoji — haz clic para insertar",
-            "SIGN":      "Firma — dibuja el área donde irá la firma",
-            "ERASE":     "Borrador — mantén pulsado y arrastra sobre anotaciones para borrarlas",
-            "EDIT":       ("Editar contenido — clic en un párrafo para reescribirlo "
+            "TEXT":      tr(("Texto — haz clic (o arrastra un cuadro) y escribe sobre la "
+                          "página  ·  Ctrl+Intro confirma  ·  Esc cancela")),
+            "NOTE":      tr(("Nota — haz clic donde quieras dejar el comentario y escríbelo "
+                          "sobre la página  ·  Ctrl+Intro confirma  ·  Esc cancela")),
+            "MARKUP":    tr("Marcar — arrastra sobre el texto, o fuera de él a mano alzada"
+                         "  ·  Esc para terminar"),
+            "RECT":      tr("Remarcar — dibuja un rectángulo"),
+            "EMOJI":     tr("Emoji — haz clic para insertar"),
+            "SIGN":      tr("Firma — dibuja el área donde irá la firma"),
+            "ERASE":     tr("Borrador — mantén pulsado y arrastra sobre anotaciones para borrarlas"),
+            "EDIT":       tr(("Editar contenido — clic en un párrafo para reescribirlo "
                            "(Ctrl+Intro confirma)  ·  estira una esquina para que el texto "
                            "se reajuste  ·  clic en una imagen para moverla, cambiarla o "
-                           "borrarla  ·  Esc para terminar"),
-            "NONE":      "Selección — clic en una anotación · arrastra sobre el texto para seleccionarlo · Supr borra",
+                           "borrarla  ·  Esc para terminar")),
+            "NONE":      tr("Selección — clic en una anotación · arrastra sobre el texto para seleccionarlo · Supr borra"),
         }
         self.statusBar().showMessage(hints.get(mode, ""))
 
@@ -1019,7 +1021,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         if a:
             if firma_manuscrita.is_hand_signature(a.info.get("subject", "")):
                 return
-            self.checkpoint("Cambiar estilo")
+            self.checkpoint(tr("Cambiar estilo"))
             fn(a)
             self.mark_modified()
             self.render_page(keep_selection=True)
@@ -1159,7 +1161,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         if not a or not emoji_font.is_emoji(a.info.get("subject", "")):
             return
         r = self.viewer.annot_rect(a)                  # (r105) como se ve la página
-        self.checkpoint("Cambiar emoji")
+        self.checkpoint(tr("Cambiar emoji"))
         self.viewer.pdf_page.delete_annot(a)
         self._insert_emoji(fitz.Point(r.x0, r.y0),
                            self.viewer.selected_emoji, self.viewer.emoji_font_size)
@@ -1186,7 +1188,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
 
     def _on_emoji_color(self) -> None:
         elegido = color_picker.choose(self, self.viewer.emoji_color,
-                                      self.viewer.emoji_opacity, "Color del emoji")
+                                      self.viewer.emoji_opacity, tr("Color del emoji"))
         if elegido:
             color, opacidad = elegido
             self.viewer.emoji_color = color
@@ -1212,20 +1214,20 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             btn.setChecked(val)
             btn.blockSignals(False)
         familia = pdf_edit.family_for(block.font, block.flags, block.bold, block.italic)
-        self._lbl_edit_hint.setText(f"Letra: {familia} {block.size:g} pt")
+        self._lbl_edit_hint.setText(tr("Letra: {familia} {size:g} pt").format(familia=familia, size=block.size))
         self._lbl_edit_hint.setToolTip(
-            f"Fuente del documento: {block.font}\nSe reescribe con {familia}")
+            tr("Fuente del documento: {font}\nSe reescribe con {familia}").format(font=block.font, familia=familia))
         self._lbl_edit_mixed.setVisible(block.mixed)
 
     def _set_edit_fit(self, lineas: int, alto: float, caja: float) -> None:
         """Indicador en vivo: cuántas líneas ocupa el texto y si cabe en el
         cuadro. Lo llama edit_ui al escribir y al estirar una esquina."""
         cabe = alto <= caja + 0.5
-        plural = "línea" if lineas == 1 else "líneas"
+        plural = tr("línea") if lineas == 1 else tr("líneas")
         self._lbl_edit_fit.setText(
-            f"Ocupa {lineas} {plural} y cabe" if cabe else "NO cabe: estira una esquina")
+            tr("Ocupa {lineas} {plural} y cabe").format(lineas=lineas, plural=plural) if cabe else tr("NO cabe: estira una esquina"))
         self._lbl_edit_fit.setToolTip(
-            f"Ocupa {lineas} {plural}: {alto:.0f} de {caja:.0f} pt de alto")
+            tr("Ocupa {lineas} {plural}: {alto:.0f} de {caja:.0f} pt de alto").format(lineas=lineas, plural=plural, alto=alto, caja=caja))
         self._lbl_edit_fit.setStyleSheet("" if cabe else "color:#C42B1C; font-weight:600;")
         self._lbl_edit_fit.show()
 
@@ -1239,7 +1241,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         block = cont._editing
         texto = cont.editor.toPlainText() if cont.editor is not None else None
         actual = block.color if block else (0, 0, 0)
-        elegido = color_picker.choose(self, actual, title="Color del texto")
+        elegido = color_picker.choose(self, actual, title=tr("Color del texto"))
         if elegido:
             color, _ = elegido
             _set_color_btn(self._edit_color_btn, QColor(*[int(x * 255) for x in color]))
@@ -1367,14 +1369,14 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
     # ── Options callbacks ──────────────────────────────────────────────── #
 
     def _on_txt_color(self):
-        elegido = color_picker.choose(self, self.viewer.text_color, title="Color del texto")
+        elegido = color_picker.choose(self, self.viewer.text_color, title=tr("Color del texto"))
         if elegido:
             color, _ = elegido
             _set_color_btn(self._txt_color_btn, QColor(*[int(x * 255) for x in color]))
             self._apply_text_change(color=color)
 
     def _on_rect_color(self):
-        elegido = color_picker.choose(self, self.viewer.rect_color, title="Color del rectángulo")
+        elegido = color_picker.choose(self, self.viewer.rect_color, title=tr("Color del rectángulo"))
         if elegido:
             color, _ = elegido
             self.viewer.rect_color = color
@@ -1386,7 +1388,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             self._apply_to_selection(_rect_apply)
 
     def _on_note_color(self):
-        elegido = color_picker.choose(self, self.viewer.note_color, title="Color de la nota")
+        elegido = color_picker.choose(self, self.viewer.note_color, title=tr("Color de la nota"))
         if elegido:
             color, _ = elegido
             self.viewer.note_color = color
@@ -1410,7 +1412,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
 
     def _on_markup_color(self):
         elegido = color_picker.choose(self, self.viewer.markup_color,
-                                      self.viewer.markup_opacity, "Color del marcado")
+                                      self.viewer.markup_opacity, tr("Color del marcado"))
         if elegido:
             color, opacidad = elegido
             self.viewer.markup_color = color
@@ -1431,8 +1433,8 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         try:
             from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
         except ImportError:
-            QMessageBox.warning(self, "Sin soporte de impresión",
-                                "El módulo QtPrintSupport no está disponible.")
+            QMessageBox.warning(self, tr("Sin soporte de impresión"),
+                                tr("El módulo QtPrintSupport no está disponible."))
             return
 
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
@@ -1467,7 +1469,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         finally:
             painter.end()
             QApplication.restoreOverrideCursor()
-        self.statusBar().showMessage("Impresión enviada")
+        self.statusBar().showMessage(tr("Impresión enviada"))
 
     # ── Aviso del documento ──────────────────────────────────────────────── #
 
@@ -1526,13 +1528,13 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._zoom_pct_edit.setObjectName("status_zoom_pct")
         self._zoom_pct_edit.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._zoom_pct_edit.setMaxLength(4)
-        self._zoom_pct_edit.setToolTip("Porcentaje de ampliación — escribe uno y pulsa Intro")
+        self._zoom_pct_edit.setToolTip(tr("Porcentaje de ampliación — escribe uno y pulsa Intro"))
         self._zoom_pct_edit.editingFinished.connect(self._on_zoom_pct_edit)
         lay.addWidget(self._zoom_pct_edit)
 
         btn_m = QPushButton(_G["zoom_out"])
         btn_m.setObjectName("status_zoom_btn")
-        btn_m.setToolTip("Alejar  (Ctrl+-)")
+        btn_m.setToolTip(tr("Alejar  (Ctrl+-)"))
         btn_m.clicked.connect(lambda _c=False: self.zoom_step(-1))
         lay.addWidget(btn_m)
 
@@ -1540,13 +1542,13 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._zoom_slider.setFixedWidth(110)
         self._zoom_slider.setRange(10, 400)
         self._zoom_slider.setValue(self.custom_zoom_pct)
-        self._zoom_slider.setToolTip(f"Zoom: {self.custom_zoom_pct} %")
+        self._zoom_slider.setToolTip(tr("Zoom: {custom_zoom_pct} %").format(custom_zoom_pct=self.custom_zoom_pct))
         self._zoom_slider.valueChanged.connect(self._on_zoom_slider)
         lay.addWidget(self._zoom_slider)
 
         btn_p = QPushButton(_G["zoom_in"])
         btn_p.setObjectName("status_zoom_btn")
-        btn_p.setToolTip("Acercar  (Ctrl++)")
+        btn_p.setToolTip(tr("Acercar  (Ctrl++)"))
         btn_p.clicked.connect(lambda _c=False: self.zoom_step(1))
         lay.addWidget(btn_p)
 
@@ -1654,7 +1656,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         sl.blockSignals(True)
         sl.setRange(min(min_pct, pct), 400)
         sl.setValue(pct)
-        sl.setToolTip(f"Zoom: {pct} %")
+        sl.setToolTip(tr("Zoom: {pct} %").format(pct=pct))
         sl.blockSignals(False)
         if hasattr(self, "_zoom_pct_edit") and not self._zoom_pct_edit.hasFocus():
             self._zoom_pct_edit.setText(f"{pct}%")
@@ -1748,7 +1750,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
     def copy_page(self):
         if not self._require_open():
             return
-        self.checkpoint("Duplicar página")
+        self.checkpoint(tr("Duplicar página"))
         # fullcopy_page crea una página independiente; copy_page comparte el
         # objeto página, y anotar una copia modificaría también la otra.
         # `to` debe estar en -1..n-1: tras la última página se usa -1 (al final).
@@ -1770,21 +1772,21 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         if not self._require_open():
             return
         paths, _ = QFileDialog.getOpenFileNames(
-            self, "Seleccionar archivos para añadir al final", self._start_dir(),
+            self, tr("Seleccionar archivos para añadir al final"), self._start_dir(),
             conversion_office.FILTRO_ABRIR)
         if not paths:
             return
         paths = sorted(paths, key=menu_contextual._orden_natural)
-        src = self._convert_paths(paths, "Error al unir", conversion_office.combinar_archivos)
+        src = self._convert_paths(paths, tr("Error al unir"), conversion_office.combinar_archivos)
         if src is None:
             return
-        _n, ok = self._run_doc_change("Unir PDF", lambda: self.doc.insert_pdf(src))
+        _n, ok = self._run_doc_change(tr("Unir PDF"), lambda: self.doc.insert_pdf(src))
         src.close()
         if ok:
             if len(paths) == 1:
-                self.statusBar().showMessage(f"«{os.path.basename(paths[0])}» añadido al final")
+                self.statusBar().showMessage(tr("«{nombre}» añadido al final").format(nombre=os.path.basename(paths[0])))
             else:
-                self.statusBar().showMessage(f"{len(paths)} archivos añadidos al final")
+                self.statusBar().showMessage(tr("{n} archivos añadidos al final").format(n=len(paths)))
             self._finish_action()
 
     def compress_pdf(self):
@@ -1795,18 +1797,18 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         level = pdf_compression.LEVELS_BY_KEY[self._compress_level_key]
         if doc_tools.has_signatures(self.doc):
             r = QMessageBox.warning(
-                self, "Comprimir PDF",
-                "El documento está firmado digitalmente. La copia comprimida se "
+                self, tr("Comprimir PDF"),
+                tr("El documento está firmado digitalmente. La copia comprimida se "
                 "reescribe entera y sus firmas dejarán de ser válidas (el original "
-                "no cambia).\n\n¿Continuar?",
+                "no cambia).\n\n¿Continuar?"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No)
             if r != QMessageBox.StandardButton.Yes:
                 return
         path, _ = QFileDialog.getSaveFileName(
-            self, "Guardar PDF comprimido",
+            self, tr("Guardar PDF comprimido"),
             os.path.join(self._start_dir(), self._base_name() + "_comprimido.pdf"),
-            "Archivos PDF (*.pdf)")
+            tr("Archivos PDF (*.pdf)"))
         if not path:
             return
         if not path.lower().endswith(".pdf"):
@@ -1830,39 +1832,39 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
                 os.replace(tmp, path)
         except Exception as e:
             QApplication.restoreOverrideCursor()
-            QMessageBox.warning(self, "Error", f"No se pudo comprimir el PDF:\n{e}")
+            QMessageBox.warning(self, tr("Error"), tr("No se pudo comprimir el PDF:\n{e}").format(e=e))
             return
         QApplication.restoreOverrideCursor()
 
         fmt = pdf_compression.format_size
         if not res.smaller:
             QMessageBox.information(
-                self, "Comprimir PDF",
-                f"Este PDF ya está optimizado: con el nivel «{level.label}» no se reduce "
-                f"({fmt(res.original_size)} → {fmt(res.size)}).\n\nNo se ha guardado ninguna copia.")
+                self, tr("Comprimir PDF"),
+                tr("Este PDF ya está optimizado: con el nivel «{label}» no se reduce "
+                "({fmt} → {fmt2}).\n\nNo se ha guardado ninguna copia.").format(label=level.label, fmt=fmt(res.original_size), fmt2=fmt(res.size)))
             self._finish_action()
             return
         lineas = [
-            f"PDF comprimido (nivel «{level.label}») guardado en:\n{path}", "",
+            tr("PDF comprimido (nivel «{label}») guardado en:\n{path}").format(label=level.label, path=path), "",
             f"{fmt(res.original_size)} → {fmt(res.size)}   (−{res.saved_percent:.0f} %)",
-            f"Imágenes: {res.images_resampled} con resolución reducida (hasta "
-            f"{res.color_ppi} ppp) y {res.images_recompressed} recomprimidas; ninguna por "
-            f"debajo de {pdf_compression.MIN_PRINT_PPI} ppp al imprimir en DIN A4.",
+            tr("Imágenes: {images_resampled} con resolución reducida (hasta "
+            "{color_ppi} ppp) y {images_recompressed} recomprimidas; ninguna por "
+            "debajo de {MIN_PRINT_PPI} ppp al imprimir en DIN A4.").format(images_resampled=res.images_resampled, color_ppi=res.color_ppi, images_recompressed=res.images_recompressed, MIN_PRINT_PPI=pdf_compression.MIN_PRINT_PPI),
         ]
         if res.text_images:
             lineas.append(
-                f"{res.text_images} {'imagen' if res.text_images == 1 else 'imágenes'} con texto: "
-                f"como mínimo {pdf_compression.TEXT_MIN_PPI} ppp y calidad "
-                f"{pdf_compression.TEXT_MIN_JPEG_QUALITY} para que se lea bien.")
+                tr("{text_images} {valor} con texto: "
+                "como mínimo {TEXT_MIN_PPI} ppp y calidad "
+                "{TEXT_MIN_JPEG_QUALITY} para que se lea bien.").format(text_images=res.text_images, valor=tr('imagen') if res.text_images == 1 else tr('imágenes'), TEXT_MIN_PPI=pdf_compression.TEXT_MIN_PPI, TEXT_MIN_JPEG_QUALITY=pdf_compression.TEXT_MIN_JPEG_QUALITY))
         if res.min_print_ppi is not None:
             nota = ""
             if res.original_min_print_ppi is not None and \
                     res.original_min_print_ppi < pdf_compression.MIN_PRINT_PPI:
-                nota = " (el original ya tenía imágenes por debajo; no se amplían)"
-            lineas.append(f"Resolución mínima al imprimir en A4: {res.min_print_ppi:.0f} ppp{nota}.")
+                nota = tr(" (el original ya tenía imágenes por debajo; no se amplían)")
+            lineas.append(tr("Resolución mínima al imprimir en A4: {min_print_ppi:.0f} ppp{nota}.").format(min_print_ppi=res.min_print_ppi, nota=nota))
         if res.note:
             lineas += ["", res.note]
-        QMessageBox.information(self, "Comprimir PDF", "\n".join(lineas))
+        QMessageBox.information(self, tr("Comprimir PDF"), "\n".join(lineas))
         self._finish_action()
 
     # ── Signature (la firma en sí vive en window_document.DocumentMixin) ── #
@@ -1870,7 +1872,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
     def _refresh_cert_label(self) -> None:
         cert = load_saved_cert()
         if cert["type"] == "windows":
-            label = cert.get("name") or "Certificado de Windows"
+            label = cert.get("name") or tr("Certificado de Windows")
             self._sign_cert_lbl.setText(f"🖥️  {label}")
             self._sign_cert_lbl.setStyleSheet("color: #107C10; font-weight: 600;")
         elif cert["type"] == "file":
@@ -1878,7 +1880,7 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             self._sign_cert_lbl.setText(f"📁  {label}")
             self._sign_cert_lbl.setStyleSheet("color: #107C10; font-weight: 600;")
         else:
-            self._sign_cert_lbl.setText("Sin certificado seleccionado")
+            self._sign_cert_lbl.setText(tr("Sin certificado seleccionado"))
             self._sign_cert_lbl.setStyleSheet("color: #605E5C;")
 
     def _on_hand_signature(self) -> None:
@@ -1899,11 +1901,11 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self.viewer.set_hand_signature(sig, firma_manuscrita_ui.preview_image(sig))
         self._btn_handsign.setChecked(True)
         self.statusBar().showMessage(
-            "Firma manuscrita — haz clic donde irá (o arrastra un recuadro para darle "
-            "tamaño)  ·  Esc cancela")
+            tr("Firma manuscrita — haz clic donde irá (o arrastra un recuadro para darle "
+            "tamaño)  ·  Esc cancela"))
 
     def _activate_tool_hint(self) -> None:
-        self.statusBar().showMessage("Firma — dibuja el área donde irá la firma")
+        self.statusBar().showMessage(tr("Firma — dibuja el área donde irá la firma"))
 
     def place_hand_signature(self, center=None, box=None) -> None:
         """Estampa la firma manuscrita preparada: centrada en `center` con el
@@ -1923,13 +1925,13 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         dx = max(pr.x0 - rect.x0, 0) or min(pr.x1 - rect.x1, 0)
         dy = max(pr.y0 - rect.y0, 0) or min(pr.y1 - rect.y1, 0)
         rect = rect + (dx, dy, dx, dy)
-        self.checkpoint("Firma manuscrita")
+        self.checkpoint(tr("Firma manuscrita"))
         firma_manuscrita.add_hand_signature(self.doc, self.current_page, rect, sig)
         self.mark_modified()
         self.render_page()
         self._finish_action()
         self.statusBar().showMessage(
-            "Firma manuscrita colocada  ·  selecciónala para moverla o cambiarle el tamaño")
+            tr("Firma manuscrita colocada  ·  selecciónala para moverla o cambiarle el tamaño"))
 
     def _change_cert(self) -> None:
         dlg = CertPickerDialog(self, saved_cert=load_saved_cert())
@@ -1940,6 +1942,6 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
 
     def _require_open(self) -> bool:
         if not self.doc:
-            QMessageBox.warning(self, "Sin archivo", "Abre un PDF primero.")
+            QMessageBox.warning(self, tr("Sin archivo"), tr("Abre un PDF primero."))
             return False
         return True

@@ -24,6 +24,7 @@ from PyQt6.QtWidgets import (
 )
 
 import icons
+from idioma import tr
 
 # Los 17 colores de la paleta de Ricardo («Paleta Cromática de Transición de
 # Luces»), en su mismo orden, más (petición de Ricardo) dos grises junto al
@@ -45,13 +46,13 @@ SWATCH = icons.CONTROL   # lado del recuadro de color: 32 px, como todo botón
 # recuadro). El último era otro «Magenta puro» en la tabla original; aquí se
 # llama «Magenta claro» para no repetir nombre.
 _NOMBRES = {
-    "#FFFFFF": "Blanco puro", "#D5D5D5": "Gris claro", "#AAAAAA": "Gris",
-    "#555555": "Gris oscuro", "#000000": "Negro absoluto",
-    "#AA0000": "Rojo oscuro", "#FF0000": "Rojo puro", "#FFAA00": "Ámbar brillante",
-    "#FFFF00": "Amarillo puro", "#FFFFAA": "Amarillo claro", "#AAFF00": "Verde lima",
-    "#00FF00": "Verde puro", "#00FFAA": "Turquesa brillante", "#AAFFFF": "Cian claro",
-    "#00AAFF": "Azul eléctrico", "#0000FF": "Azul puro", "#AA00FF": "Púrpura vibrante",
-    "#FF00FF": "Magenta puro", "#FFAAFF": "Magenta claro",
+    "#FFFFFF": tr("Blanco puro"), "#D5D5D5": tr("Gris claro"), "#AAAAAA": tr("Gris"),
+    "#555555": tr("Gris oscuro"), "#000000": tr("Negro absoluto"),
+    "#AA0000": tr("Rojo oscuro"), "#FF0000": tr("Rojo puro"), "#FFAA00": tr("Ámbar brillante"),
+    "#FFFF00": tr("Amarillo puro"), "#FFFFAA": tr("Amarillo claro"), "#AAFF00": tr("Verde lima"),
+    "#00FF00": tr("Verde puro"), "#00FFAA": tr("Turquesa brillante"), "#AAFFFF": tr("Cian claro"),
+    "#00AAFF": tr("Azul eléctrico"), "#0000FF": tr("Azul puro"), "#AA00FF": tr("Púrpura vibrante"),
+    "#FF00FF": tr("Magenta puro"), "#FFAAFF": tr("Magenta claro"),
 }
 
 
@@ -72,7 +73,8 @@ class ColorDialog(QDialog):
     como menú emergente (`Qt.WindowType.Popup`), sin barra de título."""
 
     def __init__(self, parent, color=(0, 0, 0), opacity: float | None = None,
-                 title: str = "Color"):
+                 title: str | None = None):
+        title = title or tr("Color")
         super().__init__(parent, Qt.WindowType.Popup)
         self.setWindowTitle(title)           # no se ve; lo usan los lectores de pantalla
         self.setAccessibleName(title)
@@ -120,7 +122,7 @@ class ColorDialog(QDialog):
 
         if opacity is not None:
             fila = QHBoxLayout()
-            fila.addWidget(QLabel("Opacidad"))
+            fila.addWidget(QLabel(tr("Opacidad")))
             self._slider = QSlider(Qt.Orientation.Horizontal)
             self._slider.setRange(5, 100)
             # Que se estreche hasta el ancho de la paleta, sin ensanchar el menú.
@@ -167,7 +169,7 @@ class ColorDialog(QDialog):
 
 
 def choose(parent, color=(0, 0, 0), opacity: float | None = None,
-           title: str = "Color") -> tuple | None:
+           title: str | None = None) -> tuple | None:
     """Abre la tabla en el cursor; devuelve (color, opacidad) o None si se
     cierra sin elegir."""
     dlg = ColorDialog(parent, color, opacity, title)

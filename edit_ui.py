@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import QFileDialog, QMenu, QMessageBox
 
 import inplace_editor
 import pdf_edit
+from idioma import tr
 
 _TEXT_BOX = QColor(0, 120, 212, 130)       # azul Fluent, discontinuo
 _IMAGE_BOX = QColor(16, 137, 62, 150)      # verde para distinguir imagen de texto
@@ -36,8 +37,8 @@ _OVERFLOW = QColor(196, 43, 28)            # rojo: el texto no cabe en el cuadro
 _HANDLE = 8                                # lado del tirador de esquina, en píxeles
 _OUT = 6                                   # cuánto se salen los tiradores del cuadro
 
-_FILTRO_IMG = ("Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)"
-               ";;Todos los archivos (*.*)")
+_FILTRO_IMG = tr(("Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)"
+               ";;Todos los archivos (*.*)"))
 
 
 class ContentEditor:
@@ -254,10 +255,10 @@ class ContentEditor:
             texto = self.editor.toPlainText() if self.editor is not None else item.text
             seguia = self.editor is not None
             self.close_editor(commit=False)
-            self._write(item, texto, rect=nuevo, label="Ajustar cuadro de texto",
+            self._write(item, texto, rect=nuevo, label=tr("Ajustar cuadro de texto"),
                         reopen=seguia)
         else:
-            self._apply("Redimensionar imagen" if redim else "Mover imagen",
+            self._apply(tr("Redimensionar imagen") if redim else tr("Mover imagen"),
                         lambda page: pdf_edit.place_image(page, item, rect=nuevo))
 
     # ── menú contextual y teclado ──────────────────────────────────────── #
@@ -266,14 +267,14 @@ class ContentEditor:
         item = self._item_at(pdf_pt)
         if isinstance(item, pdf_edit.TextBlock):
             menu = QMenu(self.viewer)
-            a_edit = menu.addAction("Editar este texto")
-            a_del = menu.addAction("Eliminar este texto")
+            a_edit = menu.addAction(tr("Editar este texto"))
+            a_del = menu.addAction(tr("Eliminar este texto"))
             chosen = menu.exec(global_pos)
             if chosen is a_edit:
                 self.selected, self._rect = item, fitz.Rect(item.bbox)
                 self.open_editor(item)
             elif chosen is a_del:
-                self._apply("Eliminar texto",
+                self._apply(tr("Eliminar texto"),
                             lambda page: pdf_edit.delete_block(page, item))
             return
         if item is None:
@@ -281,14 +282,14 @@ class ContentEditor:
         self.selected, self._rect = item, fitz.Rect(item.bbox)
         self.viewer.update()
         menu = QMenu(self.viewer)
-        a_rep = menu.addAction("Sustituir imagen…")
-        a_save = menu.addAction("Guardar imagen como…")
+        a_rep = menu.addAction(tr("Sustituir imagen…"))
+        a_save = menu.addAction(tr("Guardar imagen como…"))
         menu.addSeparator()
-        a_del = menu.addAction("Eliminar imagen")
+        a_del = menu.addAction(tr("Eliminar imagen"))
         if pdf_edit.is_shared(self.viewer.pdf_page, item):
             menu.addSeparator()
-            nota = menu.addAction("Esta imagen está colocada en más sitios; "
-                                  "solo se cambia esta")
+            nota = menu.addAction(tr("Esta imagen está colocada en más sitios; "
+                                  "solo se cambia esta"))
             nota.setEnabled(False)
         chosen = menu.exec(global_pos)
         if chosen is a_rep:
@@ -302,11 +303,11 @@ class ContentEditor:
         caja = self.selected_image
         if caja is None:
             return False
-        self._apply("Eliminar imagen", lambda page: pdf_edit.delete_image(page, caja))
+        self._apply(tr("Eliminar imagen"), lambda page: pdf_edit.delete_image(page, caja))
         return True
 
     def replace_image(self, caja) -> None:
-        ruta, _ = QFileDialog.getOpenFileName(self.mw, "Sustituir imagen", "", _FILTRO_IMG)
+        ruta, _ = QFileDialog.getOpenFileName(self.mw, tr("Sustituir imagen"), "", _FILTRO_IMG)
         if not ruta:
             return
         try:
@@ -314,10 +315,10 @@ class ContentEditor:
                 datos = f.read()
             fitz.Pixmap(datos)          # comprueba que MuPDF sabe leerla
         except Exception as e:  # noqa: BLE001
-            QMessageBox.warning(self.mw, "Sustituir imagen",
-                                f"No se pudo leer «{os.path.basename(ruta)}»:\n{e}")
+            QMessageBox.warning(self.mw, tr("Sustituir imagen"),
+                                tr("No se pudo leer «{nombre}»:\n{e}").format(nombre=os.path.basename(ruta), e=e))
             return
-        self._apply("Sustituir imagen",
+        self._apply(tr("Sustituir imagen"),
                     lambda page: pdf_edit.place_image(page, caja, datos))
 
     def save_image(self, caja) -> None:
@@ -325,22 +326,22 @@ class ContentEditor:
         try:
             ext, datos = pdf_edit.image_bytes(page, caja)
         except Exception as e:  # noqa: BLE001
-            QMessageBox.warning(self.mw, "Guardar imagen", f"No se pudo extraer:\n{e}")
+            QMessageBox.warning(self.mw, tr("Guardar imagen"), tr("No se pudo extraer:\n{e}").format(e=e))
             return
         base = os.path.splitext(os.path.basename(self.mw.pdf_path or "imagen"))[0]
         ruta, _ = QFileDialog.getSaveFileName(
-            self.mw, "Guardar imagen como",
+            self.mw, tr("Guardar imagen como"),
             f"{base}_p{page.number + 1}_{caja.index + 1}.{ext}",
-            f"Imagen {ext.upper()} (*.{ext});;Todos los archivos (*.*)")
+            tr("Imagen {upper} (*.{ext});;Todos los archivos (*.*)").format(upper=ext.upper(), ext=ext))
         if not ruta:
             return
         try:
             with open(ruta, "wb") as f:
                 f.write(datos)
         except OSError as e:
-            QMessageBox.warning(self.mw, "Guardar imagen", f"No se pudo guardar:\n{e}")
+            QMessageBox.warning(self.mw, tr("Guardar imagen"), tr("No se pudo guardar:\n{e}").format(e=e))
             return
-        self.mw.statusBar().showMessage(f"Imagen guardada en {ruta}")
+        self.mw.statusBar().showMessage(tr("Imagen guardada en {ruta}").format(ruta=ruta))
 
     # ── edición en línea ───────────────────────────────────────────────── #
 
@@ -397,7 +398,7 @@ class ContentEditor:
         editor.finish()
         try:
             if commit and texto != block.text:
-                self._write(block, texto, rect=caja, label="Editar texto")
+                self._write(block, texto, rect=caja, label=tr("Editar texto"))
         finally:
             self._busy = False
         if move and self.blocks:
@@ -423,14 +424,14 @@ class ContentEditor:
             text = self.editor.toPlainText() if self.editor is not None else block.text
         caja = self._rect
         self.close_editor(commit=False)
-        self._write(block, text, rect=caja, label="Editar texto", reopen=True, **estilo)
+        self._write(block, text, rect=caja, label=tr("Editar texto"), reopen=True, **estilo)
 
     def _write(self, block, texto: str, *, rect=None, label="Editar texto",
                reopen: bool = False, **estilo) -> None:
         """Reescribe el párrafo y, si hace falta, vuelve a abrir el editor
         sobre el cuadro que ha quedado."""
         if not texto.strip():
-            self._apply("Eliminar texto", lambda page: pdf_edit.delete_block(page, block))
+            self._apply(tr("Eliminar texto"), lambda page: pdf_edit.delete_block(page, block))
             return
         salida = {}
         self._apply(label, lambda page: salida.setdefault(
@@ -465,8 +466,8 @@ class ContentEditor:
             fn(page)
         except Exception as e:  # noqa: BLE001
             mw._rollback_last()
-            QMessageBox.critical(mw, etiqueta, f"No se pudo completar la operación:\n{e}")
+            QMessageBox.critical(mw, etiqueta, tr("No se pudo completar la operación:\n{e}").format(e=e))
             return
         mw.mark_modified()
         mw.render_page()
-        mw.statusBar().showMessage(f"{etiqueta}: hecho")
+        mw.statusBar().showMessage(tr("{etiqueta}: hecho").format(etiqueta=etiqueta))

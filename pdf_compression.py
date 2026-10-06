@@ -40,6 +40,7 @@ import re
 from dataclasses import dataclass
 
 import fitz
+from idioma import tr
 
 A4 = (595.276, 841.89)
 MIN_PRINT_PPI = 75
@@ -62,12 +63,12 @@ class Level:
 
 
 LEVELS = (
-    Level("baja", "Baja compresión",
-          "Alta calidad, menor reducción: imágenes a 150 ppp, JPEG de calidad alta", 150, 85, False),
-    Level("recomendada", "Recomendada",
-          "Buena calidad y buena reducción: imágenes a 100 ppp, JPEG de calidad media", 100, 70, True),
-    Level("extrema", "Extrema",
-          "Máxima reducción, menor calidad: imágenes a 75 ppp en A4, JPEG de calidad baja",
+    Level("baja", tr("Baja compresión"),
+          tr("Alta calidad, menor reducción: imágenes a 150 ppp, JPEG de calidad alta"), 150, 85, False),
+    Level("recomendada", tr("Recomendada"),
+          tr("Buena calidad y buena reducción: imágenes a 100 ppp, JPEG de calidad media"), 100, 70, True),
+    Level("extrema", tr("Extrema"),
+          tr("Máxima reducción, menor calidad: imágenes a 75 ppp en A4, JPEG de calidad baja"),
           MIN_PRINT_PPI, 50, True),
 )
 LEVELS_BY_KEY = {lvl.key: lvl for lvl in LEVELS}
@@ -103,7 +104,7 @@ class Result:
 def format_size(n: int) -> str:
     if n >= 1024 * 1024:
         return f"{n / (1024 * 1024):.1f} MB".replace(".", ",")
-    return f"{n / 1024:.0f} KB"
+    return tr("{valor:.0f} KB").format(valor=n / 1024)
 
 
 def a4_fit_factor(rect: fitz.Rect) -> float:
@@ -413,7 +414,7 @@ def _open(data: bytes, password: str) -> fitz.Document:
     doc = fitz.open("pdf", data)
     if doc.needs_pass and not (password and doc.authenticate(password)):
         doc.close()
-        raise ValueError("El documento está protegido con contraseña.")
+        raise ValueError(tr("El documento está protegido con contraseña."))
     return doc
 
 
@@ -487,10 +488,10 @@ def compress(data: bytes, level: str = DEFAULT_LEVEL, password: str = "",
 
     note = ""
     attempts = ((True, True, ""),
-                (False, True, "Las imágenes no se han recomprimido: el documento tiene una "
-                              "estructura que no lo permite sin dañarlo."),
-                (False, False, "Solo se ha optimizado la estructura del PDF: el documento no "
-                               "admite recomprimir imágenes ni recortar fuentes sin dañarlo."))
+                (False, True, tr("Las imágenes no se han recomprimido: el documento tiene una "
+                              "estructura que no lo permite sin dañarlo.")),
+                (False, False, tr("Solo se ha optimizado la estructura del PDF: el documento no "
+                               "admite recomprimir imágenes ni recortar fuentes sin dañarlo.")))
     for images, fonts, attempt_note in attempts:
         out, resampled, recompressed, text = _run(data, lvl, password, encryption, images, fonts)
         check_password = password if not encryption else ""

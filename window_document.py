@@ -36,6 +36,7 @@ import icons
 from cert_manager import CertPickerDialog, load_saved_cert
 from history import Snapshot, UndoStack
 from tsa import TSA_PRESETS
+from idioma import tr
 
 SETTINGS = ("aventyapdf", "config")
 MAX_RECENT = 10
@@ -43,8 +44,8 @@ USER_NAME = os.environ.get("USERNAME") or os.environ.get("USER") or ""
 
 MARKUP_COLORS = doc_tools.MARKUP_COLORS
 FREEHAND_PREFIX = doc_tools.FREEHAND_PREFIX
-MARKUP_LABELS = {"highlight": "Resaltar", "underline": "Subrayar",
-                 "strike": "Tachar", "squiggly": "Subrayado ondulado"}
+MARKUP_LABELS = {"highlight": tr("Resaltar"), "underline": tr("Subrayar"),
+                 "strike": tr("Tachar"), "squiggly": tr("Subrayado ondulado")}
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tif", ".tiff", ".webp"}
 
 
@@ -145,9 +146,9 @@ class DocumentMixin:
         if self.doc is None:
             self.setWindowTitle("AventyaPDF")
         else:
-            name = os.path.basename(self.pdf_path) if self.pdf_path else "Sin título"
+            name = os.path.basename(self.pdf_path) if self.pdf_path else tr("Sin título")
             modified = self._modified
-            self.setWindowTitle(f"{'● ' if modified else ''}{name} — AventyaPDF")
+            self.setWindowTitle(tr("{valor}{name} — AventyaPDF").format(valor='● ' if modified else '', name=name))
         self._refresh_doc_tabs()
 
     def _update_actions(self):
@@ -163,9 +164,9 @@ class DocumentMixin:
         if hasattr(self, "_act_undo"):
             lu, lr = self._history.undo_label(), self._history.redo_label()
             self._act_undo.setEnabled(can_u)
-            self._act_undo.setText(f"Deshacer «{lu}»" if can_u and lu else "Deshacer")
+            self._act_undo.setText(tr("Deshacer «{lu}»").format(lu=lu) if can_u and lu else tr("Deshacer"))
             self._act_redo.setEnabled(can_r)
-            self._act_redo.setText(f"Rehacer «{lr}»" if can_r and lr else "Rehacer")
+            self._act_redo.setText(tr("Rehacer «{lr}»").format(lr=lr) if can_r and lr else tr("Rehacer"))
         if hasattr(self, "_btn_undo"):
             self._btn_undo.setEnabled(can_u)
             self._btn_redo.setEnabled(can_r)
@@ -229,7 +230,7 @@ class DocumentMixin:
         if not 0 <= index < len(self._sessions) or index == self._active:
             return
         if self._sign_worker is not None and self._sign_worker.isRunning():
-            self.statusBar().showMessage("Espera a que termine la firma en curso")
+            self.statusBar().showMessage(tr("Espera a que termine la firma en curso"))
             return
         self._stash_active()
         self._restore_session(index)
@@ -254,8 +255,8 @@ class DocumentMixin:
         h, y = s.get("_scroll_pos", (0, 0))
         QTimer.singleShot(0, lambda: (self._scroll.horizontalScrollBar().setValue(h),
                                       self._scroll.verticalScrollBar().setValue(y)))
-        name = os.path.basename(self.pdf_path) if self.pdf_path else "Sin título"
-        self.statusBar().showMessage(f"Documento: {name}")
+        name = os.path.basename(self.pdf_path) if self.pdf_path else tr("Sin título")
+        self.statusBar().showMessage(tr("Documento: {name}").format(name=name))
 
     def next_document(self, step: int = 1):
         if len(self._sessions) > 1:
@@ -286,7 +287,7 @@ class DocumentMixin:
         for i in range(len(self._sessions)):
             s = self._session(i)
             path = s.get("pdf_path") or ""
-            items.append((os.path.basename(path) if path else "Sin título", path,
+            items.append((os.path.basename(path) if path else tr("Sin título"), path,
                           self._session_dirty(i)))
         self.sidebar.set_documents(items, self._active)
 
@@ -308,7 +309,7 @@ class DocumentMixin:
         # de todo lo que la aplicación sabe mostrar: cada PDF en su pestaña, y
         # cada imagen o documento de Word convertido a PDF en la suya (sin guardar).
         paths, _ = QFileDialog.getOpenFileNames(
-            self, "Abrir", start, conversion_office.FILTRO_ABRIR)
+            self, tr("Abrir"), start, conversion_office.FILTRO_ABRIR)
         self.open_paths(paths)
 
     def open_paths(self, paths: list[str]):
@@ -337,8 +338,8 @@ class DocumentMixin:
                 data = f.read()
             doc = fitz.open("pdf", data)
         except Exception as e:
-            QMessageBox.warning(self, "No se pudo abrir",
-                                f"«{name}» no es un PDF válido o está dañado.\n\n{e}")
+            QMessageBox.warning(self, tr("No se pudo abrir"),
+                                tr("«{name}» no es un PDF válido o está dañado.\n\n{e}").format(name=name, e=e))
             return False
         password = self._ask_password(doc, name)
         if password is None:
@@ -346,13 +347,13 @@ class DocumentMixin:
             return False
         if len(doc) == 0:
             doc.close()
-            QMessageBox.warning(self, "No se pudo abrir", f"«{name}» no contiene páginas.")
+            QMessageBox.warning(self, tr("No se pudo abrir"), tr("«{name}» no contiene páginas.").format(name=name))
             return False
         self._begin_new_session()
         self._set_document(doc, path, data, password)
         self._disk_stat = _file_stat(path)
         self._add_recent(path)
-        self.statusBar().showMessage(f"Abierto: {name}  ·  {len(doc)} páginas")
+        self.statusBar().showMessage(tr("Abierto: {name}  ·  {n} páginas").format(name=name, n=len(doc)))
         return True
 
     def _ask_password(self, doc, name: str, known: str = "") -> str | None:
@@ -363,14 +364,14 @@ class DocumentMixin:
             return known
         while True:
             pw, ok = QInputDialog.getText(
-                self, "Documento protegido",
-                f"«{name}» está protegido con contraseña.\nContraseña:",
+                self, tr("Documento protegido"),
+                tr("«{name}» está protegido con contraseña.\nContraseña:").format(name=name),
                 QLineEdit.EchoMode.Password)
             if not ok:
                 return None
             if doc.authenticate(pw):
                 return pw
-            QMessageBox.warning(self, "Documento protegido", "Contraseña incorrecta.")
+            QMessageBox.warning(self, tr("Documento protegido"), tr("Contraseña incorrecta."))
 
     # ── cambios del archivo desde otra aplicación (r115) ───────────────── #
 
@@ -427,7 +428,7 @@ class DocumentMixin:
                 and not self._ask_reload_over_changes(name):
             self._disk_ignored = firma
             self.statusBar().showMessage(
-                f"«{name}» ha cambiado en otra aplicación: se mantienen tus cambios")
+                tr("«{name}» ha cambiado en otra aplicación: se mantienen tus cambios").format(name=name))
             return
         try:
             doc = fitz.open("pdf", data)
@@ -450,17 +451,17 @@ class DocumentMixin:
         self._disk_stat = stat
         self.go_to_page(min(page, len(doc) - 1))
         self.statusBar().showMessage(
-            f"«{name}» ha cambiado en otra aplicación: se muestra la versión nueva")
+            tr("«{name}» ha cambiado en otra aplicación: se muestra la versión nueva").format(name=name))
 
     def _ask_reload_over_changes(self, name: str) -> bool:
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Icon.Warning)
-        box.setWindowTitle("El archivo ha cambiado")
-        box.setText(f"«{name}» se ha modificado en otra aplicación, y aquí tiene "
-                    "cambios sin guardar.")
-        box.setInformativeText("¿Cargar la versión nueva del archivo? Se perderán tus cambios.")
-        b_load = box.addButton("Cargar la versión nueva", QMessageBox.ButtonRole.DestructiveRole)
-        box.addButton("Mantener mis cambios", QMessageBox.ButtonRole.RejectRole)
+        box.setWindowTitle(tr("El archivo ha cambiado"))
+        box.setText(tr("«{name}» se ha modificado en otra aplicación, y aquí tiene "
+                    "cambios sin guardar.").format(name=name))
+        box.setInformativeText(tr("¿Cargar la versión nueva del archivo? Se perderán tus cambios."))
+        b_load = box.addButton(tr("Cargar la versión nueva"), QMessageBox.ButtonRole.DestructiveRole)
+        box.addButton(tr("Mantener mis cambios"), QMessageBox.ButtonRole.RejectRole)
         box.exec()
         return box.clickedButton() is b_load
 
@@ -522,7 +523,7 @@ class DocumentMixin:
         self._active = -1
         if self._sessions:                      # quedan documentos: se pasa al contiguo
             self._restore_session(min(index, len(self._sessions) - 1))
-            self.statusBar().showMessage("Documento cerrado")
+            self.statusBar().showMessage(tr("Documento cerrado"))
             return
         self._clear_find()
         v = self.viewer
@@ -539,19 +540,19 @@ class DocumentMixin:
         self._update_doc_notice()
         self._update_actions()
         self._update_title()
-        self.statusBar().showMessage("Documento cerrado")
+        self.statusBar().showMessage(tr("Documento cerrado"))
 
     def _confirm_discard(self) -> bool:
         if self.doc is None or not self._modified:
             return True
-        name = os.path.basename(self.pdf_path) if self.pdf_path else "Sin título"
+        name = os.path.basename(self.pdf_path) if self.pdf_path else tr("Sin título")
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Icon.Warning)
-        box.setWindowTitle("Cambios sin guardar")
-        box.setText(f"¿Quieres guardar los cambios de «{name}»?")
-        b_save = box.addButton("Guardar", QMessageBox.ButtonRole.AcceptRole)
-        b_discard = box.addButton("No guardar", QMessageBox.ButtonRole.DestructiveRole)
-        box.addButton("Cancelar", QMessageBox.ButtonRole.RejectRole)
+        box.setWindowTitle(tr("Cambios sin guardar"))
+        box.setText(tr("¿Quieres guardar los cambios de «{name}»?").format(name=name))
+        b_save = box.addButton(tr("Guardar"), QMessageBox.ButtonRole.AcceptRole)
+        b_discard = box.addButton(tr("No guardar"), QMessageBox.ButtonRole.DestructiveRole)
+        box.addButton(tr("Cancelar"), QMessageBox.ButtonRole.RejectRole)
         box.exec()
         clicked = box.clickedButton()
         if clicked is b_save:
@@ -560,7 +561,7 @@ class DocumentMixin:
 
     def closeEvent(self, event):
         if self._sign_worker is not None and self._sign_worker.isRunning():
-            self.statusBar().showMessage("Espera a que termine la firma en curso")
+            self.statusBar().showMessage(tr("Espera a que termine la firma en curso"))
             event.ignore()
             return
         # Cada documento con cambios pregunta, mostrando antes su pestaña.
@@ -621,10 +622,10 @@ class DocumentMixin:
             act.setEnabled(os.path.exists(p))
             act.triggered.connect(lambda _c=False, x=p: self.open_path(x))
         if not files:
-            m.addAction("(vacío)").setEnabled(False)
+            m.addAction(tr("(vacío)")).setEnabled(False)
         else:
             m.addSeparator()
-            m.addAction("Borrar lista").triggered.connect(
+            m.addAction(tr("Borrar lista")).triggered.connect(
                 lambda: QSettings(*SETTINGS).setValue("recent/files", []))
 
     # ── guardar ────────────────────────────────────────────────────────── #
@@ -641,8 +642,8 @@ class DocumentMixin:
             return False
         suggested = self.pdf_path or os.path.join(
             QSettings(*SETTINGS).value("recent/dir", ""), "documento.pdf")
-        path, _ = QFileDialog.getSaveFileName(self, "Guardar como", suggested,
-                                              "Archivos PDF (*.pdf)")
+        path, _ = QFileDialog.getSaveFileName(self, tr("Guardar como"), suggested,
+                                              tr("Archivos PDF (*.pdf)"))
         if not path:
             return False
         if not path.lower().endswith(".pdf"):
@@ -653,11 +654,11 @@ class DocumentMixin:
         exactos = self._pending_bytes is not None and not self._encrypt_opts
         if self._modified and not exactos and doc_tools.has_signatures(self.doc):
             r = QMessageBox.warning(
-                self, "Documento firmado",
-                "Este documento contiene firmas digitales.\n\n"
+                self, tr("Documento firmado"),
+                tr("Este documento contiene firmas digitales.\n\n"
                 "Guardar los cambios reescribe el archivo y las firmas existentes "
                 "dejarán de ser válidas. Para conservarlas, firma sin modificar "
-                "antes el documento.\n\n¿Guardar de todos modos?",
+                "antes el documento.\n\n¿Guardar de todos modos?"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No)
             if r != QMessageBox.StandardButton.Yes:
@@ -684,8 +685,8 @@ class DocumentMixin:
                     os.remove(tmp)
             except Exception:
                 pass
-            QMessageBox.critical(self, "Error al guardar",
-                                 f"No se pudo guardar el archivo:\n{e}")
+            QMessageBox.critical(self, tr("Error al guardar"),
+                                 tr("No se pudo guardar el archivo:\n{e}").format(e=e))
             return False
 
         if self._encrypt_opts:
@@ -707,7 +708,7 @@ class DocumentMixin:
             self._disk_stat = _file_stat(path)
         self._add_recent(path)
         self._update_title()
-        self.statusBar().showMessage(f"Guardado: {os.path.basename(path)}")
+        self.statusBar().showMessage(tr("Guardado: {nombre}").format(nombre=os.path.basename(path)))
         return True
 
     # ── deshacer / rehacer ─────────────────────────────────────────────── #
@@ -761,10 +762,10 @@ class DocumentMixin:
         self._update_doc_notice()
 
     def undo(self):
-        self._step_history(self._history.undo, "Deshecho")
+        self._step_history(self._history.undo, tr("Deshecho"))
 
     def redo(self):
-        self._step_history(self._history.redo, "Rehecho")
+        self._step_history(self._history.redo, tr("Rehecho"))
 
     def _step_history(self, step, verb: str):
         if self.doc is None:
@@ -777,7 +778,7 @@ class DocumentMixin:
         try:
             new = self._open_bytes(snap.data)
         except Exception as e:
-            QMessageBox.critical(self, verb, f"No se pudo restaurar el estado:\n{e}")
+            QMessageBox.critical(self, verb, tr("No se pudo restaurar el estado:\n{e}").format(e=e))
             return
         old = self.doc
         self.doc = new
@@ -859,7 +860,7 @@ class DocumentMixin:
             self._find_text = text
             if not self._find_hits:
                 self._find_idx = -1
-                self._find_count.setText("Sin resultados")
+                self._find_count.setText(tr("Sin resultados"))
                 self.viewer.update()
                 return
             after = [i for i, (p, _r) in enumerate(self._find_hits) if p >= self.current_page]
@@ -875,7 +876,7 @@ class DocumentMixin:
         if pno != self.current_page:
             self.go_to_page(pno)
         self.viewer.update()
-        self._find_count.setText(f"{self._find_idx + 1} de {len(self._find_hits)}")
+        self._find_count.setText(tr("{valor} de {n}").format(valor=self._find_idx + 1, n=len(self._find_hits)))
         sr = self.viewer._to_screen_rect(r)
         QTimer.singleShot(0, lambda: self._scroll.ensureVisible(
             sr.center().x(), sr.center().y(), 80, 160))
@@ -901,7 +902,7 @@ class DocumentMixin:
     def ask_go_to_page(self):
         if self.doc is None:
             return
-        n, ok = QInputDialog.getInt(self, "Ir a página", f"Página (1–{len(self.doc)}):",
+        n, ok = QInputDialog.getInt(self, tr("Ir a página"), tr("Página (1–{n}):").format(n=len(self.doc)),
                                     self.current_page + 1, 1, len(self.doc))
         if ok:
             self.go_to_page(n - 1)
@@ -944,11 +945,11 @@ class DocumentMixin:
         if pct < sl.minimum():
             sl.setMinimum(max(10, pct))
         sl.setValue(pct)
-        sl.setToolTip(f"Zoom: {pct} %")
+        sl.setToolTip(tr("Zoom: {pct} %").format(pct=pct))
         sl.blockSignals(False)
         self.render_page(keep_selection=True)
-        self.statusBar().showMessage(f"Zoom {pct} %")
-        self.statusBar().showMessage(f"Zoom {pct} %")
+        self.statusBar().showMessage(tr("Zoom {pct} %").format(pct=pct))
+        self.statusBar().showMessage(tr("Zoom {pct} %").format(pct=pct))
 
     # ── API para el panel lateral ──────────────────────────────────────── #
 
@@ -981,7 +982,7 @@ class DocumentMixin:
     def rotate_pages(self, pages: list[int], delta: int):
         if self.doc is None or not pages:
             return
-        self.checkpoint("Girar páginas")
+        self.checkpoint(tr("Girar páginas"))
         doc_tools.rotate_pages(self.doc, pages, delta)
         self.mark_modified(structure=True)
         self.render_page()
@@ -992,7 +993,7 @@ class DocumentMixin:
     def crop_page(self, pno: int, rect: fitz.Rect):
         if self.doc is None:
             return
-        self.checkpoint("Recortar página")
+        self.checkpoint(tr("Recortar página"))
         doc_tools.crop_page(self.doc, pno, rect)
         self.mark_modified(structure=True)
         self.render_page()
@@ -1001,14 +1002,14 @@ class DocumentMixin:
         if self.doc is None or not pages:
             return
         if len(set(pages)) >= len(self.doc):
-            QMessageBox.warning(self, "No posible", "El PDF debe conservar al menos una página.")
+            QMessageBox.warning(self, tr("No posible"), tr("El PDF debe conservar al menos una página."))
             return
-        what = f"la página {pages[0] + 1}" if len(pages) == 1 else f"{len(pages)} páginas"
-        r = QMessageBox.question(self, "Eliminar páginas", f"¿Eliminar {what}?",
+        what = tr("la página {valor}").format(valor=pages[0] + 1) if len(pages) == 1 else tr("{n} páginas").format(n=len(pages))
+        r = QMessageBox.question(self, tr("Eliminar páginas"), tr("¿Eliminar {what}?").format(what=what),
                                  QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if r != QMessageBox.StandardButton.Yes:
             return
-        self.checkpoint("Eliminar páginas")
+        self.checkpoint(tr("Eliminar páginas"))
         self.doc.delete_pages(sorted(set(pages)))
         self.current_page = min(self.current_page, len(self.doc) - 1)
         self.mark_modified(structure=True)
@@ -1018,16 +1019,16 @@ class DocumentMixin:
         if self.doc is None or not pages:
             return
         base = os.path.splitext(self.pdf_path)[0] if self.pdf_path else "documento"
-        path, _ = QFileDialog.getSaveFileName(self, "Guardar páginas extraídas",
-                                              base + "_extracto.pdf", "Archivos PDF (*.pdf)")
+        path, _ = QFileDialog.getSaveFileName(self, tr("Guardar páginas extraídas"),
+                                              base + "_extracto.pdf", tr("Archivos PDF (*.pdf)"))
         if not path:
             return
         new = doc_tools.extract_pages(self.doc, pages)
         try:
             new.save(path, garbage=3, deflate=True)
-            self.statusBar().showMessage(f"{len(pages)} páginas extraídas a {os.path.basename(path)}")
+            self.statusBar().showMessage(tr("{n} páginas extraídas a {nombre}").format(n=len(pages), nombre=os.path.basename(path)))
         except Exception as e:
-            QMessageBox.critical(self, "Extraer páginas", f"No se pudo guardar:\n{e}")
+            QMessageBox.critical(self, tr("Extraer páginas"), tr("No se pudo guardar:\n{e}").format(e=e))
         finally:
             new.close()
 
@@ -1038,7 +1039,7 @@ class DocumentMixin:
         if self.doc is None or not pages:
             return
         pages = sorted(set(pages))
-        self.checkpoint("Duplicar páginas")
+        self.checkpoint(tr("Duplicar páginas"))
         for p in reversed(pages):
             to = p + 1 if p + 1 < len(self.doc) else -1
             if hasattr(self.doc, "fullcopy_page"):
@@ -1058,7 +1059,7 @@ class DocumentMixin:
             return
         if order == list(range(len(order))):
             return
-        self.checkpoint("Mover páginas")
+        self.checkpoint(tr("Mover páginas"))
         self.doc.select(order)
         self.current_page = order.index(self.current_page)
         if selected is not None:
@@ -1070,7 +1071,7 @@ class DocumentMixin:
         if self.doc is None:
             return
         ref = self.doc[pno].rect
-        self.checkpoint("Insertar página en blanco")
+        self.checkpoint(tr("Insertar página en blanco"))
         self.doc.new_page(pno + 1, width=ref.width, height=ref.height)
         self.current_page = pno + 1
         self.mark_modified(structure=True)
@@ -1098,12 +1099,12 @@ class DocumentMixin:
         if self.doc is None:
             return False, ""
         if self._sign_worker is not None and self._sign_worker.isRunning():
-            return False, "Espera a que termine la firma en curso"
+            return False, tr("Espera a que termine la firma en curso")
         if self._modified and self._pending_bytes is None:
-            return False, ("Guarda o descarta antes los cambios sin guardar: quitar una "
-                           "firma parte de la versión del archivo")
+            return False, tr(("Guarda o descarta antes los cambios sin guardar: quitar una "
+                           "firma parte de la versión del archivo"))
         if self._pending_bytes is None and self._clean_bytes is None:
-            return False, "Guarda antes el documento"
+            return False, tr("Guarda antes el documento")
         return True, ""
 
     def remove_last_signature(self, field_name: str) -> bool:
@@ -1119,10 +1120,10 @@ class DocumentMixin:
             return False
         r = QMessageBox.question(
             self, "Quitar firma",
-            f"¿Quitar la firma «{field_name}»?\n\n"
+            tr("¿Quitar la firma «{field_name}»?\n\n"
             "Su recuadro quedará vacío en el mismo sitio: haz clic en él para firmar "
             "de nuevo, con otro certificado si quieres. Las demás firmas no se tocan.\n\n"
-            "El cambio no se guarda en el archivo hasta que guardes el documento.",
+            "El cambio no se guarda en el archivo hasta que guardes el documento.").format(field_name=field_name),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No)
         if r != QMessageBox.StandardButton.Yes:
@@ -1134,14 +1135,14 @@ class DocumentMixin:
             doc = self._open_bytes(nuevo)
         except (SigningError, Exception) as e:  # noqa: BLE001
             traceback.print_exc()
-            QMessageBox.critical(self, "Quitar firma", f"No se pudo quitar la firma:\n{e}")
+            QMessageBox.critical(self, "Quitar firma", tr("No se pudo quitar la firma:\n{e}").format(e=e))
             return False
         page = min(self.current_page, len(doc) - 1)
         self._set_document(doc, self.pdf_path, self._clean_bytes, self._password,
                            modified=True, pending=nuevo)
         self.go_to_page(page)
         self.statusBar().showMessage(
-            f"Firma «{field_name}» quitada — sin guardar. Haz clic en su recuadro para firmar de nuevo")
+            tr("Firma «{field_name}» quitada — sin guardar. Haz clic en su recuadro para firmar de nuevo").format(field_name=field_name))
         return True
 
     # ── anotaciones creadas desde el visor ─────────────────────────────── #
@@ -1155,7 +1156,7 @@ class DocumentMixin:
               "strike": page.add_strikeout_annot, "squiggly": page.add_squiggly_annot}.get(kind)
         if fn is None:
             return
-        self.checkpoint(MARKUP_LABELS.get(kind, "Marcar texto"))
+        self.checkpoint(MARKUP_LABELS.get(kind, tr("Marcar texto")))
         # (r105) `rects` como se ve la página. Se pasan como cuadriláteros sin
         # girar que conservan qué lado es «abajo» en la vista: el subrayado
         # va bajo el texto tal como se lee, también con la página girada.
@@ -1182,7 +1183,7 @@ class DocumentMixin:
         if self.doc is None or len(points) < 2:
             return
         page = self.doc[self.current_page]
-        self.checkpoint(f"{MARKUP_LABELS.get(kind, 'Marcar')} a mano alzada")
+        self.checkpoint(tr("{get} a mano alzada").format(get=MARKUP_LABELS.get(kind, tr('Marcar'))))
         m = page.derotation_matrix                  # (r105) visto → sin girar
         annot = page.add_ink_annot([[tuple(fitz.Point(p) * m) for p in points]])
         annot.set_colors(stroke=color or MARKUP_COLORS.get(kind, (1.0, 0.92, 0.0)))
@@ -1199,7 +1200,7 @@ class DocumentMixin:
         if self.doc is None:
             return
         page = self.doc[self.current_page]
-        self.checkpoint("Nota")
+        self.checkpoint(tr("Nota"))
         annot = page.add_text_annot(doc_tools.unrotated_point(page, pt), text, icon="Comment")
         if page.rotation:
             # (r105) Icono derecho en una página girada: NoRotate lo deja sin
@@ -1216,7 +1217,7 @@ class DocumentMixin:
         text = self.viewer._tsel_text
         if text:
             QApplication.clipboard().setText(text)
-            self.statusBar().showMessage(f"Copiados {len(text)} caracteres")
+            self.statusBar().showMessage(tr("Copiados {n} caracteres").format(n=len(text)))
 
     # ── aviso del documento ───────────────────────────────────────────── #
 
@@ -1232,10 +1233,10 @@ class DocumentMixin:
         msgs = []
         if self.doc is not None:
             if self.doc.is_form_pdf and not doc_tools.signed_count(self.doc):
-                msgs.append("Este documento contiene campos de formulario: "
-                            "haz clic en ellos para rellenarlos.")
+                msgs.append(tr("Este documento contiene campos de formulario: "
+                            "haz clic en ellos para rellenarlos."))
             if self._orig_encrypted:
-                msgs.append("Documento protegido con cifrado.")
+                msgs.append(tr("Documento protegido con cifrado."))
         self._notice_lbl.setText("   ·   ".join(msgs))
         self._notice_box.setVisible(bool(msgs))
 
@@ -1248,7 +1249,7 @@ class DocumentMixin:
         (r39) Pide **siempre** el certificado: aquí no está la barra de la
         herramienta Firma, que enseña cuál se va a usar, así que si no se
         preguntase se firmaría en silencio con el de la sesión anterior."""
-        self.statusBar().showMessage(f"Firmando en el campo «{field['name']}»…")
+        self.statusBar().showMessage(tr("Firmando en el campo «{field}»…").format(field=field['name']))
         self.trigger_signature(fitz.Rect(field["rect"]), field_name=field["name"],
                                choose_cert=True)
 
@@ -1261,20 +1262,20 @@ class DocumentMixin:
             self._do_signature(rect, field_name, choose_cert)
         except Exception as e:
             traceback.print_exc()
-            QMessageBox.critical(self, "Error inesperado", f"Error al preparar la firma:\n{e}")
+            QMessageBox.critical(self, tr("Error inesperado"), tr("Error al preparar la firma:\n{e}").format(e=e))
             self._finish_action()
 
     def _do_signature(self, rect, field_name: str = "", choose_cert: bool = False):
         if rect.width < 20 or rect.height < 10:
-            self.statusBar().showMessage("Dibuja un área más grande para la firma")
+            self.statusBar().showMessage(tr("Dibuja un área más grande para la firma"))
             return
         has_sigs = doc_tools.has_signatures(self.doc)
         if has_sigs and self._modified and self._pending_bytes is None:
             r = QMessageBox.warning(
-                self, "Firmar documento",
-                "El documento ya contiene firmas y tiene cambios sin guardar.\n"
+                self, tr("Firmar documento"),
+                tr("El documento ya contiene firmas y tiene cambios sin guardar.\n"
                 "Si firmas ahora, esos cambios se incluirán y las firmas anteriores "
-                "dejarán de ser válidas.\n\n¿Continuar?",
+                "dejarán de ser válidas.\n\n¿Continuar?"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No)
             if r != QMessageBox.StandardButton.Yes:
@@ -1309,7 +1310,7 @@ class DocumentMixin:
         base = (os.path.splitext(self.pdf_path)[0] if self.pdf_path else
                 os.path.join(QSettings(*SETTINGS).value("recent/dir", ""), "documento"))
         out_path, _ = QFileDialog.getSaveFileName(
-            self, "Guardar documento firmado", base + "_firmado.pdf", "Archivos PDF (*.pdf)")
+            self, tr("Guardar documento firmado"), base + "_firmado.pdf", tr("Archivos PDF (*.pdf)"))
         if not out_path:
             self._finish_action()
             return
@@ -1334,9 +1335,9 @@ class DocumentMixin:
             kw = {"encryption": fitz.PDF_ENCRYPT_KEEP} if self._orig_encrypted else {}
             data = self.doc.tobytes(garbage=1, deflate=True, **kw)
 
-        progress = QProgressDialog("Firmando el documento…", "Cancelar", 0, 0, self)
+        progress = QProgressDialog(tr("Firmando el documento…"), tr("Cancelar"), 0, 0, self)
         progress.setCancelButton(None)
-        progress.setWindowTitle("Firma digital")
+        progress.setWindowTitle(tr("Firma digital"))
         progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.setMinimumDuration(0)
         progress.show()
@@ -1369,8 +1370,8 @@ class DocumentMixin:
                     f.write(signed)
                 os.replace(tmp, out_path)
             except Exception as e:
-                QMessageBox.critical(self, "Error al guardar",
-                                     f"El documento se firmó pero no se pudo guardar:\n{e}")
+                QMessageBox.critical(self, tr("Error al guardar"),
+                                     tr("El documento se firmó pero no se pudo guardar:\n{e}").format(e=e))
                 return
             doc = fitz.open("pdf", signed)
             if doc.needs_pass and password:
@@ -1379,23 +1380,23 @@ class DocumentMixin:
             self.go_to_page(page)
             self._add_recent(out_path)
             self.sidebar.show_panel("signatures")
-            extra = "\nIncluye sello de tiempo." if opts["tsa_url"] else ""
-            QMessageBox.information(self, "Firmado",
-                                    f"Documento firmado y guardado en:\n{out_path}{extra}")
-            self.statusBar().showMessage(f"Firmado: {os.path.basename(out_path)}")
+            extra = tr("\nIncluye sello de tiempo.") if opts["tsa_url"] else ""
+            QMessageBox.information(self, tr("Firmado"),
+                                    tr("Documento firmado y guardado en:\n{out_path}{extra}").format(out_path=out_path, extra=extra))
+            self.statusBar().showMessage(tr("Firmado: {nombre}").format(nombre=os.path.basename(out_path)))
 
         def _fail(msg: str):
             _cleanup()
             QMessageBox.critical(
-                self, "Error al firmar",
-                f"No se pudo firmar el PDF.\n\n{msg}\n\n"
+                self, tr("Error al firmar"),
+                tr("No se pudo firmar el PDF.\n\n{msg}\n\n"
                 "• Verifica que el certificado sea válido y no esté caducado.\n"
-                "• Si usas un archivo .pfx, comprueba la contraseña.")
-            self.statusBar().showMessage("Error al firmar")
+                "• Si usas un archivo .pfx, comprueba la contraseña.").format(msg=msg))
+            self.statusBar().showMessage(tr("Error al firmar"))
 
         worker.succeeded.connect(_ok)
         worker.failed.connect(_fail)
         worker.finished.connect(_finished)
         self._finish_action()
-        self.statusBar().showMessage("Firmando… por favor espera")
+        self.statusBar().showMessage(tr("Firmando… por favor espera"))
         worker.start()

@@ -1,0 +1,17 @@
+{
+ "WelcomeLabel2": "[name/ver] va être installé sur cet ordinateur.%n%nPendant l'installation, Python, les composants Python et les polices de caractères (environ {#ComponentesMB} Mo) seront téléchargés depuis leurs sites officiels : une connexion Internet est nécessaire.%n%nIl est recommandé de fermer AventyaPDF avant de continuer.",
+ "TareaEscritorio": "Créer un raccourci sur le Bureau",
+ "GrupoAccesos": "Raccourcis :",
+ "PreparandoArranque": "Préparation d'AventyaPDF pour le premier démarrage…",
+ "AbrirApp": "Ouvrir %1",
+ "MenuConfianza": "Pour que le sous-menu « AventyaPDF » apparaisse dans le menu du clic droit de Windows 11, Windows doit faire confiance au certificat d'AventyaPDF.%n%nWindows va maintenant demander l'autorisation d'administrateur (une seule fois sur cet ordinateur).",
+ "MenuSinPermiso": "L'autorisation d'administrateur n'a pas été accordée.%n%nSans elle, le sous-menu « AventyaPDF » du clic droit restera dans « Afficher plus d'options ». La demander à nouveau ?%n%n(Vous pouvez aussi le faire plus tard depuis AventyaPDF : Aide › Réparer le menu contextuel de l'Explorateur.)",
+ "MenuFallo": "Impossible d'ajouter le sous-menu « AventyaPDF » au menu principal de Windows 11 (il reste dans « Afficher plus d'options »). Détails dans :",
+ "CertQuitar": "Pour supprimer de cet ordinateur le certificat du menu du clic droit d'AventyaPDF, Windows va demander l'autorisation d'administrateur.",
+ "CertNoQuitado": "Le certificat d'AventyaPDF n'a pas été supprimé des « Personnes autorisées » de l'ordinateur (l'autorisation d'administrateur n'a pas été accordée).%n%nVous pouvez le supprimer manuellement : « Gérer les certificats de l'ordinateur » (certlm.msc) › Personnes autorisées › Certificats › « Aventya Asesoria Integral SL ».",
+ "MenuFirmar": "Signer numériquement",
+ "MenuCombinar": "Combiner en un PDF",
+ "MenuConvertir": "Convertir en PDF",
+ "TipoDocumento": "Document PDF",
+ "DescripcionApp": "Visionneuse et éditeur PDF avec signature numérique et OCR"
+}

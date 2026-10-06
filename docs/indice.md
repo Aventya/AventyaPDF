@@ -32,6 +32,8 @@ La documentación está distribuida en los siguientes archivos temáticos interr
    * (r63) Plan, sin empezar: arquitectura destino, qué sustituye a cada biblioteca, fases con criterios de aceptación, pruebas, esfuerzo y decisiones pendientes.
 13. **[Informe: proyectos similares y otras formas de hacerlo (informe_alternativas.md)](informe_alternativas.md)**
    * (r135) Comparación con Stirling-PDF, BentoPDF, SumatraPDF, PDF Arranger, PDFsam y PDF4QT; viabilidad de React (Electron/Tauri) y de una app nativa, con el consumo de memoria de cada opción (2026-10-06).
+14. **[Idiomas de la aplicación (idiomas.md)](idiomas.md)**
+   * (r136) Siete idiomas: cómo se elige, dónde están los textos, cómo corregir una traducción y reglas para programar textos nuevos.
 
 > Los documentos 1–5 describen la versión 1 (antes de la división de `main_window.py` en módulos). La composición actual de archivos está en [MEMORIA_EVOLUTIVA.md](../MEMORIA_EVOLUTIVA.md) §2.
 

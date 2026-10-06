@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 | :-- | :-- |
-| Revisión de la memoria | **r135** |
+| Revisión de la memoria | **r136** |
 | Fecha de la revisión | 2026-10-06 |
 | Versión de la app | **0.9.14** publicada y firmada con Sigstore (r133); la 0.9.13 retirada de GitHub. La 1.0.0 queda para el lanzamiento en la Microsoft Store. |
 | Raíz del proyecto | (r94) Ricardo trabaja desde **dos equipos**: `C:\Users\ricardo\Proyectos\AventyaPDF` (tiene Inno Setup, Visual Studio con C++ y el certificado del paquete del menú contextual: aquí se puede empaquetar) y `C:\Users\Aventya\Proyectos\AVENTYAPDF` (antes `ANTIGRAVITY-PDF`) |
@@ -60,6 +60,9 @@ memoria narrativa: [docs/](docs/indice.md).
 | [actualizaciones.py](actualizaciones.py) | ~80 | (r84) **Buscar actualizaciones**: `fetch_latest` consulta `releases/latest` de GitHub (urllib, sin dependencias) y `release_info` saca versión y **enlace directo al instalador** adjunto; `is_newer` compara versiones numéricamente. La ventana es `window_menus.check_updates` (Ayuda › Buscar actualizaciones…); el **aviso automático al iniciar** es `start_update_check` + `_UpdateNotifier` (hilo aparte), desactivable en Ayuda. (r127) `download_installer` baja el instalador a la **carpeta Descargas** (`carpeta_descargas`, `SHGetKnownFolderPath`) con su SHA-256; `instalador_descargado` reconoce el que ya espera allí; `mostrar_en_carpeta` lo enseña en el Explorador. **No ejecuta nada** (antes `launch_installer_after_exit` con PowerShell). |
 | [signer_backend.py](signer_backend.py) | ~420 | `PAdESSigner.sign_pdf_bytes` (bytes→bytes, TSA, certificación, campo único) + sello visual `_SpanishCertTextStamp`. (r84) El texto del sello va en **Noto Sans incrustada** (`GlyphAccumulatorFactory`, requiere `uharfbuzz`), no en Courier; `_font_extents`/`_text_width` miden con la fuente real. (r61) `remove_last_signature`: vuelve a la versión del archivo anterior a la última firma (`_revision_end`) y deja su recuadro vacío (invariante 27, g). Mantiene `sign_pdf_visible_with_widget` por compatibilidad. |
 | [tsa.py](tsa.py) | ~15 | (r131) `TSA_PRESETS`, servidores de sellado de tiempo. Separado de `signer_backend` para que la ventana no cargue pyHanko al arrancar (invariante 60). |
+| [idioma.py](idioma.py) | ~120 | (r136) Idioma de la interfaz: `tr("texto en español")`, `tr_en`, `IDIOMAS` (es, en, fr, it, ca, gl, eu), `elegido()` (entorno `AVENTYAPDF_IDIOMA` > ajuste `ui/idioma` > idioma de Windows > inglés), leído sin Qt. Invariante 61. |
+| [herramientas_idioma.py](herramientas_idioma.py) | ~170 | (r136) Mantenimiento: `catalogo` (rehace `idiomas/es.json` desde los `tr()` del código), `revisar` (qué falta en cada idioma), `instalador` (genera `empaquetado/idiomas/mensajes.iss` y `shell/textos_menu.h`). No va en el instalador. |
+| [idiomas/](idiomas/) | — | (r136) `es.json` (catálogo, ~840 textos) y una traducción por idioma (`en`, `fr`, `it`, `ca`, `gl`, `eu`.json). Va dentro del instalador (`componentes.PROPIOS`). Glosarios en `docs/idiomas/`. |
 | [create_signature_background.py](create_signature_background.py) | ~130 | (r9) Genera `signature_background.pdf` desde `MOSCA.svg` (o el SVG pasado) con Edge/Chrome headless `--print-to-pdf`. En una copia temporal convierte las `<mask>` de color sólido en `<clipPath>` + opacidad (r12) y amplía la región de las demás. Solo se usa al cambiar el logotipo. |
 | [utils.py](utils.py) | ~200 | `PDFUtils`: FreeText rich-text, Ink, Square redondeado, codificación de estilo. (r13: fuera `add_image_stamp` y `add_emoji_stamp`.) (r24) `TOOLTIP_QSS`: estilo único de los tooltips (crema #FFF8DC). |
 | [emoji_font.py](emoji_font.py) | ~260 | (r40) **Noto Emoji** (monocroma, vectorial) en un Stamp (`/Subj EmojiNoto|c#RRGGBB|aX`): el glifo se escribe con la fuente incrustada, en el color y la transparencia elegidos (`style_token`, `parse_style`). `catalog()` (1391 emojis de `vendor/emoji/emojis.json`), `search(texto, grupo)` sin tildes en español e inglés, `groups()`, `find`, `box_size` (avance × alto de la fuente), `write_rect()`, `is_emoji`/`is_stamp`/`is_sized`. `LEGACY_SUBJECTS` / `STAMP_SUBJECTS` / `SIZED_SUBJECTS` para los antiguos. |
@@ -169,6 +172,9 @@ ventana; ambos llaman a su API pública (`checkpoint`, `mark_modified`,
   Sale con el botón, Esc, otra herramienta, zoom 100 %, compresión, seleccionar
   una anotación o cambiar/cerrar el panel; si abrió el panel, lo vuelve a
   cerrar. Menú Organizar › «Organizar páginas en el panel lateral».
+- **Idioma** (r136): Ayuda › Idioma, con cada idioma en su propio nombre;
+  se aplica al volver a abrir (aviso ya en el idioma elegido). El instalador
+  pregunta el idioma y lo guarda en `ui/idioma`. Ver `docs/idiomas.md`.
 - **Combinar y abrir varios** (r123): Organizar › «Combinar PDF…» con dos
   opciones. «Combinar abiertos» junta todas las pestañas, en su orden y con sus
   cambios sin guardar, en un PDF nuevo sin guardar; cierra todas y deja solo
@@ -868,6 +874,24 @@ ventana; ambos llaman a su API pública (`checkpoint`, `mark_modified`,
     estos importen: lo vigila `test_el_arranque_no_carga_ocr_ni_firma`. El
     instalador sigue incluyéndolos: `componentes._modulos` recorre también los
     imports dentro de funciones.
+61. **(r136) Textos de la interfaz: siempre con `tr("…")` en español.** La
+    clave de cada traducción es el texto español literal: cambiar una coma
+    del español deja ese texto sin traducir en los demás idiomas hasta que se
+    traduzca otra vez. Con datos, marcadores con nombre y `.format()` fuera
+    de `tr()`: `tr("Abierto: {nombre}").format(nombre=…)`; nunca una f-string
+    dentro de `tr()` (el catálogo solo ve textos literales). **No** pasan por
+    `tr()`: claves de ajustes, identificadores (modos, tipos de anotación),
+    lo que se escribe dentro del PDF y la aplicación vuelve a leer (`/Subj`,
+    `/Contents` de la firma manuscrita, nombres de campo `Firma…`), órdenes,
+    rutas y URL; tampoco las claves de un diccionario que se comparan con un
+    texto (si una etiqueta visible es clave, la clave misma va con `tr()`,
+    como `utils.FONT_LABELS`). Los plurales no se fabrican añadiendo «s»:
+    dos textos (singular y plural). Las constantes de módulo se traducen al
+    importar: el idioma se decide antes (`idioma.ACTUAL`) y cambiarlo exige
+    volver a abrir. Tras tocar textos: `python herramientas_idioma.py
+    catalogo` y traducir lo nuevo (lo vigilan `TestIdiomas` y
+    `test_la_ventana_arranca_en_cada_idioma`). Las pruebas fijan
+    `AVENTYAPDF_IDIOMA=es`.
 
 ## 5. Operaciones que escriben en disco
 
@@ -1257,6 +1281,7 @@ motivos, invariantes, trampas y estado.
 
 | Rev | Fecha | Cambio |
 | :-- | :-- | :-- |
+| r136 | 2026-10-06 | **AventyaPDF en siete idiomas** (Ricardo: «Lo necesitaría en varios idiomas, español, inglés, francés, italiano, catalán, gallego y euskera. La firma también cambia de idioma. La traducción la debes llevar a cabo tú pero para ello debes tomar el control con un subagente que actúe como un experto lingüista del ámbito técnico y legal»). Nuevo `idioma.py` (`tr()`, elección: variable `AVENTYAPDF_IDIOMA` > ajuste `ui/idioma` > idioma de Windows > inglés) y `herramientas_idioma.py` (`catalogo`, `revisar`, `instalador`); unos 30 módulos con sus textos en `tr()`; catálogo `idiomas/es.json` (841 textos) y `idiomas/{en,fr,it,ca,gl,eu}.json`, traducidos por un subagente lingüista por idioma (glosarios en `docs/idiomas/`). El sello visible de la firma sale en el idioma elegido. Elección: el instalador pregunta el idioma (Inno `[Languages]`, con `Galician.isl` y `Basque.isl` no oficiales; textos propios en `empaquetado/idiomas/instalador*.json` → `mensajes.iss` generado) y lo guarda en `HKCU\Software\aventyapdf\config\ui\idioma` sin pisar al actualizar un cambio hecho en la app; menú **Ayuda › Idioma** (se aplica al volver a abrir). El menú del Explorador de Windows 11 (`shell/AventyaPDFShell.cpp` + `shell/textos_menu.h` generado) lee el mismo ajuste. Botones estándar de Qt con `qtbase_xx.qm` (gl y eu caen en español). Corregido en el original «cambiar en Firma › Opciones de firma…» → «Firmar ›». El manual (`MANUAL.pdf`) sigue solo en español. Pruebas nuevas: `TestIdiomas` y la ventana arranca en cada idioma; en Linux, los mismos 36 fallos propios de Windows que antes. **Pendiente en Windows**: compilar el instalador (archivos `.isl` de gallego y euskera) y la DLL del menú contextual, y probar la instalación en otro idioma. **Dudas para un hablante nativo**: it «C.F.», «Per conto di», «marca temporale»; en «Tax ID», «On behalf of», inglés británico; ca nombre de certlm, tratamiento; fr «Signé le», «approuvée», «NIF»; gl tratamiento de tú; eu «instalatu» frente a «ezarri» del `.isl`, nombres de teclas, «IFZ», «Ord.», «Sinatze-data». Erratas del original pendientes: «Firmas Certificadas», mezcla «ficheros»/«archivos», «(Windows Credential Manager)» en inglés. |
 | r135 | 2026-10-06 | **Informe comparativo y alternativas** (Ricardo: «revisa toda la documentación accesible de proyectos similares de github y crea un informe comparativo, además revisa la viabilidad de realizar este proyecto de otra forma (como por ejemplo usando react) y que se mantenga con un consumo de memoria pequeño»). Nuevo `docs/informe_alternativas.md` (enlazado en `docs/indice.md`): Stirling-PDF, BentoPDF, SumatraPDF, PDF Arranger, PDFsam, PDF4QT, EmbedPDF y MuPDF.js; React con Electron o Tauri **no ahorra memoria** (en Windows ambos usan Chromium; medición publicada con la misma web: Tauri 399 MB, Electron 318 MB); solo una app nativa sin Python baja claramente (plan WinUI 3). Memoria de AventyaPDF medida en Linux (0.9.14): 113 MB con la ventana, 126 MB con un PDF de 50 páginas; en Windows, 161 MB en r67, antes de la carga diferida de r131 (sin medir después). Recomendación: seguir con Python + Qt; React solo para una posible versión web aparte. Sin cambios de código. |
 | r134 | 2026-10-05 | **Auditoría de las instrucciones (`CLAUDE.md` y esta memoria)** (Ricardo, tras el informe de `/claude-api prompt-audit`: «haz los cambios de publicación necesarios y modifica todo lo que ves necesario en la memoria y sobre todo en claude.md»). **Datos viejos corregidos**: cabecera (estado de pruebas 200/200 y «la interfaz aún no se ha probado a mano», recuento de módulos, rutas antiguas), §7.0 «Verificación pendiente» (ya no lo está), ruta `ANTIGRAVITY-PDF` en §8. **Contradicciones**: §8 decía que la 1.0.0 sería la primera con instalador firmado y la cabecera que será el lanzamiento en la Store (la más reciente, 2026-10-02, manda); §8 «Ramas» decía que esta memoria y `CLAUDE.md` solo estaban en `desarrollo`, pero llegan a `main` con cada publicación: se dejan ahí (README y docs/ los enlazan) y la nota lo dice. **Publicación** (§8): numeración de la serie 0.9.x (sube el último número), la regla de no tocar una versión publicada en una sola frase, el paso 4 ya no manda «poner al día `desarrollo` con `main`» (no hace falta) y el paso 6 avisa de que el borrado necesita la autorización de Ricardo. `CLAUDE.md` reescrito: qué es el proyecto, para quién se escribe, pruebas en Windows y en Linux, ramas y publicación. `docs/historial_versiones.md`: corregido el mismo dato de la 1.0.0. |
 | r133 | 2026-10-04 | **0.9.14 publicada** desde el equipo `ricardo`: 222 pruebas OK, `construir.ps1 -ProbarInstalacion` sin fallos (instalador y MSIX), `desarrollo` → `main`, etiqueta `v0.9.14`, publicación con `--notes-file` y firma Sigstore correcta (`.sigstore.json` adjunto). Paso 6: publicación y etiqueta `v0.9.13` borradas con autorización expresa de Ricardo («hazlo tu»; el modo automático bloquea ese borrado si no se autoriza). |

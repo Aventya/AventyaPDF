@@ -39,6 +39,7 @@ import emoji_font
 import firma_manuscrita as fm
 import form_ui
 from utils import PDFUtils
+from idioma import tr
 
 _MARKUP_TYPES = ('Highlight', 'Underline', 'StrikeOut', 'Squiggly')
 
@@ -295,7 +296,7 @@ class PDFViewerWidget(QLabel):
         a = self._annot_by_idx(self._sel.idx) if self._sel else None
         if a is None or self._sel.is_signature:
             return
-        mw.checkpoint("Eliminar anotación")
+        mw.checkpoint(tr("Eliminar anotación"))
         self.pdf_page.delete_annot(a)
         self._sel = None
         mw._hide_annot_opts()
@@ -431,7 +432,7 @@ class PDFViewerWidget(QLabel):
         if annot.type[1] == "Widget":
             return
         if not self._erase_checkpointed:          # un solo paso por arrastre
-            self.main_window.checkpoint("Borrador")
+            self.main_window.checkpoint(tr("Borrador"))
             self._erase_checkpointed = True
         self.pdf_page.delete_annot(annot)
         self.main_window.mark_modified()
@@ -586,7 +587,7 @@ class PDFViewerWidget(QLabel):
                     ang = round(ang / 15) * 15          # Ctrl: saltos de 15°
                 self._rot_angle = ang % 360
                 self.main_window.statusBar().showMessage(
-                    f"Giro: {self._rot_angle:.0f}°  ·  Ctrl: de 15 en 15°")
+                    tr("Giro: {rot_angle:.0f}°  ·  Ctrl: de 15 en 15°").format(rot_angle=self._rot_angle))
                 self.update()
                 return
             if self._resizing and self._sel and self._resize_orig_rect:
@@ -632,7 +633,7 @@ class PDFViewerWidget(QLabel):
                     atype = hit[1].type[1]
                     if atype == 'Text':
                         QToolTip.showText(event.globalPosition().toPoint(),
-                                          hit[1].info.get('content', '') or 'Nota', self)
+                                          hit[1].info.get('content', '') or tr('Nota'), self)
                     self.setCursor(Qt.CursorShape.PointingHandCursor if atype in _MARKUP_TYPES
                                    else Qt.CursorShape.SizeAllCursor)
                 elif field is not None:
@@ -709,7 +710,7 @@ class PDFViewerWidget(QLabel):
                 a = self._annot_by_idx(self._sel.idx) if self._sel else None
                 cambio = abs((self._rot_angle - self._rot_angle0 + 180) % 360 - 180)
                 if a is not None and cambio > 0.05:
-                    mw.checkpoint("Girar")
+                    mw.checkpoint(tr("Girar"))
                     PDFUtils.set_text_rotation(mw.doc, a, self._rot_angle, self._rot_size)
                     mw.mark_modified()
                     mw.render_page(keep_selection=True)
@@ -717,21 +718,21 @@ class PDFViewerWidget(QLabel):
                     if a is not None:
                         self._sel.rect = fitz.Rect(self.annot_rect(a))
                         self._sel.orig_rect = fitz.Rect(self._sel.rect)
-                    mw.statusBar().showMessage(f"Cuadro de texto girado {self._rot_angle:.0f}°")
+                    mw.statusBar().showMessage(tr("Cuadro de texto girado {rot_angle:.0f}°").format(rot_angle=self._rot_angle))
                 self.update()
                 return
             if self._tsel_start is not None:
                 self._tsel_start = None
                 if self._tsel_text:
                     mw.statusBar().showMessage(
-                        f"{len(self._tsel_text)} caracteres seleccionados  ·  Ctrl+C copia"
-                        "  ·  clic derecho para resaltar, subrayar o tachar")
+                        tr("{n} caracteres seleccionados  ·  Ctrl+C copia"
+                        "  ·  clic derecho para resaltar, subrayar o tachar").format(n=len(self._tsel_text)))
                 return
             if self._resizing and self._sel:
                 a = self._annot_by_idx(self._sel.idx)
                 if a:
                     nr = fitz.Rect(self._sel.rect)
-                    mw.checkpoint("Redimensionar")
+                    mw.checkpoint(tr("Redimensionar"))
                     subj = a.info.get('subject', '')
                     if emoji_font.is_stamp(subj):
                         # Su apariencia escala con /Rect. Sin set_rect() ni update(),
@@ -775,7 +776,7 @@ class PDFViewerWidget(QLabel):
                     if a:
                         o = self._sel.orig_rect
                         nr = fitz.Rect(o.x0+dx, o.y0+dy, o.x1+dx, o.y1+dy)
-                        mw.checkpoint("Mover")
+                        mw.checkpoint(tr("Mover"))
                         self._set_annot_rect(a, nr)
                         mw.mark_modified()
                         self._sel.orig_rect = fitz.Rect(nr)
@@ -815,7 +816,7 @@ class PDFViewerWidget(QLabel):
             if self.mode == "SIGN":
                 mw.trigger_signature(pdf_r)
             else:
-                mw.checkpoint("Rectángulo")
+                mw.checkpoint(tr("Rectángulo"))
                 PDFUtils.add_rectangle_annotation(
                     mw.doc, mw.current_page, pdf_r,
                     color=self.rect_color, width=self.rect_line_width,
@@ -868,10 +869,10 @@ class PDFViewerWidget(QLabel):
             color=(1.0, 0.98, 0.85) if es_nota else st["color"],
             align=st["align"], nota=es_nota)
         if es_nota:                      # el texto de la nota siempre se ve negro
-            editor.apply_style(family="Segoe UI", pixel_size=12 * self.scale_factor,
+            editor.apply_style(family=tr("Segoe UI"), pixel_size=12 * self.scale_factor,
                                color=(0.1, 0.1, 0.1))
         self._text_target = ("annot", self._sel.idx,
-                             "Editar nota" if es_nota else "Editar texto")
+                             tr("Editar nota") if es_nota else tr("Editar texto"))
 
     # ── escritura sobre la página (r23) ───────────────────────────────── #
 
@@ -926,19 +927,19 @@ class PDFViewerWidget(QLabel):
             caja, "", family=self._family_for(mw._text_font_css()),
             size=self.text_font_size, bold=self.text_bold, italic=self.text_italic,
             color=self.text_color, align=self.text_align)
-        self._text_target = ("new_text", None, "Texto")
+        self._text_target = ("new_text", None, tr("Texto"))
         mw.statusBar().showMessage(
-            "Escribe el texto  ·  Ctrl+Intro confirma  ·  Esc cancela")
+            tr("Escribe el texto  ·  Ctrl+Intro confirma  ·  Esc cancela"))
 
     def begin_note(self, punto: fitz.Point) -> None:
         """Nota adhesiva: el comentario se escribe en un cuadro amarillo sobre
         la página, no en una ventana."""
         pagina = self.pdf_page.rect
         caja = fitz.Rect(punto.x, punto.y, punto.x + 190, punto.y + 70) & pagina
-        self._open_text_editor(caja, "", family="Segoe UI", size=12, nota=True)
-        self._text_target = ("new_note", fitz.Point(punto), "Nota")
+        self._open_text_editor(caja, "", family=tr("Segoe UI"), size=12, nota=True)
+        self._text_target = ("new_note", fitz.Point(punto), tr("Nota"))
         self.main_window.statusBar().showMessage(
-            "Escribe el comentario  ·  Ctrl+Intro confirma  ·  Esc cancela")
+            tr("Escribe el comentario  ·  Ctrl+Intro confirma  ·  Esc cancela"))
 
     def restyle_text_editor(self) -> None:
         """La barra secundaria ha cambiado el estilo: se refleja al momento en
@@ -1042,12 +1043,12 @@ class PDFViewerWidget(QLabel):
         if not a:
             return
         menu = QMenu(self)
-        act_edit = menu.addAction("Editar texto…") if self._sel.is_text else None
+        act_edit = menu.addAction(tr("Editar texto…")) if self._sel.is_text else None
         act_del = None
         if self._sel.is_signature:
-            menu.addAction("Firma — no se puede eliminar").setEnabled(False)
+            menu.addAction(tr("Firma — no se puede eliminar")).setEnabled(False)
         else:
-            act_del = menu.addAction("Eliminar anotación")
+            act_del = menu.addAction(tr("Eliminar anotación"))
         chosen = menu.exec(event.globalPos())
         if act_edit is not None and chosen == act_edit:
             self._edit_selected_text()
@@ -1057,11 +1058,11 @@ class PDFViewerWidget(QLabel):
     def _text_selection_menu(self, global_pos) -> None:
         mw = self.main_window
         menu = QMenu(self)
-        a_copy = menu.addAction("Copiar texto")
+        a_copy = menu.addAction(tr("Copiar texto"))
         menu.addSeparator()
         kinds = {}
-        for kind, label in (("highlight", "Resaltar"), ("underline", "Subrayar"),
-                            ("strike", "Tachar"), ("squiggly", "Subrayado ondulado")):
+        for kind, label in (("highlight", tr("Resaltar")), ("underline", tr("Subrayar")),
+                            ("strike", tr("Tachar")), ("squiggly", tr("Subrayado ondulado"))):
             kinds[menu.addAction(label)] = kind
         chosen = menu.exec(global_pos)
         if chosen is None:
@@ -1169,8 +1170,8 @@ class PDFViewerWidget(QLabel):
                 col = QColor(int(r * 255), int(g * 255), int(b * 255), 110)
             else:
                 col = QColor(0, 120, 212, 70)
-            for tr in self._tsel_rects:
-                p.fillRect(self._to_screen_rect(tr), col)
+            for rr in self._tsel_rects:
+                p.fillRect(self._to_screen_rect(rr), col)
 
         if self._sel and self.mode == "NONE":
             sr = self._to_screen_rect(self._sel.rect)

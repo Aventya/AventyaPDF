@@ -43,6 +43,7 @@ import fitz
 
 import icons
 import pdf_compression
+from idioma import tr
 
 # Bits de `span["flags"]` de PyMuPDF.
 FLAG_SUPERSCRIPT = 1
@@ -146,7 +147,7 @@ def display_name(name: str) -> str:
     """Nombre de la fuente tal y como se le enseña al usuario. Las Type 3 no
     tienen nombre: MuPDF devuelve su referencia («Type3 (6 0 R)»)."""
     n = _SUBSET.sub("", name or "")
-    return "Type 3 (del documento)" if n.startswith("Type3") else n
+    return tr("Type 3 (del documento)") if n.startswith("Type3") else n
 
 
 def style_from_name(name: str) -> tuple[bool, bool]:
@@ -227,16 +228,16 @@ def resolve_font(name: str, flags: int = 0, bold: bool | None = None,
     # 1) la MISMA fuente del documento, si está instalada en Windows
     f = _system_font(key, bold, italic)
     if f is not None:
-        return f, f"{_qt_family(f.name)} (la del documento)"
+        return f, tr("{qt_family} (la del documento)").format(qt_family=_qt_family(f.name))
     # 2) la más parecida del sistema
     f = _system_font(_PARECIDAS[kind], bold, italic)
     if f is not None:
-        return f, f"{_qt_family(f.name)} (la más parecida del sistema)"
+        return f, tr("{qt_family} (la más parecida del sistema)").format(qt_family=_qt_family(f.name))
     # 3) la fuente base de la app
     f = _noto(kind, bold, italic)
     if f is not None:
         return f, _noto_label(kind, bold, italic)
-    return _base14(flags, bold, italic), "fuente base del PDF"
+    return _base14(flags, bold, italic), tr("fuente base del PDF")
 
 
 def _covering_font(text: str, font: fitz.Font, flags: int,
@@ -256,7 +257,7 @@ def _covering_font(text: str, font: fitz.Font, flags: int,
             return alt, _noto_label(kind, bold, italic), ""
     alt = _base14(flags, bold, italic)
     if not missing(alt):
-        return alt, "fuente base del PDF", ""
+        return alt, tr("fuente base del PDF"), ""
     return font, "", falta
 
 
@@ -661,15 +662,15 @@ def replace_block(page: fitz.Page, block: TextBlock, new_text: str, *,
     font, usada = resolve_font(nombre, block.flags, bold, italic)
     font, alt, faltan = _covering_font(new_text, font, block.flags, bold, italic)
     if alt:
-        avisos.append(f"«{nombre}» no tiene algunos caracteres; se han escrito con {alt}.")
+        avisos.append(tr("«{nombre}» no tiene algunos caracteres; se han escrito con {alt}.").format(nombre=nombre, alt=alt))
     elif family_key(nombre) not in _FAMILIES:
-        avisos.append(f"«{nombre}» no es una familia conocida; se ha usado {usada}.")
+        avisos.append(tr("«{nombre}» no es una familia conocida; se ha usado {usada}.").format(nombre=nombre, usada=usada))
     if faltan:
-        avisos.append("No hay ningún glifo para estos caracteres y saldrán en blanco: "
+        avisos.append(tr("No hay ningún glifo para estos caracteres y saldrán en blanco: ")
                       + " ".join(faltan))
     if block.mixed:
-        avisos.append(f"El párrafo mezclaba varios estilos; se ha reescrito entero "
-                      f"con {usada} de {size:g} pt.")
+        avisos.append(tr("El párrafo mezclaba varios estilos; se ha reescrito entero "
+                      "con {usada} de {size:g} pt.").format(usada=usada, size=size))
 
     # Las matrices se piden ANTES de poner la rotación a 0: después son la
     # identidad, y el cuadro que manda el visor se quedaba sin convertir (el
@@ -709,10 +710,10 @@ def replace_block(page: fitz.Page, block: TextBlock, new_text: str, *,
             page.set_rotation(rot)
 
     if res.overflows:
-        avisos.append(f"El texto necesita {res.needed:.0f} pt de alto y el cuadro tiene "
-                      f"{res.room:.0f} pt: estira una esquina hacia abajo para que quepa.")
+        avisos.append(tr("El texto necesita {needed:.0f} pt de alto y el cuadro tiene "
+                      "{room:.0f} pt: estira una esquina hacia abajo para que quepa.").format(needed=res.needed, room=res.room))
     if res.width > caja.width + 0.5:
-        avisos.append("Hay una palabra más ancha que el cuadro y se sale por el lado.")
+        avisos.append(tr("Hay una palabra más ancha que el cuadro y se sale por el lado."))
     res.warnings = avisos
     return res
 

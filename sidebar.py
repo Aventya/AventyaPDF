@@ -19,6 +19,8 @@ from PyQt6.QtWidgets import (
 
 import doc_tools
 import icons
+from idioma import tr
+
 _ROLE = Qt.ItemDataRole.UserRole
 
 COLUMN_MIN = 310          # ancho mínimo de la columna del panel lateral (r72: 290 → 310)
@@ -292,7 +294,7 @@ class ThumbnailsPanel(QWidget):
         self.mw = mw
         lay = QVBoxLayout(self)
         lay.setContentsMargins(6, 6, 6, 6)
-        lay.addWidget(_panel_header("Miniaturas de página"))
+        lay.addWidget(_panel_header(tr("Miniaturas de página")))
         self.list = _ThumbList(self)
         # (r31) Cuadrícula que se reparte al ancho del panel: al ensancharlo
         # caben más columnas; orden de izquierda a derecha y luego por filas.
@@ -363,7 +365,7 @@ class ThumbnailsPanel(QWidget):
             if actual is not None:
                 self.list.scrollToItem(actual)
         self.list.doItemsLayout()
-        self.mw.statusBar().showMessage(f"Miniaturas al {round(scale * 100)} %")
+        self.mw.statusBar().showMessage(tr("Miniaturas al {round} %").format(round=round(scale * 100)))
 
     def rebuild(self):
         # Conserva la selección (o la que haya pedido la última operación).
@@ -381,7 +383,7 @@ class ThumbnailsPanel(QWidget):
             it = QListWidgetItem(self._placeholder, "")
             it.setSizeHint(self._cell_size())
             it.setData(_ROLE, i)
-            it.setToolTip(f"Página {i + 1}")
+            it.setToolTip(tr("Página {valor}").format(valor=i + 1))
             self.list.addItem(it)
         self._pending = list(range(len(doc)))
         self._timer.start()
@@ -489,16 +491,16 @@ class ThumbnailsPanel(QWidget):
             return
         m = QMenu(self)
         n = len(rows)
-        sfx = f" ({n} páginas)" if n > 1 else ""
-        a_l = m.addAction("Girar a la izquierda" + sfx)
-        a_r = m.addAction("Girar a la derecha" + sfx)
+        sfx = tr(" ({n} páginas)").format(n=n) if n > 1 else ""
+        a_l = m.addAction(tr("Girar a la izquierda") + sfx)
+        a_r = m.addAction(tr("Girar a la derecha") + sfx)
         m.addSeparator()
-        a_dup = m.addAction("Duplicar" + sfx)
-        a_ins = m.addAction("Insertar página en blanco después")
-        a_pdf = m.addAction("Insertar otro PDF después…")
-        a_ext = m.addAction("Extraer" + sfx + "…")
+        a_dup = m.addAction(tr("Duplicar") + sfx)
+        a_ins = m.addAction(tr("Insertar página en blanco después"))
+        a_pdf = m.addAction(tr("Insertar otro PDF después…"))
+        a_ext = m.addAction(tr("Extraer") + sfx + "…")
         m.addSeparator()
-        a_del = m.addAction("Eliminar" + sfx)
+        a_del = m.addAction(tr("Eliminar") + sfx)
         chosen = m.exec(self.list.mapToGlobal(pos))
         if chosen == a_l:
             self.mw.rotate_pages(rows, -90)
@@ -524,11 +526,11 @@ class BookmarksPanel(QWidget):
         self.mw = mw
         lay = QVBoxLayout(self)
         lay.setContentsMargins(6, 6, 6, 6)
-        lay.addWidget(_panel_header("Marcadores"))
+        lay.addWidget(_panel_header(tr("Marcadores")))
         row = QHBoxLayout()
-        row.addWidget(_small_btn(_G_ADD, "Añadir marcador en la página actual", self._add))
-        row.addWidget(_small_btn(_G_RENAME, "Cambiar nombre del marcador", self._rename))
-        row.addWidget(_small_btn(_G_DELETE, "Eliminar marcador", self._delete))
+        row.addWidget(_small_btn(_G_ADD, tr("Añadir marcador en la página actual"), self._add))
+        row.addWidget(_small_btn(_G_RENAME, tr("Cambiar nombre del marcador"), self._rename))
+        row.addWidget(_small_btn(_G_DELETE, tr("Eliminar marcador"), self._delete))
         row.addStretch()
         lay.addLayout(row)
         self.tree = QTreeWidget()
@@ -536,7 +538,7 @@ class BookmarksPanel(QWidget):
         self.tree.itemClicked.connect(self._clicked)
         self.tree.itemDoubleClicked.connect(lambda *_: self._rename())
         lay.addWidget(self.tree)
-        self._empty = QLabel("Este documento no tiene marcadores.")
+        self._empty = QLabel(tr("Este documento no tiene marcadores."))
         self._empty.setWordWrap(True)
         self._empty.setStyleSheet("color:#8A8886; padding:8px;")
         lay.addWidget(self._empty)
@@ -551,7 +553,7 @@ class BookmarksPanel(QWidget):
             parent = parents.get(lvl - 1)
             it = QTreeWidgetItem([title])
             it.setData(0, _ROLE, i)
-            it.setToolTip(0, f"{title}  ·  página {page}" if page > 0 else title)
+            it.setToolTip(0, tr("{title}  ·  página {page}").format(title=title, page=page) if page > 0 else title)
             if parent is not None and lvl > 1:
                 parent.addChild(it)
             else:
@@ -576,7 +578,7 @@ class BookmarksPanel(QWidget):
         if not self.mw.doc:
             return
         page = self.mw.current_page + 1
-        title, ok = QInputDialog.getText(self, "Nuevo marcador", "Nombre:", text=f"Página {page}")
+        title, ok = QInputDialog.getText(self, tr("Nuevo marcador"), tr("Nombre:"), text=tr("Página {page}").format(page=page))
         if not ok or not title.strip():
             return
         cur = self.tree.currentItem()
@@ -589,17 +591,17 @@ class BookmarksPanel(QWidget):
             self._toc.insert(j, [lvl, title.strip(), page])
         else:
             self._toc.append([1, title.strip(), page])
-        self._commit("Añadir marcador")
+        self._commit(tr("Añadir marcador"))
 
     def _rename(self):
         cur = self.tree.currentItem()
         if cur is None:
             return
         i = cur.data(0, _ROLE)
-        title, ok = QInputDialog.getText(self, "Cambiar nombre", "Nombre:", text=self._toc[i][1])
+        title, ok = QInputDialog.getText(self, tr("Cambiar nombre"), tr("Nombre:"), text=self._toc[i][1])
         if ok and title.strip():
             self._toc[i][1] = title.strip()
-            self._commit("Renombrar marcador")
+            self._commit(tr("Renombrar marcador"))
 
     def _delete(self):
         cur = self.tree.currentItem()
@@ -615,7 +617,7 @@ class BookmarksPanel(QWidget):
         for k in range(len(self._toc)):
             prev = self._toc[k - 1][0] if k else 0
             self._toc[k][0] = min(self._toc[k][0], prev + 1)
-        self._commit("Eliminar marcador")
+        self._commit(tr("Eliminar marcador"))
 
 
 # ── Comentarios ───────────────────────────────────────────────────────────── #
@@ -627,9 +629,9 @@ class CommentsPanel(QWidget):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(6, 6, 6, 6)
         head = QHBoxLayout()
-        head.addWidget(_panel_header("Comentarios"))
+        head.addWidget(_panel_header(tr("Comentarios")))
         head.addStretch()
-        head.addWidget(_small_btn(_G_REFRESH, "Actualizar comentarios", self.rebuild))
+        head.addWidget(_small_btn(_G_REFRESH, tr("Actualizar comentarios"), self.rebuild))
         lay.addLayout(head)
         self.list = QListWidget()
         self.list.setWordWrap(True)
@@ -644,13 +646,13 @@ class CommentsPanel(QWidget):
         doc = self.mw.doc
         items = doc_tools.annotation_summary(doc) if doc else []
         for c in items:
-            text = f"Pág. {c['page'] + 1} · {c['label']}"
+            text = tr("Pág. {valor} · {c}").format(valor=c['page'] + 1, c=c['label'])
             if c["content"]:
                 text += f"\n{c['content']}"
             it = QListWidgetItem(text)
             it.setData(_ROLE, (c["page"], c["idx"]))
             self.list.addItem(it)
-        self._count.setText(f"{len(items)} comentarios" if items else "Sin comentarios")
+        self._count.setText(tr("{n} comentarios").format(n=len(items)) if items else tr("Sin comentarios"))
 
     def _clicked(self, item):
         page, idx = item.data(_ROLE)
@@ -673,7 +675,7 @@ class SignaturesPanel(QWidget):
         self.mw = mw
         lay = QVBoxLayout(self)
         lay.setContentsMargins(6, 6, 6, 6)
-        lay.addWidget(_panel_header("Firmas Certificadas"))
+        lay.addWidget(_panel_header(tr("Firmas Certificadas")))
         self.list = QListWidget()
         self.list.setWordWrap(True)
         self.list.itemClicked.connect(self._clicked)
@@ -694,10 +696,10 @@ class SignaturesPanel(QWidget):
         if doc is None:
             return
         if not self._widgets:
-            self.list.addItem(QListWidgetItem("Este documento no contiene firmas."))
+            self.list.addItem(QListWidgetItem(tr("Este documento no contiene firmas.")))
             self.reports = []
             return
-        self.list.addItem(QListWidgetItem("Verificando las firmas…"))
+        self.list.addItem(QListWidgetItem(tr("Verificando las firmas…")))
         data = self.mw.signature_bytes()
         from window_document import ValidateWorker
         w = ValidateWorker(data, self.mw._password, self._turn, self)
@@ -725,7 +727,7 @@ class SignaturesPanel(QWidget):
         self.trash_buttons = {}
         if isinstance(result, str):
             self.reports = []
-            it = QListWidgetItem(f"✖  No se pudieron verificar las firmas\n{result}")
+            it = QListWidgetItem(tr("✖  No se pudieron verificar las firmas\n{result}").format(result=result))
             it.setForeground(QColor("#D13438"))
             self.list.addItem(it)
             return
@@ -735,23 +737,23 @@ class SignaturesPanel(QWidget):
         puede, motivo = self.mw.can_remove_signature()
         for rep in self.reports:
             sym, col = self._ICON[rep.verdict]
-            lines = [f"{sym}  {rep.verdict_text}", f"Campo: {rep.field_name}"]
+            lines = [f"{sym}  {rep.verdict_text}", tr("Campo: {field_name}").format(field_name=rep.field_name)]
             if rep.signer:
-                etiqueta = "Autoridad de sellado" if rep.is_timestamp else "Firmante"
+                etiqueta = tr("Autoridad de sellado") if rep.is_timestamp else tr("Firmante")
                 lines.append(f"{etiqueta}: {rep.signer}")
             if rep.signed_at:
-                lines.append(f"Fecha declarada: {rep.signed_at}")
+                lines.append(tr("Fecha declarada: {signed_at}").format(signed_at=rep.signed_at))
             if rep.timestamp:
-                lines.append(f"Sello de tiempo: {rep.timestamp}")
+                lines.append(tr("Sello de tiempo: {timestamp}").format(timestamp=rep.timestamp))
             if rep.modification:
                 lines.append(rep.modification)
             if rep.error:
-                lines.append(f"Error: {rep.error}")
+                lines.append(tr("Error: {error}").format(error=rep.error))
             papelera = None
             if rep.revision == ultima:
                 papelera = _small_btn(
                     _G_DELETE,
-                    ("Quitar esta firma y dejar su recuadro vacío para firmar de nuevo"
+                    (tr("Quitar esta firma y dejar su recuadro vacío para firmar de nuevo")
                      if puede else motivo),
                     lambda _c=False, n=rep.field_name: self.mw.remove_last_signature(n))
                 papelera.setEnabled(puede)
@@ -760,11 +762,11 @@ class SignaturesPanel(QWidget):
         firmados = {r.field_name for r in self.reports}
         for pno, name, _r in self._widgets:             # recuadros de firma vacíos
             if name not in firmados:
-                self._add_row(f"▢  Recuadro de firma vacío\nCampo: {name}  ·  pág. {pno + 1}\n"
-                              "Haz clic en él para firmar", "#605E5C", pno, None)
+                self._add_row(tr("▢  Recuadro de firma vacío\nCampo: {name}  ·  pág. {valor}\n"
+                              "Haz clic en él para firmar").format(name=name, valor=pno + 1), "#605E5C", pno, None)
         if self.mw.unsaved_rewrite() and self.reports:
-            aviso = QListWidgetItem("Hay cambios sin guardar: al guardar se reescribe el "
-                                    "archivo y estas firmas dejarán de ser válidas.")
+            aviso = QListWidgetItem(tr("Hay cambios sin guardar: al guardar se reescribe el "
+                                    "archivo y estas firmas dejarán de ser válidas."))
             aviso.setForeground(QColor("#C19C00"))
             self.list.addItem(aviso)
 
@@ -799,13 +801,13 @@ class SignaturesPanel(QWidget):
 
 class SidePanel(QWidget):
     PANELS = [
-        ("thumbs",   icons.glyph("panel_thumbs"), "Miniaturas de página"),
-        ("bookmarks", icons.glyph("panel_bookmarks"), "Marcadores"),
-        ("comments", icons.glyph("panel_comments"), "Comentarios"),
+        ("thumbs",   icons.glyph("panel_thumbs"), tr("Miniaturas de página")),
+        ("bookmarks", icons.glyph("panel_bookmarks"), tr("Marcadores")),
+        ("comments", icons.glyph("panel_comments"), tr("Comentarios")),
         # (r77, petición de Ricardo: «el icono debería ser el del
         # certificado») Icono del certificado digital, como el botón
         # «Seleccionar un certificado digital…» del panel Firma.
-        ("signatures", icons.glyph("opt_cert"), "Firmas Certificadas"),
+        ("signatures", icons.glyph("opt_cert"), tr("Firmas Certificadas")),
     ]
 
     def __init__(self, mw):
@@ -997,7 +999,7 @@ class SidePanel(QWidget):
             b.setCheckable(True)
             b.setChecked(i == active)
             b.setToolTip(("● " if modified else "") + name + (f"\n{path}" if path else "")
-                         + "\n(arrastra para cambiarla de sitio)")
+                         + tr("\n(arrastra para cambiarla de sitio)"))
             b.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
             b.clicked.connect(lambda _c=False, k=i: self._doc_clicked(k))
             b.customContextMenuRequested.connect(
@@ -1037,7 +1039,7 @@ class SidePanel(QWidget):
 
     def _doc_menu(self, index: int, btn: QPushButton, pos):
         m = QMenu(self)
-        a_close = m.addAction("Cerrar documento")
+        a_close = m.addAction(tr("Cerrar documento"))
         if m.exec(btn.mapToGlobal(pos)) == a_close:
             self.mw.close_document_at(index)
 
