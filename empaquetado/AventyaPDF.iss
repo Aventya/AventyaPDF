@@ -499,7 +499,7 @@ var
   DiapoActual: Integer;
   DiapoTimer: UINT_PTR;
 
-function SetTimer(hWnd: HWND; nIDEvent: UINT_PTR; uElapse: UINT; lpTimerFunc: NativeInt): UINT_PTR;
+function SetTimer(hWnd: HWND; nIDEvent: UINT_PTR; uElapse: UINT; lpTimerFunc: Longword): UINT_PTR;
 external 'SetTimer@user32.dll stdcall';
 
 function KillTimer(hWnd: HWND; nIDEvent: UINT_PTR): BOOL;
