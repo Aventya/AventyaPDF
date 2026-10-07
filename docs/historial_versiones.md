@@ -4,6 +4,18 @@
 
 Las publicadas como 1.0.0-1.3.0 se renumeraron 0.9.6-0.9.6.7 al publicarse la 0.9.7, y las 2.0.3-2.0.5 como 0.9.3-0.9.5 al publicarse la que fue 1.0.0: la **1.0.0** queda para el lanzamiento en la Microsoft Store.
 
+## 0.9.14 — 2026-10-04
+
+Commit `17fb068`.
+
+AventyaPDF se abre más rápido, sobre todo la primera vez después de encender el equipo.
+
+#### Novedades respecto a la 0.9.13
+- **Arranque más rápido**: al abrir AventyaPDF ya no se cargan los componentes del reconocimiento de texto (OCR) ni los de la firma digital, que no hacen falta para ver un PDF. Se cargan la primera vez que los usas. La primera apertura después de encender el equipo tarda varios segundos menos; las siguientes, también algo menos.
+- La primera firma o el primer OCR de cada sesión pueden tardar un segundo o dos más que los siguientes, mientras se cargan sus componentes.
+
+222 pruebas automáticas OK.
+
 ## 0.9.13 — 2026-10-03
 
 Commit `c1f5cd2`.

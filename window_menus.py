@@ -36,7 +36,7 @@ import idioma
 from idioma import tr
 
 SETTINGS = ("aventyapdf", "config")
-APP_VERSION = "0.9.14"
+APP_VERSION = "0.9.15"
 # (r71) Titular y repositorio público (AGPL-3.0, libre distribución).
 APP_OWNER = tr("Aventya Asesoría Integral SL")
 APP_REPO = "https://github.com/Aventya/AventyaPDF"
