@@ -57,6 +57,8 @@
         <uap:Extension Category="windows.fileTypeAssociation">
           <uap:FileTypeAssociation Name="pdf">
             <uap:DisplayName>Documento PDF</uap:DisplayName>
+            <!-- (r139) Icono de los PDF cuando AventyaPDF los abre. -->
+            <uap:Logo>imagenes-store\DocumentoPDF.png</uap:Logo>
             <uap:SupportedFileTypes>
               <uap:FileType>.pdf</uap:FileType>
             </uap:SupportedFileTypes>

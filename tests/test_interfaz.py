@@ -3094,25 +3094,37 @@ class TestVentanaPrincipal(unittest.TestCase):
         finally:
             self.app.setStyleSheet(anterior)
 
-    def test_ayuda_manual_abre_el_del_idioma(self):
-        """(r138) Ayuda › Manual de AventyaPDF abre el manual en una pestaña;
-        si el del idioma no está en el equipo, ofrece el de la web."""
-        import dependencias
+    def test_ayuda_manual_lo_descarga_y_lo_abre(self):
+        """(r141) Ayuda › Manual de AventyaPDF descarga el manual de GitHub en
+        segundo plano (sin PowerShell: actualizaciones.descargar_manual) y lo
+        abre en una pestaña; si no se puede, lo dice."""
+        import actualizaciones
+        import time
+        local = os.path.join(RAIZ, "docs", "manual", "MANUAL_es.pdf")
         acciones = [a for m in self.w.menuBar().actions() if m.menu()
                     for a in m.menu().actions()]
         manual = next(a for a in acciones if a.text() == "Manual de AventyaPDF")
         antes = len(self.w._sessions)
-        manual.trigger()
-        self.app.processEvents()
+        with mock.patch.object(actualizaciones, "descargar_manual", return_value=local) as bajar:
+            manual.trigger()
+            fin = time.monotonic() + 10
+            while len(self.w._sessions) == antes and time.monotonic() < fin:
+                self.app.processEvents()
+                time.sleep(0.01)
+        bajar.assert_called_once_with("es")
         self.assertEqual(len(self.w._sessions), antes + 1)
-        self.assertTrue(self.w.pdf_path.endswith("MANUAL_es.pdf"))
+        self.assertEqual(self.w.pdf_path, local)
         self.w.close_document()
-        with mock.patch.object(dependencias, "ruta_manual", return_value=None), \
-                mock.patch.object(QMessageBox, "question",
-                                  return_value=QMessageBox.StandardButton.Yes), \
-                mock.patch("window_menus.QDesktopServices.openUrl") as abrir:
+        with mock.patch.object(actualizaciones, "descargar_manual",
+                               side_effect=actualizaciones.UpdateError("sin red")), \
+                mock.patch.object(QMessageBox, "warning") as aviso:
             self.w.open_manual()
-        self.assertTrue(abrir.call_args[0][0].toString().endswith("/docs/manual/MANUAL_es.pdf"))
+            fin = time.monotonic() + 10
+            while not aviso.called and time.monotonic() < fin:
+                self.app.processEvents()
+                time.sleep(0.01)
+        self.assertIn("sin red", aviso.call_args[0][2])
+        self.assertIsNone(self.w._manual_dl)
 
     def test_presentacion_inicial_y_no_volver_a_mostrar(self):
         """(r70) Presentación al arrancar: recorre las características, avanza

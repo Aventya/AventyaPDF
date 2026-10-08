@@ -54,33 +54,6 @@ def carpeta_instalada() -> str | None:
     return None
 
 
-def ruta_manual(codigo: str, otro_idioma: bool = True) -> str | None:
-    """(r138) El manual en PDF del idioma `codigo`: instalado en manual\\
-    junto a AventyaPDF.exe (el instalador copia solo el del idioma elegido);
-    desde el código fuente, en docs\\manual\\ (lo genera
-    docs/manual/crear_manual.py). Si no está y `otro_idioma`, el español o el que haya."""
-    carpetas = [os.path.join(RAIZ, "docs", "manual")]
-    instalada = carpeta_instalada()
-    if instalada:
-        carpetas.insert(0, os.path.join(instalada, "manual"))
-    for carpeta in carpetas:
-        ruta = os.path.join(carpeta, f"MANUAL_{codigo}.pdf")
-        if os.path.isfile(ruta):
-            return ruta
-    if otro_idioma:
-        # El español primero (el original); si no, el que haya.
-        for carpeta in carpetas:
-            ruta = os.path.join(carpeta, "MANUAL_es.pdf")
-            if os.path.isfile(ruta):
-                return ruta
-        for carpeta in carpetas:
-            if os.path.isdir(carpeta):
-                for nombre in sorted(os.listdir(carpeta)):
-                    if nombre.startswith("MANUAL_") and nombre.endswith(".pdf"):
-                        return os.path.join(carpeta, nombre)
-    return None
-
-
 def _version(texto: str) -> tuple:
     """«6.5.0» → (6, 5, 0). Los sufijos (rc1, .post1…) no cuentan."""
     partes = []

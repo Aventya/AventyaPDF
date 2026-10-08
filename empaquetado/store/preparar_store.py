@@ -14,7 +14,7 @@ Lo usa empaquetado\\construir_store.ps1 con el Python del entorno de la app:
   otros programas. tesseract.exe y solo las DLL que importa (de la instalación
   de Tesseract de este equipo), los modelos «best» de español, inglés y
   orientación, pdf.ttf y su licencia (Apache 2.0).
-* El manual, las imágenes de la Store (de ICONO.png) y el AppxManifest.xml.
+* (r141: ya sin manual, que se descarga) Las imágenes de la Store (de ICONO.png) y el AppxManifest.xml.
 """
 import argparse
 import os
@@ -91,6 +91,18 @@ def _imagenes(destino: str) -> None:
     lienzo("Square150x150Logo.png", 150, 150, 100)
     lienzo("Wide310x150Logo.png", 310, 150, 100)
     lienzo("StoreLogo.png", 50, 50, 50)
+    # (r139) Icono de los archivos PDF, pintado desde su dibujo vectorial.
+    from PyQt6.QtSvg import QSvgRenderer
+    svg = QSvgRenderer(os.path.join(RAIZ, "vendor", "icono", "documento_pdf.svg"))
+    for nombre, t in [("DocumentoPDF.png", 44)] + [
+            (f"DocumentoPDF.targetsize-{t}.png", t) for t in (16, 24, 32, 48, 256)]:
+        img = QImage(t, t, QImage.Format.Format_ARGB32)
+        img.fill(Qt.GlobalColor.transparent)
+        p = QPainter(img)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        svg.render(p)
+        p.end()
+        img.save(os.path.join(carpeta, nombre))
 
 
 def _manifiesto(destino: str, a) -> None:
@@ -117,13 +129,6 @@ def main() -> None:
     shutil.rmtree(a.destino, ignore_errors=True)
     shutil.copytree(a.completo, a.destino,
                     ignore=shutil.ignore_patterns("menu-contextual"))
-    # (r138) Todos los manuales: en la versión de la Store no hay instalador
-    # que elija uno, y se puede cambiar de idioma en cualquier momento.
-    manuales = os.path.join(a.destino, "manual")
-    os.makedirs(manuales, exist_ok=True)
-    for nombre in os.listdir(os.path.join(RAIZ, "docs", "manual")):
-        if nombre.startswith("MANUAL_") and nombre.endswith(".pdf"):
-            shutil.copy2(os.path.join(RAIZ, "docs", "manual", nombre), manuales)
     n = _tesseract(a.destino)
     _imagenes(a.destino)
     _manifiesto(a.destino, a)

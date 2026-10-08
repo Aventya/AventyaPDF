@@ -88,6 +88,26 @@ class _InstallerDownload(QObject):
         self.listo.emit(ruta)
 
 
+class _ManualDownload(QObject):
+    """(r141) Descarga el manual de GitHub en un hilo aparte."""
+    listo = pyqtSignal(str)
+    error = pyqtSignal(str)
+
+    def __init__(self, codigo: str):
+        super().__init__()
+        self._codigo = codigo
+
+    def start(self) -> None:
+        import threading
+        threading.Thread(target=self._run, daemon=True).start()
+
+    def _run(self) -> None:
+        try:
+            self.listo.emit(actualizaciones.descargar_manual(self._codigo))
+        except actualizaciones.UpdateError as e:
+            self.error.emit(str(e))
+
+
 class MenusMixin:
 
     # ── construcción ───────────────────────────────────────────────────── #
@@ -928,20 +948,28 @@ class MenusMixin:
     # ── ayuda ──────────────────────────────────────────────────────────── #
 
     def open_manual(self):
-        """(r138) Ayuda › Manual: el del idioma de la aplicación, en una pestaña."""
-        ruta = dependencias.ruta_manual(idioma.ACTUAL, otro_idioma=False)
-        if ruta:
+        """(r141) Ayuda › Manual: el del idioma de la aplicación, descargado de
+        GitHub (o la copia anterior, sin conexión), en una pestaña."""
+        if getattr(self, "_manual_dl", None) is not None:
+            return                                  # ya se está descargando
+        self.statusBar().showMessage(tr("Descargando el manual de AventyaPDF…"))
+        dl = _ManualDownload(idioma.ACTUAL)
+        self._manual_dl = dl
+
+        def listo(ruta):
+            self._manual_dl = None
+            self.statusBar().clearMessage()
             self.open_paths([ruta])
-            return
-        # El instalador solo copia el manual del idioma elegido al instalar: si
-        # después se cambia de idioma, se ofrece el de la web.
-        r = QMessageBox.question(
-            self, tr("Manual de AventyaPDF"),
-            tr("El manual en este idioma no está en este equipo. ¿Abrirlo en la web?"),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        if r == QMessageBox.StandardButton.Yes:
-            QDesktopServices.openUrl(QUrl(
-                f"{APP_REPO}/blob/main/docs/manual/MANUAL_{idioma.ACTUAL}.pdf"))
+
+        def error(texto):
+            self._manual_dl = None
+            self.statusBar().clearMessage()
+            QMessageBox.warning(self, tr("Manual de AventyaPDF"),
+                                texto + "\n\n" + tr("Hace falta conexión a Internet la primera vez."))
+
+        dl.listo.connect(listo)
+        dl.error.connect(error)
+        dl.start()
 
     def show_welcome(self):
         """(r70) Vuelve a abrir la presentación inicial; su casilla permite

@@ -207,3 +207,64 @@ def mostrar_en_carpeta(ruta: str) -> None:
             os.startfile(os.path.dirname(ruta))
     finally:
         shell32.ILFree(pidl)
+
+
+# ── (r141) Manual de AventyaPDF ─────────────────────────────────────────── #
+# Petición de Ricardo: «el manual que se empaqueta con la aplicación es un
+# error, lo conveniente es tener acceso al PDF subido a GitHub de manera que se
+# descargue y se abra automáticamente en la aplicación sin usar PowerShell».
+# Se descarga con urllib (como el instalador) a una carpeta propia y se guarda
+# la marca (ETag) que da GitHub: la vez siguiente solo se vuelve a bajar si el
+# manual ha cambiado, y sin conexión se abre la copia que haya.
+
+MANUAL_URL = ("https://raw.githubusercontent.com/" + OWNER + "/" + REPO
+              + "/main/docs/manual/MANUAL_{codigo}.pdf")
+CARPETA_MANUAL = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"),
+                              "aventyapdf", "manual")
+
+
+def descargar_manual(codigo: str, timeout: float = 30, carpeta: str | None = None) -> str:
+    """Ruta del manual en el idioma `codigo`, descargado de GitHub o el que ya
+    estaba si no ha cambiado. Si ese idioma no está publicado, el español. Sin
+    conexión, la copia anterior si la hay; si no, UpdateError."""
+    carpeta = carpeta or CARPETA_MANUAL
+    os.makedirs(carpeta, exist_ok=True)
+    ultimo_error = None
+    for c in dict.fromkeys((codigo, "es")):
+        destino = os.path.join(carpeta, f"MANUAL_{c}.pdf")
+        marca = destino + ".etag"
+        cabeceras = {"User-Agent": f"{REPO}-manual"}
+        if os.path.isfile(destino) and os.path.isfile(marca):
+            with open(marca, encoding="utf-8") as fh:
+                cabeceras["If-None-Match"] = fh.read().strip()
+        req = urllib.request.Request(MANUAL_URL.format(codigo=c), headers=cabeceras)
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                datos = resp.read()
+                etag = resp.headers.get("ETag", "")
+        except urllib.error.HTTPError as e:
+            if e.code == 304:                       # sin cambios: la copia sirve
+                return destino
+            ultimo_error = e
+            if e.code == 404:                       # ese idioma no está: el siguiente
+                continue
+            break
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            ultimo_error = e
+            break
+        if not datos.startswith(b"%PDF"):
+            ultimo_error = ValueError("no es un PDF")
+            break
+        with open(destino + ".part", "wb") as fh:
+            fh.write(datos)
+        os.replace(destino + ".part", destino)
+        with open(marca, "w", encoding="utf-8") as fh:
+            fh.write(etag)
+        return destino
+    # Sin conexión (o GitHub sin responder): la copia que haya.
+    for c in dict.fromkeys((codigo, "es")):
+        destino = os.path.join(carpeta, f"MANUAL_{c}.pdf")
+        if os.path.isfile(destino):
+            return destino
+    razon = getattr(ultimo_error, "reason", ultimo_error)
+    raise UpdateError(tr("No se pudo descargar el manual ({razon}).").format(razon=razon))

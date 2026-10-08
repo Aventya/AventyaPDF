@@ -2949,8 +2949,13 @@ class TestIdiomas(unittest.TestCase):
     def test_eleccion_del_idioma(self):
         """Entorno > ajuste guardado > idioma del sistema > inglés."""
         import idioma
-        with mock.patch.dict(os.environ, {"AVENTYAPDF_IDIOMA": "fr"}):
-            self.assertEqual(idioma.elegido(), "fr")
+        with mock.patch.dict(os.environ, {"AVENTYAPDF_IDIOMA": "ca"}):
+            self.assertEqual(idioma.elegido(), "ca")
+        # (r141) Francés e italiano ya no están: quien los tenía guardados pasa al inglés.
+        with mock.patch.dict(os.environ, {"AVENTYAPDF_IDIOMA": ""}), \
+                mock.patch.object(idioma, "_ajuste_guardado", return_value="fr"), \
+                mock.patch.object(idioma, "idioma_del_sistema", return_value="en"):
+            self.assertEqual(idioma.elegido(), "en")
         with mock.patch.dict(os.environ, {"AVENTYAPDF_IDIOMA": ""}), \
                 mock.patch.object(idioma, "_ajuste_guardado", return_value="ca"):
             self.assertEqual(idioma.elegido(), "ca")
@@ -3037,16 +3042,78 @@ class TestManualYDiapositivas(unittest.TestCase):
                                   iss)
         with open(os.path.join(RAIZ, "empaquetado", "AventyaPDF.iss"), encoding="utf-8-sig") as f:
             principal = f.read()
-        for codigo in idioma.IDIOMAS:
-            self.assertIn(f'MANUAL_{codigo}.pdf"; DestDir: "{{app}}\\manual"; '
-                          f'Languages: {codigo};', principal)
+        # (r141) El manual ya no va en el instalador: se descarga de GitHub.
+        self.assertNotIn("MANUAL_", principal)
+        # (r141) Icono propio de los PDF que abre AventyaPDF.
+        self.assertIn('{#ProgId}\\DefaultIcon"; ValueType: string; ValueName: ""; '
+                      'ValueData: """{app}\\app\\vendor\\icono\\documento_pdf.ico"",0"',
+                      principal)
 
-    def test_ruta_del_manual(self):
-        import dependencias
-        self.assertTrue(dependencias.ruta_manual("es").endswith("MANUAL_es.pdf"))
-        with mock.patch.object(os.path, "isfile", side_effect=lambda r: r.endswith("_es.pdf")):
-            self.assertIsNone(dependencias.ruta_manual("fr", otro_idioma=False))
-            self.assertTrue(dependencias.ruta_manual("fr").endswith("MANUAL_es.pdf"))
+    def test_descargar_manual(self):
+        """(r141) El manual se descarga de GitHub (urllib, sin PowerShell) y
+        se guarda con su ETag: si no ha cambiado no se vuelve a bajar, sin
+        conexión se abre la copia, y si el idioma no está, el español."""
+        import io
+        import urllib.error
+        import actualizaciones as act
+        pedidas = []
+
+        class Resp(io.BytesIO):
+            def __init__(self, datos, etag):
+                super().__init__(datos)
+                self.headers = {"ETag": etag}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def servidor(publicados, sin_red=False):
+            def urlopen(req, timeout=None):
+                pedidas.append((req.full_url, req.get_header("If-none-match")))
+                if sin_red:
+                    raise urllib.error.URLError("sin red")
+                codigo = req.full_url.rsplit("_", 1)[1][:2]
+                if codigo not in publicados:
+                    raise urllib.error.HTTPError(req.full_url, 404, "Not Found", {}, None)
+                if req.get_header("If-none-match") == '"v1"':
+                    raise urllib.error.HTTPError(req.full_url, 304, "Not Modified", {}, None)
+                return Resp(b"%PDF-1.7 manual " + codigo.encode(), '"v1"')
+            return urlopen
+
+        with tempfile.TemporaryDirectory() as carpeta:
+            with mock.patch("urllib.request.urlopen", servidor({"es", "ca"})):
+                ruta = act.descargar_manual("ca", carpeta=carpeta)
+                self.assertTrue(ruta.endswith("MANUAL_ca.pdf"))
+                self.assertIn("/main/docs/manual/MANUAL_ca.pdf", pedidas[-1][0])
+                self.assertTrue(pedidas[-1][0].startswith("https://raw.githubusercontent.com/"))
+                # La segunda vez pregunta con la marca y no la vuelve a bajar.
+                self.assertEqual(act.descargar_manual("ca", carpeta=carpeta), ruta)
+                self.assertEqual(pedidas[-1][1], '"v1"')
+            with mock.patch("urllib.request.urlopen", servidor({"es"})):
+                ruta = act.descargar_manual("eu", carpeta=carpeta)
+                self.assertTrue(ruta.endswith("MANUAL_es.pdf"))
+            with mock.patch("urllib.request.urlopen", servidor(set(), sin_red=True)):
+                self.assertTrue(act.descargar_manual("ca", carpeta=carpeta).endswith("MANUAL_ca.pdf"))
+        with tempfile.TemporaryDirectory() as carpeta, \
+                mock.patch("urllib.request.urlopen", servidor(set(), sin_red=True)):
+            with self.assertRaises(act.UpdateError):
+                act.descargar_manual("ca", carpeta=carpeta)
+
+    def test_icono_de_los_pdf(self):
+        """(r141) documento_pdf.ico sale de documento_pdf.svg, con todos los
+        tamaños de create_app_icon.TAMANOS."""
+        import struct
+        import create_app_icon
+        with open(create_app_icon.DOCUMENTO_ICO, "rb") as fh:
+            datos = fh.read()
+        _r, tipo, n = struct.unpack("<HHH", datos[:6])
+        self.assertEqual((tipo, n), (1, len(create_app_icon.TAMANOS)))
+        lados = sorted((datos[6 + 16 * i] or 256) for i in range(n))
+        self.assertEqual(lados, sorted(create_app_icon.TAMANOS))
+        self.assertTrue(os.path.isfile(create_app_icon.DOCUMENTO_SVG))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

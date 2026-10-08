@@ -30,8 +30,6 @@ import sys
 IDIOMAS = {
     "es": "Español",
     "en": "English",
-    "fr": "Français",
-    "it": "Italiano",
     "ca": "Català",
     "gl": "Galego",
     "eu": "Euskara",
@@ -43,8 +41,7 @@ CLAVE = "ui/idioma"              # en QSettings("aventyapdf", "config")
 CARPETA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "idiomas")
 
 # Identificador principal de idioma de Windows (LANGID & 0x3FF) → código.
-_WINDOWS = {0x0A: "es", 0x09: "en", 0x0C: "fr", 0x10: "it", 0x03: "ca",
-            0x56: "gl", 0x2D: "eu"}
+_WINDOWS = {0x0A: "es", 0x09: "en", 0x03: "ca", 0x56: "gl", 0x2D: "eu"}
 
 
 def _ajuste_guardado() -> str:

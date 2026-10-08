@@ -29,14 +29,12 @@ from PyQt6.QtWidgets import (
 )
 
 import conversion_office
-import dependencias
 import dialogs
 import doc_tools
 import icons
 from cert_manager import CertPickerDialog, load_saved_cert
 from history import Snapshot, UndoStack
 from tsa import TSA_PRESETS
-import idioma
 from idioma import tr
 
 SETTINGS = ("aventyapdf", "config")
@@ -296,17 +294,8 @@ class DocumentMixin:
 
     def open_pdf(self):
         start = QSettings(*SETTINGS).value("recent/dir", "")
-        instalada = dependencias.carpeta_instalada()
-        if not start and instalada:
-            # (r103, petición de Ricardo) Antes de haber abierto nunca nada
-            # —sin carpeta reciente todavía—, que el manual salga ya
-            # seleccionado en el propio diálogo, no solo en su carpeta:
-            # pasarle la ruta del archivo, no solo la de la carpeta, hace
-            # que Qt lo abra ahí y lo deje resaltado.
-            # (r138) Uno por idioma, en la carpeta manual\.
-            manual = dependencias.ruta_manual(idioma.ACTUAL)
-            if manual:
-                start = manual
+        # (r141) Hasta la 0.9.15 salía preseleccionado el manual instalado (r103);
+        # ahora el manual se descarga desde Ayuda › Manual de AventyaPDF.
         # (r123, petición de Ricardo) Siempre se pueden elegir varios archivos,
         # de todo lo que la aplicación sabe mostrar: cada PDF en su pestaña, y
         # cada imagen o documento de Word convertido a PDF en la suya (sin guardar).

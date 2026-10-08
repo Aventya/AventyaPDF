@@ -67,7 +67,7 @@ Ao abrir AventyaPDF por primeira vez sae unha presentación que resume as funci�
 
 ![presentacion] A presentación de inicio.
 
-No menú **Axuda** tes tamén este manual (**Axuda › Manual de AventyaPDF**), a lista de atallos de teclado (**F1**) e o idioma da aplicación (**Axuda › Idioma**). AventyaPDF está en español, inglés, francés, italiano, catalán, galego e éuscaro; o idioma novo aplícase a próxima vez que abras a aplicación.
+No menú **Axuda** tes tamén este manual (**Axuda › Manual de AventyaPDF**, que o descarga de Internet e o abre; sen conexión abre a última copia descargada), a lista de atallos de teclado (**F1**) e o idioma da aplicación (**Axuda › Idioma**). AventyaPDF está en español, inglés, catalán, galego e éuscaro; o idioma novo aplícase a próxima vez que abras a aplicación.
 
 ![idioma] Axuda › Idioma.
 

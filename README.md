@@ -24,9 +24,9 @@ licencia [GNU AGPL-3.0](LICENSE)
 
 Manual con todas las herramientas, cada una con su captura, en
 [español](docs/manual/MANUAL_es.pdf), [English](docs/manual/MANUAL_en.pdf),
-[français](docs/manual/MANUAL_fr.pdf), [italiano](docs/manual/MANUAL_it.pdf),
 [català](docs/manual/MANUAL_ca.pdf), [galego](docs/manual/MANUAL_gl.pdf) y
-[euskara](docs/manual/MANUAL_eu.pdf).
+[euskara](docs/manual/MANUAL_eu.pdf). La aplicación lo descarga de aquí desde
+**Ayuda › Manual de AventyaPDF**.
 
 ## Descargar
 

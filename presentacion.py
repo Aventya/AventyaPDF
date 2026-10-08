@@ -55,7 +55,7 @@ class Slide:
 # (r138) Fuente única de la descripción de las funciones: la presentación, las
 # diapositivas que enseña el instalador mientras instala
 # (`herramientas_idioma.py instalador`) y el resumen del manual. Cada texto
-# cabe en cuatro líneas de la presentación también en francés: unos 230
+# cabe en cuatro líneas de la presentación en todos los idiomas: unos 230
 # caracteres en español como mucho (lo comprueba una prueba).
 SLIDES: tuple[Slide, ...] = (
     Slide("document_pdf", tr("Bienvenido a AventyaPDF"),
@@ -113,7 +113,7 @@ SLIDES: tuple[Slide, ...] = (
           tr("Contraseña AES-256 y permisos, marca de agua, encabezado y pie, numeración "
              "Bates, compresión y exportación a Word, imágenes o texto."), "proteger"),
     Slide("translate", tr("En tu idioma"),
-          tr("AventyaPDF está en español, inglés, francés, italiano, catalán, gallego y "
+          tr("AventyaPDF está en español, inglés, catalán, gallego y "
              "euskera. Se cambia en Ayuda › Idioma, y el manual completo está en "
              "Ayuda › Manual de AventyaPDF."), "idioma"),
     Slide("keyboard", tr("Listo para empezar"),

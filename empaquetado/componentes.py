@@ -178,7 +178,7 @@ def _sobrantes(site: str, qt_usados: set[str]) -> tuple[set[str], set[str]]:
     # aplicación que Qt trae (main._install_qt_translation).
     trad = os.path.join(qt, "Qt6", "translations")
     archivos = {f"PyQt6/Qt6/translations/{f}" for f in os.listdir(trad)
-                if f not in {f"qtbase_{c}.qm" for c in ("es", "en", "fr", "it", "ca")}}
+                if f not in {f"qtbase_{c}.qm" for c in ("es", "en", "ca")}}
     raices = []
     for f in os.listdir(qt):
         m = re.match(r"^(Qt\w+)\.pyd$", f)

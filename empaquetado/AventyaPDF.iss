@@ -7,7 +7,7 @@
 ;  * (r109, petición de Ricardo: «el instalador no lleve partes que se
 ;    mantengan fuera de este proyecto») El instalador solo lleva lo propio:
 ;    el lanzador AventyaPDF.exe, el código (app\), la lista de confianza, los
-;    iconos, el menú contextual y el manual. Python oficial, los paquetes de
+;    iconos y el menú contextual (r141: el manual, no). Python oficial, los paquetes de
 ;    Python (la versión exacta probada) y las fuentes Noto/Fluent se
 ;    descargan al instalar, de su origen, comprobando su SHA-256: las
 ;    entradas las genera componentes.py en componentes.iss. Sin Internet no
@@ -19,8 +19,7 @@
 ;  * (r109) /DPrueba compila una variante para construir.ps1
 ;    -ProbarInstalacion: otro AppId y solo archivos (sin accesos directos,
 ;    registro, menú contextual ni «Abrir AventyaPDF» al acabar).
-;  * (r138) Manual en PDF del idioma elegido (docs\manual\MANUAL_<código>.pdf,
-;    en {app}\manual) y, mientras instala, diapositivas con las herramientas
+;  * (r138) Mientras instala, diapositivas con las herramientas
 ;    de la aplicación: imagen (empaquetado\diapositivas, de
 ;    docs\manual\crear_manual.py) y texto de la presentación de inicio
 ;    (mensajes.iss). Ver [Code] «Diapositivas».
@@ -120,8 +119,6 @@ UninstallDisplaySize={#TamanoInstalado}
 [Languages]
 Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "en"; MessagesFile: "compiler:Default.isl"
-Name: "fr"; MessagesFile: "compiler:Languages\French.isl"
-Name: "it"; MessagesFile: "compiler:Languages\Italian.isl"
 Name: "ca"; MessagesFile: "compiler:Languages\Catalan.isl"
 Name: "gl"; MessagesFile: "idiomas\Galician.isl"
 Name: "eu"; MessagesFile: "idiomas\Basque.isl"
@@ -139,17 +136,9 @@ Name: "escritorio"; Description: "{cm:TareaEscritorio}"; GroupDescription: "{cm:
 ; Lo propio va DESPUÉS de las descargas (componentes.iss): así su
 ; runtime\python3XX._pth sustituye al que trae el Python descargado.
 Source: "{#DistDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; (r103, petición de Ricardo) El manual, fuera de app\: así se ve nada más
-; abrir el diálogo «Abrir PDF» la primera vez, antes de que haya una carpeta
-; reciente — ver window_document.open_pdf. (r138) Uno por idioma, solo el del
-; idioma elegido; Ayuda › Manual ofrece el de la web si se cambia de idioma.
-Source: "..\docs\manual\MANUAL_es.pdf"; DestDir: "{app}\manual"; Languages: es; Flags: ignoreversion
-Source: "..\docs\manual\MANUAL_en.pdf"; DestDir: "{app}\manual"; Languages: en; Flags: ignoreversion
-Source: "..\docs\manual\MANUAL_fr.pdf"; DestDir: "{app}\manual"; Languages: fr; Flags: ignoreversion
-Source: "..\docs\manual\MANUAL_it.pdf"; DestDir: "{app}\manual"; Languages: it; Flags: ignoreversion
-Source: "..\docs\manual\MANUAL_ca.pdf"; DestDir: "{app}\manual"; Languages: ca; Flags: ignoreversion
-Source: "..\docs\manual\MANUAL_gl.pdf"; DestDir: "{app}\manual"; Languages: gl; Flags: ignoreversion
-Source: "..\docs\manual\MANUAL_eu.pdf"; DestDir: "{app}\manual"; Languages: eu; Flags: ignoreversion
+; (r141, petición de Ricardo: «el manual que se empaqueta con la aplicación
+; es un error») El manual ya no va en el instalador: Ayuda › Manual lo
+; descarga de GitHub (actualizaciones.descargar_manual) y lo abre.
 #ifndef Prueba
 ; (r127) Para quitar el menú de la versión anterior antes de copiar nada
 ; (PrepareToInstall, con ExtractTemporaryFile): las anteriores no lo tenían.
@@ -168,8 +157,8 @@ Type: filesandordirs; Name: "{app}\tesseract"
 ; (r109) Python, paquetes y código: siempre desde cero, sin restos de la versión anterior.
 Type: filesandordirs; Name: "{app}\runtime"
 Type: filesandordirs; Name: "{app}\app"
-; (r138) El manual ya no va suelto junto al .exe sino en manual\, uno por
-; idioma: fuera el de antes y el del idioma de la instalación anterior.
+; (r141) El manual ya no se instala (se descarga de GitHub al pedirlo): fuera
+; el de las versiones anteriores, suelto (hasta la 0.9.14) o en manual\.
 Type: files; Name: "{app}\MANUAL.pdf"
 Type: filesandordirs; Name: "{app}\manual"
 
@@ -186,11 +175,13 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; AppUserModelID: "
 
 [Registry]
 ; Tipo de documento propio y «Abrir con» de los .pdf
-; (r87, petición de Ricardo: «el icono de los PDF no debe cambiar») SIN
-; DefaultIcon aquí a propósito: [Code] lo escribe copiando el que ya
-; tuvieran los .pdf (Acrobat, Edge…) para que elegir AventyaPDF cambie el
-; visor, no el dibujo del archivo en el Explorador — ver CopiarIconoDePdf.
+; (r139, petición de Ricardo, que sustituye a la de r87) Icono propio de los
+; PDF (vendor\icono\documento_pdf.ico, de su dibujo documento_pdf.svg): lo
+; muestra el Explorador cuando AventyaPDF es la aplicación elegida para
+; abrirlos en la configuración de Windows. Hasta r138 se copiaba el icono del
+; visor anterior (CopiarIconoDePdf).
 Root: HKA; Subkey: "Software\Classes\{#ProgId}"; ValueType: string; ValueName: ""; ValueData: "{cm:TipoDocumento}"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\{#ProgId}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\app\vendor\icono\documento_pdf.ico"",0"
 Root: HKA; Subkey: "Software\Classes\{#ProgId}"; ValueType: string; ValueName: "AppUserModelID"; ValueData: "Aventya.AventyaPDF"
 Root: HKA; Subkey: "Software\Classes\{#ProgId}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
 Root: HKA; Subkey: "Software\Classes\.pdf\OpenWithProgids"; ValueType: string; ValueName: "{#ProgId}"; ValueData: ""; Flags: uninsdeletevalue
@@ -232,6 +223,8 @@ Type: filesandordirs; Name: "{app}\app"
 ; Si la aplicación empieza a guardar algo nuevo ahí, añadirlo aquí.
 Type: filesandordirs; Name: "{localappdata}\aventyapdf\tessdata"
 Type: filesandordirs; Name: "{localappdata}\aventyapdf\menu-contextual"
+; (r141) El manual descargado de GitHub (Ayuda › Manual de AventyaPDF).
+Type: filesandordirs; Name: "{localappdata}\aventyapdf\manual"
 Type: files; Name: "{localappdata}\aventyapdf\*.log"
 Type: dirifempty; Name: "{localappdata}\aventyapdf"
 ; Restos de la actualización de las versiones hasta la 0.9.11.
@@ -412,51 +405,6 @@ begin
   Result := '';
 end;
 
-// ── (r87) El icono de los .pdf no debe cambiar ──────────────────────────── //
-// Petición de Ricardo: «el icono de los ficheros PDF del sistema no deben
-// cambiar, deben seguir siendo los originales de Windows 11... lo único que
-// cambia es que el visor es ahora AventyaPDF». En Windows, el icono que
-// enseña el Explorador para un tipo de archivo es el de `DefaultIcon` del
-// ProgID que lo abre (Acrobat, Edge, el que sea) — no hay un "icono nativo
-// de Windows" aparte que copiar. Así que, antes de que AventyaPDF.Document
-// sea ese ProgID, se copia el `DefaultIcon` que YA tuvieran los .pdf, para
-// que asociar AventyaPDF no les cambie el dibujo, solo la app que los abre.
-
-// ProgID que abre hoy los .pdf: primero el elegido por el usuario
-// (Configuración › Aplicaciones predeterminadas, que manda sobre el
-// asociado por la extensión), si no el de la extensión misma.
-function ProgIdActualDePdf: String;
-var
-  Valor: String;
-begin
-  Result := '';
-  if RegQueryStringValue(HKCU,
-       'Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.pdf\UserChoice',
-       'ProgId', Valor) and (Valor <> '') then begin
-    Result := Valor;
-    exit;
-  end;
-  if RegQueryStringValue(HKCR, '.pdf', '', Valor) and (Valor <> '') then
-    Result := Valor;
-end;
-
-procedure CopiarIconoDePdfSiHaceFalta;
-var
-  ProgId, Icono: String;
-begin
-  ProgId := ProgIdActualDePdf;
-  // Vacío (ningún lector de PDF instalado) o ya es el nuestro (instalación
-  // anterior, o esta misma actualización): no hay de dónde copiar, y de
-  // haberlo copiado ya una vez no hace falta —ni conviene— repetirlo.
-  if (ProgId = '') or (ProgId = '{#ProgId}') then
-    exit;
-  if not RegQueryStringValue(HKCR, ProgId + '\DefaultIcon', '', Icono) then
-    exit;
-  if Icono = '' then
-    exit;
-  RegWriteStringValue(HKA, 'Software\Classes\{#ProgId}\DefaultIcon', '', Icono);
-end;
-
 // ── (r136) Idioma de la aplicación ─────────────────────────────────────── //
 // AventyaPDF arranca en el idioma de su ajuste «ui/idioma» (idioma.py), en
 // el registro del usuario. Se escribe el elegido en el instalador cuando no
@@ -600,7 +548,6 @@ procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then begin
     GuardarIdioma;
-    CopiarIconoDePdfSiHaceFalta;
     InstalarMenuClasico;
     InstalarMenuModerno;
   end;

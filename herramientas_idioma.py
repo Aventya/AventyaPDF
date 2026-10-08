@@ -83,7 +83,7 @@ TEXTOS_MENU_H = os.path.join(RAIZ, "shell", "textos_menu.h")
 # Mensajes de Inno Setup propios (sección [Messages]); el resto son [CustomMessages].
 MENSAJES_INNO = {"WelcomeLabel2"}
 # Identificador principal de idioma de Windows de cada código (como idioma.py).
-LANGID = {"es": 0x0A, "en": 0x09, "fr": 0x0C, "it": 0x10, "ca": 0x03, "gl": 0x56, "eu": 0x2D}
+LANGID = {"es": 0x0A, "en": 0x09, "ca": 0x03, "gl": 0x56, "eu": 0x2D}
 
 
 def textos_instalador() -> dict[str, dict[str, str]]:

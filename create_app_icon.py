@@ -26,7 +26,13 @@ deja un margen de 1/16 del lado desde 24 px (16 px de aire a 256); a 16 y 20
 px no, que cada píxel cuenta. De 48 px para abajo se enfoca un poco (máscara
 de enfoque) para que la «A» y «PDF» no queden borrosos.
 
-Pillow solo hace falta para GENERAR; la aplicación usa el archivo .ico (Qt lo
+(r139, petición de Ricardo) También genera vendor/icono/documento_pdf.ico, el
+icono de los archivos PDF cuando AventyaPDF es la aplicación que los abre,
+desde su dibujo vectorial vendor/icono/documento_pdf.svg (enviado por
+Ricardo): cada tamaño se pinta desde el vector con Qt, sin Pillow
+(`python create_app_icon.py --documento` hace solo este).
+
+Pillow solo hace falta para GENERAR el de la aplicación; la aplicación usa el archivo .ico (Qt lo
 lee sin nada más) e Inno Setup los .bmp.
 """
 import os
@@ -77,7 +83,51 @@ def _sobre_fondo(original, tamano, lado, fondo, alto_centro):
     return img.convert("RGB")
 
 
+DOCUMENTO_SVG = os.path.join(RAIZ, "vendor", "icono", "documento_pdf.svg")
+DOCUMENTO_ICO = os.path.join(RAIZ, "vendor", "icono", "documento_pdf.ico")
+
+
+def icono_documento() -> None:
+    """documento_pdf.ico desde el SVG: un PNG por tamaño dentro del .ico
+    (formato que Windows lee desde Vista), cada uno pintado desde el vector."""
+    import struct
+    from PyQt6.QtCore import QBuffer, QByteArray, QIODevice, Qt
+    from PyQt6.QtGui import QGuiApplication, QImage, QPainter
+    from PyQt6.QtSvg import QSvgRenderer
+    QGuiApplication.instance() or QGuiApplication([])
+    svg = QSvgRenderer(DOCUMENTO_SVG)
+    if not svg.isValid():
+        raise SystemExit(f"No se puede leer {DOCUMENTO_SVG}")
+    pngs = []
+    for t in TAMANOS:
+        img = QImage(t, t, QImage.Format.Format_ARGB32_Premultiplied)
+        img.fill(Qt.GlobalColor.transparent)
+        p = QPainter(img)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        svg.render(p)
+        p.end()
+        datos = QByteArray()
+        buf = QBuffer(datos)
+        buf.open(QIODevice.OpenModeFlag.WriteOnly)
+        img.save(buf, "PNG")
+        pngs.append((t, bytes(datos)))
+    cabecera = struct.pack("<HHH", 0, 1, len(pngs))
+    desplazamiento = 6 + 16 * len(pngs)
+    entradas, cuerpo = b"", b""
+    for t, png in pngs:
+        lado = 0 if t >= 256 else t                # 0 significa 256 en el formato ICO
+        entradas += struct.pack("<BBBBHHII", lado, lado, 0, 0, 1, 32, len(png), desplazamiento)
+        desplazamiento += len(png)
+        cuerpo += png
+    with open(DOCUMENTO_ICO, "wb") as fh:
+        fh.write(cabecera + entradas + cuerpo)
+    print(f"{DOCUMENTO_ICO}: {', '.join(str(t) for t in TAMANOS)} px")
+
+
 def main() -> int:
+    icono_documento()
+    if "--documento" in sys.argv[1:]:
+        return 0
     from PIL import Image          # aquí: la app y las pruebas importan TAMANOS sin Pillow
     if not os.path.isfile(ORIGEN):
         print(f"No se encuentra {ORIGEN}", file=sys.stderr)

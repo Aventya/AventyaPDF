@@ -67,7 +67,7 @@ La primera vegada que obriu AventyaPDF apareix una presentació que en resumeix 
 
 ![presentacion] La presentació inicial.
 
-Al menú **Ajuda** també hi teniu aquest manual (**Ajuda › Manual d'AventyaPDF**), la llista de dreceres de teclat (**F1**) i l'idioma de l'aplicació (**Ajuda › Idioma**). AventyaPDF està en castellà, anglès, francès, italià, català, gallec i basc; l'idioma nou s'aplica la propera vegada que obriu l'aplicació.
+Al menú **Ajuda** també hi teniu aquest manual (**Ajuda › Manual d'AventyaPDF**, que el baixa d'Internet i l'obre; sense connexió, obre l'última còpia baixada), la llista de dreceres de teclat (**F1**) i l'idioma de l'aplicació (**Ajuda › Idioma**). AventyaPDF està en castellà, anglès, català, gallec i basc; l'idioma nou s'aplica la propera vegada que obriu l'aplicació.
 
 ![idioma] Ajuda › Idioma.
 

@@ -7,7 +7,7 @@ administrador.
 (r109, petición de Ricardo: «el instalador no lleve partes que se mantengan
 fuera de este proyecto») **El instalador solo lleva lo propio** —unos pocos
 MB—: el lanzador `AventyaPDF.exe`, el código de la aplicación, la lista de
-confianza, los iconos, el menú contextual y el manual. Todo lo de terceros
+confianza, los iconos (también el de los PDF, r141) y el menú contextual. Todo lo de terceros
 (Python, los paquetes de Python y las fuentes tipográficas) lo **descarga el
 propio instalador al instalar**, de su origen oficial y comprobando el SHA-256
 de cada archivo. Por eso **instalar necesita conexión a Internet**. Hasta r108
@@ -32,7 +32,7 @@ lento.
 
 (r112) El tamaño que muestra Configuración › Aplicaciones lo fija
 `UninstallDisplaySize`, que `construir.ps1` mide sobre la copia completa ya
-precompilada (más el manual y el desinstalador). Sin él, Inno Setup sumaba
+precompilada (más el desinstalador). Sin él, Inno Setup sumaba
 los archivos descargados —que se borran tras descomprimirlos— a lo
 instalado, y Windows mostraba ~494 MB para 336 reales. `-ProbarInstalacion`
 comprueba que lo registrado y lo instalado no difieren en más de 10 MB.
@@ -170,8 +170,8 @@ Visual Studio con C++ y el Windows SDK.
 * `dependencias.carpeta_instalada()` reconoce la instalación (carpeta con
   `AventyaPDF.exe` y `runtime\` por encima de `app\`); ahí
   `asegurar_o_salir()` no hace nada —el instalador ya puso las versiones
-  exactas y su Python no lleva pip— y `open_pdf` busca el manual (`manual\MANUAL_<idioma>.pdf`, r138) junto al
-  lanzador.
+  exactas y su Python no lleva pip—. (r141) El manual no se instala: Ayuda ›
+  Manual lo descarga de GitHub (`actualizaciones.descargar_manual`).
 * Los módulos calculan sus rutas con `__file__`: en la instalación, `app\`
   tiene el mismo árbol que el proyecto.
 

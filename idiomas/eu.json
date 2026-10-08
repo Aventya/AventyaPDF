@@ -486,7 +486,7 @@
  "Proteger y preparar": "Babestu eta prestatu",
  "Contraseña AES-256 y permisos, marca de agua, encabezado y pie, numeración Bates, compresión y exportación a Word, imágenes o texto.": "AES-256 pasahitza eta baimenak, ur-marka, goiburua eta orri-oina, Bates zenbakitzea, konpresioa, eta esportazioa Word-era, irudietara edo testura.",
  "En tu idioma": "Zure hizkuntzan",
- "AventyaPDF está en español, inglés, francés, italiano, catalán, gallego y euskera. Se cambia en Ayuda › Idioma, y el manual completo está en Ayuda › Manual de AventyaPDF.": "AventyaPDF gaztelaniaz, ingelesez, frantsesez, italieraz, katalanez, galizieraz eta euskaraz dago. Aldatzeko: Laguntza › Hizkuntza. Eskuliburu osoa: Laguntza › AventyaPDF-ren eskuliburua.",
+ "AventyaPDF está en español, inglés, catalán, gallego y euskera. Se cambia en Ayuda › Idioma, y el manual completo está en Ayuda › Manual de AventyaPDF.": "AventyaPDF gaztelaniaz, ingelesez, katalanez, galizieraz eta euskaraz dago. Aldatzeko: Laguntza › Hizkuntza. Eskuliburu osoa: Laguntza › AventyaPDF-ren eskuliburua.",
  "Listo para empezar": "Hasteko prest",
  "F1 muestra todos los atajos de teclado. Puedes volver a ver esta presentación cuando quieras desde Ayuda › Presentación de AventyaPDF.": "F1 sakatuta lasterbide guztiak ikusten dira. Aurkezpen hau berriro ikus dezakezu nahi duzunean, Laguntza › AventyaPDF-ren aurkezpena aukeratik.",
  "Presentación de AventyaPDF": "AventyaPDF-ren aurkezpena",
@@ -783,7 +783,6 @@
  "Aplanar": "Lautu",
  "Las anotaciones y los campos de formulario pasarán a formar parte del contenido y ya no se podrán editar. ¿Continuar?": "Oharpenak eta inprimaki-eremuak edukiaren parte bihurtuko dira, eta ezin izango dira editatu. Jarraitu?",
  "El cifrado se eliminará al guardar el documento (Ctrl+S).": "Zifratzea kendu egingo da dokumentua gordetzean (Ctrl+S).",
- "El manual en este idioma no está en este equipo. ¿Abrirlo en la web?": "Hizkuntza honetako eskuliburua ez dago ordenagailu honetan. Webean ireki?",
  "la página de la versión": "bertsioaren web-orria",
  "Actualizar AventyaPDF": "Eguneratu AventyaPDF",
  "Menú contextual del Explorador": "Fitxategi-arakatzailearen laster-menua",
@@ -862,5 +861,8 @@
  "Algoritmo de resumen no admitido: {digest_algorithm}.": "Laburpen-algoritmo hau ez da onartzen: {digest_algorithm}.",
  "Windows no pudo firmar con la clave del certificado (código 0x{valor:08X}).": "Windows-ek ezin izan du sinatu ziurtagiriaren gakoarekin (kodea: 0x{valor:08X}).",
  "El proveedor criptográfico del certificado no admite SHA-2 (código 0x{valor:08X}).": "Ziurtagiriaren hornitzaile kriptografikoak ez du SHA-2 onartzen (kodea: 0x{valor:08X}).",
- "Windows no da acceso a la clave privada de este certificado (código 0x{valor:08X}).\n\nSi es de una tarjeta o un DNIe, comprueba que está insertado.": "Windows-ek ez du ziurtagiri honen gako pribaturako sarbiderik ematen (kodea: 0x{valor:08X}).\n\nTxartel batekoa edo DNIe batekoa bada, egiaztatu sartuta dagoela."
+ "Windows no da acceso a la clave privada de este certificado (código 0x{valor:08X}).\n\nSi es de una tarjeta o un DNIe, comprueba que está insertado.": "Windows-ek ez du ziurtagiri honen gako pribaturako sarbiderik ematen (kodea: 0x{valor:08X}).\n\nTxartel batekoa edo DNIe batekoa bada, egiaztatu sartuta dagoela.",
+ "Descargando el manual de AventyaPDF…": "AventyaPDF-ren eskuliburua deskargatzen…",
+ "No se pudo descargar el manual ({razon}).": "Ezin izan da eskuliburua deskargatu ({razon}).",
+ "Hace falta conexión a Internet la primera vez.": "Lehen aldian, Interneteko konexioa behar da."
 }

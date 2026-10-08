@@ -67,7 +67,7 @@ The first time you open AventyaPDF, a tour summarises its features. Tick “Don'
 
 ![presentacion] The startup tour.
 
-The **Help** menu also contains this manual (**Help › AventyaPDF manual**), the list of keyboard shortcuts (**F1**) and the application language (**Help › Language**). AventyaPDF is available in Spanish, English, French, Italian, Catalan, Galician and Basque; the new language is applied the next time you open the application.
+The **Help** menu also contains this manual (**Help › AventyaPDF manual**, which downloads it from the Internet and opens it; when you're offline, it opens the last downloaded copy), the list of keyboard shortcuts (**F1**) and the application language (**Help › Language**). AventyaPDF is available in Spanish, English, Catalan, Galician and Basque; the new language is applied the next time you open the application.
 
 ![idioma] Help › Language.
 

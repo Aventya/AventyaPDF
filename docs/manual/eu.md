@@ -67,7 +67,7 @@ AventyaPDF lehen aldiz irekitzean, funtzioak laburbiltzen dituen aurkezpen bat a
 
 ![presentacion] Hasierako aurkezpena.
 
-**Laguntza** menuan daude, halaber, eskuliburu hau (**Laguntza › AventyaPDF-ren eskuliburua**), lasterbideen zerrenda (**F1**) eta aplikazioaren hizkuntza (**Laguntza › Hizkuntza**). AventyaPDF gaztelaniaz, ingelesez, frantsesez, italieraz, katalanez, galizieraz eta euskaraz dago; hizkuntza berria aplikazioa irekitzen duzun hurrengo aldian aplikatzen da.
+**Laguntza** menuan daude, halaber, eskuliburu hau (**Laguntza › AventyaPDF-ren eskuliburua**: Internetetik deskargatu eta irekitzen du; konexiorik gabe, deskargatutako azken kopia irekitzen du), lasterbideen zerrenda (**F1**) eta aplikazioaren hizkuntza (**Laguntza › Hizkuntza**). AventyaPDF gaztelaniaz, ingelesez, katalanez, galizieraz eta euskaraz dago; hizkuntza berria aplikazioa irekitzen duzun hurrengo aldian aplikatzen da.
 
 ![idioma] Laguntza › Hizkuntza.
 
