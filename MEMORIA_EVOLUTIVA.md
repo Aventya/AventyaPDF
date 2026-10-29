@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 | :-- | :-- |
-| Revisión de la memoria | **r144** |
+| Revisión de la memoria | **r145** |
 | Fecha de la revisión | 2026-10-29 |
 | Versión de la app | **0.9.15** publicada y firmada con Sigstore (r142, compilada de nuevo tras r141 en el equipo `Aventya`). La 0.9.14 retirada de GitHub (r142). La 1.0.0 queda para el lanzamiento en la Microsoft Store. |
 | Raíz del proyecto | (r94) Ricardo trabaja desde **dos equipos**: `C:\Users\ricardo\Proyectos\AventyaPDF` (tiene Inno Setup, Visual Studio con C++ y el certificado del paquete del menú contextual: aquí se puede empaquetar) y `C:\Users\Aventya\Proyectos\AVENTYAPDF` (antes `ANTIGRAVITY-PDF`) |
