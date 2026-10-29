@@ -386,7 +386,10 @@ def _tolerant_writer(pdf_bytes: bytes, doc_password: str) -> IncrementalPdfFileW
     los que tienen otros defectos que los visores aceptan, como una tabla xref
     con un objeto más de los que declara el tráiler.
     - Sin firmas previas: se reescribe con PyMuPDF (tabla xref clásica, conserva
-      el cifrado) y se firma el resultado en modo estricto.
+      el cifrado) y se firma el resultado en modo estricto. (r143) Con
+      garbage=2, que renumera los objetos: con garbage=1 se conservaban las
+      generaciones mayores que 0 sin su entrada «free» previa, y pyHanko
+      rechazaba la copia («orphaned generation»).
     - Con firmas previas: reescribir las invalidaría, así que se firma de forma
       incremental con el lector en modo no estricto."""
     doc = fitz.open("pdf", pdf_bytes)
@@ -395,7 +398,7 @@ def _tolerant_writer(pdf_bytes: bytes, doc_password: str) -> IncrementalPdfFileW
             raise SigningError(tr("El documento está protegido con contraseña."))
         if doc_tools.has_signatures(doc):
             return IncrementalPdfFileWriter(BytesIO(pdf_bytes), strict=False)
-        clean = doc.tobytes(garbage=1, deflate=True, encryption=fitz.PDF_ENCRYPT_KEEP)
+        clean = doc.tobytes(garbage=2, deflate=True, encryption=fitz.PDF_ENCRYPT_KEEP)
     finally:
         doc.close()
     return IncrementalPdfFileWriter(BytesIO(clean))

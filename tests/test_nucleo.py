@@ -2103,6 +2103,38 @@ class TestFirma(_ConCarpeta):
         self.assertEqual(len(reports), 2)
         self.assertTrue(reports[-1].intact and reports[-1].valid)
 
+    def test_firma_pdf_con_objeto_de_generacion_mayor_que_cero(self):
+        """(r143) Objeto en generación 1 sin entrada «free» previa en la xref.
+        pyHanko en modo estricto lo rechaza («orphaned generation») y la copia
+        de PyMuPDF con garbage=1 conservaba esa generación: no se podía firmar."""
+        from io import BytesIO
+        from pyhanko.pdf_utils.misc import PdfReadError
+        from pyhanko.pdf_utils.reader import PdfFileReader
+        from signature_validation import validate_signatures
+        from signer_backend import PAdESSigner
+
+        cuerpos = {1: b"<< /Type /Catalog /Pages 2 0 R >>",
+                   2: b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+                   3: b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 1 R >>",
+                   4: b"<< /Length 0 >>\nstream\n\nendstream"}
+        data, offs = bytearray(b"%PDF-1.7\n"), {}
+        for n, cuerpo in cuerpos.items():
+            gen = 1 if n == 4 else 0
+            offs[n] = (len(data), gen)
+            data += b"%d %d obj\n%s\nendobj\n" % (n, gen, cuerpo)
+        xref = len(data)
+        data += b"xref\n0 5\n0000000000 65535 f \n"
+        data += b"".join(b"%010d %05d n \n" % offs[n] for n in cuerpos)
+        data += b"trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % xref
+        data = bytes(data)
+        with self.assertRaisesRegex(PdfReadError, "orphaned"):   # así lo rechazaba pyHanko
+            PdfFileReader(BytesIO(data))
+
+        firmado = PAdESSigner.sign_pdf_bytes(data, self.pfx, "1234", 0, (72, 600, 272, 680))
+        reports = validate_signatures(firmado)
+        self.assertEqual(len(reports), 1)
+        self.assertTrue(reports[0].intact and reports[0].valid)
+
     def test_firma_en_el_campo_de_firma_del_formulario(self):
         """(r38) El recuadro de firma que ya trae el formulario se rellena con
         la firma (antes se creaba un campo nuevo y el recuadro seguía vacío)."""
