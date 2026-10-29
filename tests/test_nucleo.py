@@ -1486,6 +1486,33 @@ class TestEdicionTexto(unittest.TestCase):
         self.assertEqual(self.E.family_for("NoExisteEstaFuente", self.E.FLAG_SERIF),
                          "NoExisteEstaFuente")
 
+    def test_fuentes_estandar_del_pdf_con_sus_equivalentes_de_windows(self):
+        """(r149, confirmado por Ricardo) Helvetica, Times y Courier, las
+        estándar del PDF sin incrustar, se reescriben con Arial, Times New Roman
+        y Courier New en sus cuatro estilos, sin simular nada."""
+        doc = fitz.open()
+        page = doc.new_page()
+        codigos = ("helv", "hebo", "heit", "hebi", "tiro", "tibo", "tiit", "tibi",
+                   "cour", "cobo", "coit", "cobi")
+        for i, c in enumerate(codigos):
+            page.insert_text((50, 60 + i * 40), f"Texto {c}", fontname=c, fontsize=12)
+        doc = fitz.open("pdf", doc.tobytes())
+        page = doc[0]
+        familias = {"Helvetica": "Arial", "Times": "Times New Roman", "Courier": "Courier New"}
+        bloques = self.E.text_blocks(page)
+        self.assertEqual(len(bloques), 12)
+        for b in bloques:
+            with self.subTest(fuente=b.font):
+                l = self.E.letra(b.font, b.flags, doc=doc, texto="Ñandú")
+                self.assertEqual(l.nombre, familias[b.font.split("-")[0]])
+                self.assertEqual((bool(l.font.is_bold), bool(l.font.is_italic)), (b.bold, b.italic))
+                self.assertFalse(l.negrita or l.cursiva or l.incrustada)
+                self.E.replace_block(page, b, b.text + " ñ")
+        doc = fitz.open("pdf", doc.tobytes())
+        fuentes = {self.E.family_key(s["font"]) for bl in doc[0].get_text("dict")["blocks"]
+                   for li in bl["lines"] for s in li["spans"]}
+        self.assertEqual(fuentes, {"arial", "timesnewroman", "couriernew"})
+
     def test_negrita_y_cursiva_simuladas_sin_cambiar_de_fuente(self):
         """(r148, petición de Ricardo) Si la familia no trae negrita o cursiva
         (Impact), se simulan con la misma fuente en vez de usar otra."""

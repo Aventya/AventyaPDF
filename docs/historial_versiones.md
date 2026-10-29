@@ -4,6 +4,23 @@
 
 Las publicadas como 1.0.0-1.3.0 se renumeraron 0.9.6-0.9.6.7 al publicarse la 0.9.7, y las 2.0.3-2.0.5 como 0.9.3-0.9.5 al publicarse la que fue 1.0.0: la **1.0.0** queda para el lanzamiento en la Microsoft Store.
 
+## 0.9.16 — 2026-10-29
+
+Commit `7c4a425`.
+
+Los menús del botón derecho llevan ya los iconos de las herramientas y permiten recortar la página. Además, se corrige un fallo que impedía firmar algunos PDF con certificado.
+
+#### Novedades respecto a la 0.9.15
+- **Menú del botón derecho sobre la página**: pulsando el botón derecho donde no hay ningún comentario ni texto seleccionado aparecen todas las herramientas (añadir texto, nota, resaltar, rectángulo, emoji, borrador, editar contenido, firma), **Recortar la página mostrada en el visor…** y **Operaciones de página**. Al elegir una, sus opciones se abren en el panel lateral para ajustarlas.
+- **Iconos en todos los menús del botón derecho**: los de la página, el texto seleccionado, los comentarios, «Editar contenido», las miniaturas y las pestañas llevan el mismo icono que la herramienta en la barra.
+- **Resaltar, subrayar o tachar desde el botón derecho** deja la marca seleccionada, con sus opciones en el panel lateral para cambiarle el color o la opacidad.
+- **Miniaturas**: el botón derecho ofrece **Recortar esta página…** y cualquier opción abre las operaciones de página en el panel lateral.
+- **Corregido**: algunos PDF no se podían firmar con certificado y daban el error «Object with id … has an orphaned generation». Pasaba con documentos generados por ciertos programas que numeran sus objetos internos de forma irregular.
+- Los menús del botón derecho sobre la página vuelven a tener fondo blanco (salían grises).
+- Manual actualizado en los cinco idiomas con el nuevo menú del botón derecho.
+
+240 pruebas automáticas OK.
+
 ## 0.9.15 — 2026-10-08
 
 Commit `6e62de3`.
