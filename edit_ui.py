@@ -25,6 +25,7 @@ from PyQt6.QtCore import QPoint, QRect, Qt
 from PyQt6.QtGui import QColor, QPen
 from PyQt6.QtWidgets import QFileDialog, QMenu, QMessageBox
 
+import icons
 import inplace_editor
 import pdf_edit
 from idioma import tr
@@ -263,12 +264,14 @@ class ContentEditor:
 
     # ── menú contextual y teclado ──────────────────────────────────────── #
 
-    def context_menu(self, pos: QPoint, global_pos, pdf_pt) -> None:
+    def context_menu(self, pos: QPoint, global_pos, pdf_pt) -> bool:
+        """Menú del párrafo o la imagen bajo el cursor. (r144) False si no hay
+        ninguno: el visor enseña entonces el menú de herramientas."""
         item = self._item_at(pdf_pt)
         if isinstance(item, pdf_edit.TextBlock):
             menu = QMenu(self.viewer)
-            a_edit = menu.addAction(tr("Editar este texto"))
-            a_del = menu.addAction(tr("Eliminar este texto"))
+            a_edit = menu.addAction(icons.qicon("edit_text"), tr("Editar este texto"))
+            a_del = menu.addAction(icons.qicon("delete"), tr("Eliminar este texto"))
             chosen = menu.exec(global_pos)
             if chosen is a_edit:
                 self.selected, self._rect = item, fitz.Rect(item.bbox)
@@ -276,16 +279,16 @@ class ContentEditor:
             elif chosen is a_del:
                 self._apply(tr("Eliminar texto"),
                             lambda page: pdf_edit.delete_block(page, item))
-            return
+            return True
         if item is None:
-            return
+            return False
         self.selected, self._rect = item, fitz.Rect(item.bbox)
         self.viewer.update()
         menu = QMenu(self.viewer)
-        a_rep = menu.addAction(tr("Sustituir imagen…"))
-        a_save = menu.addAction(tr("Guardar imagen como…"))
+        a_rep = menu.addAction(icons.qicon("image_replace"), tr("Sustituir imagen…"))
+        a_save = menu.addAction(icons.qicon("save"), tr("Guardar imagen como…"))
         menu.addSeparator()
-        a_del = menu.addAction(tr("Eliminar imagen"))
+        a_del = menu.addAction(icons.qicon("delete"), tr("Eliminar imagen"))
         if pdf_edit.is_shared(self.viewer.pdf_page, item):
             menu.addSeparator()
             nota = menu.addAction(tr("Esta imagen está colocada en más sitios; "
@@ -298,6 +301,7 @@ class ContentEditor:
             self.save_image(item)
         elif chosen is a_del:
             self.delete_selected()
+        return True
 
     def delete_selected(self) -> bool:
         caja = self.selected_image

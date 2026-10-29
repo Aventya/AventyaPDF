@@ -108,6 +108,7 @@ Cuando el visor está en modo selección (`NONE`):
 
 ### 4. Menú Contextual y Teclado
 * El visor responde a clics secundarios (`contextMenuEvent`) sobre anotaciones mostrando la opción de editar su texto o eliminarla (a excepción de las firmas digitales que no pueden modificarse).
+* (r144) Todos los menús del botón derecho llevan el icono de su herramienta (`icons.qicon`). Sobre la página sin anotación ni texto seleccionado sale el **menú de herramientas** (`MainWindow._tools_menu`): las de la barra, Firma, «Recortar la página mostrada» y «Operaciones de página». Elegir cualquier opción, en este menú o en los demás, deja la herramienta abierta en el panel lateral para ajustarla (la marca de texto nueva queda seleccionada con su panel; las miniaturas abren «Operaciones de página»).
 * Permite borrar la anotación seleccionada presionando las teclas `Suprimir` o `Retroceso` (`keyPressEvent`).
 * La tecla `Escape` deselecciona cualquier anotación activa.
 

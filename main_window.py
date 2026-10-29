@@ -953,6 +953,43 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
                 b.setChecked(m == mode)
             self._activate_tool(mode)
 
+    def _tools_menu(self, global_pos) -> None:
+        """(r144, petición de Ricardo) Botón derecho sobre la página, donde no
+        hay anotación ni texto seleccionado: las herramientas de la barra, con
+        su icono, más «Recortar la página mostrada». Elegir una la pone y abre
+        sus opciones en el panel lateral, igual que su botón."""
+        from PyQt6.QtWidgets import QMenu
+        menu = QMenu(self.viewer)
+        acciones = {}
+        for item in [
+            ("text", "TEXT", tr("Añadir texto"), "T"),
+            ("note", "NOTE", tr("Nota adhesiva"), "N"),
+            ("markup", "MARKUP", tr("Resaltar, subrayar o tachar"), "H"),
+            ("rect", "RECT", tr("Remarcar con rectángulo"), "R"),
+            ("emoji", "EMOJI", tr("Insertar emoji"), "E"),
+            ("eraser", "ERASE", tr("Borrador"), ""),
+            ("edit", "EDIT", tr("Editar el texto y las imágenes del PDF"), "C"),
+            None,
+            ("handsign", "SIGN", tr("Firma"), ""),
+            None,
+            ("crop", "CROP", tr("Recortar la página mostrada en el visor…"), ""),
+            ("pages", "PAGES", tr("Operaciones de página"), ""),
+        ]:
+            if item is None:
+                menu.addSeparator()
+                continue
+            key, mode, label, tecla = item
+            a = menu.addAction(icons.qicon(key), label + (f"\t{tecla}" if tecla else ""))
+            acciones[a] = mode
+        mode = acciones.get(menu.exec(global_pos))
+        if mode == "CROP":
+            self._set_pages_mode(True)
+            self._start_crop()
+        elif mode == "PAGES":
+            self._set_pages_mode(True)
+        elif mode is not None and self.viewer.mode != mode:
+            self._toggle_tool(mode)
+
     def _activate_tool(self, mode: str):
         self._cancel_crop()    # (r99) cambiar de herramienta cancela un recorte a medias
         if mode != "NONE" and self._pages_mode:

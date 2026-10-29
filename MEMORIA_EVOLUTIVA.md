@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 | :-- | :-- |
-| Revisión de la memoria | **r143** |
+| Revisión de la memoria | **r144** |
 | Fecha de la revisión | 2026-10-29 |
 | Versión de la app | **0.9.15** publicada y firmada con Sigstore (r142, compilada de nuevo tras r141 en el equipo `Aventya`). La 0.9.14 retirada de GitHub (r142). La 1.0.0 queda para el lanzamiento en la Microsoft Store. |
 | Raíz del proyecto | (r94) Ricardo trabaja desde **dos equipos**: `C:\Users\ricardo\Proyectos\AventyaPDF` (tiene Inno Setup, Visual Studio con C++ y el certificado del paquete del menú contextual: aquí se puede empaquetar) y `C:\Users\Aventya\Proyectos\AVENTYAPDF` (antes `ANTIGRAVITY-PDF`) |
@@ -220,6 +220,22 @@ ventana; ambos llaman a su API pública (`checkpoint`, `mark_modified`,
 - **Modo NONE**: clic en anotación = seleccionar/mover/redimensionar; arrastrar
   sobre texto = seleccionar texto (Ctrl+C, clic derecho → resaltar/subrayar/
   tachar/ondulado); pasar sobre una nota muestra su contenido.
+- **Menús del botón derecho** (r144, petición de Ricardo): **todos llevan
+  icono**, el mismo glifo Fluent que el botón de la herramienta
+  (`icons.qicon(key)`, glifo → QIcon; claves nuevas en `ICONS`). Sobre la
+  página **sin anotación ni texto seleccionado** (o con una herramienta
+  puesta, o en «Editar contenido» fuera de párrafos e imágenes: allí
+  `ContentEditor.context_menu` devuelve False) sale `_tools_menu`: las
+  herramientas de la barra con su atajo, Firma, **«Recortar la página
+  mostrada»** y «Operaciones de página». **Elegir algo deja la herramienta
+  abierta en el panel lateral**: las herramientas, como su botón; Recortar
+  abre «Operaciones de página» y arranca el recorte; resaltar/subrayar/
+  tachar/ondulado desde el texto seleccionado deja **la marca nueva
+  seleccionada** con su panel (`select_annotation`); el menú de miniaturas
+  (con «Recortar esta página…» si hay una sola) abre «Operaciones de página»
+  antes de actuar. Sin icono a propósito: el menú de valores de una lista de
+  formulario (son datos, no herramientas). Antes, el botón derecho en vacío
+  no hacía nada y con una herramienta puesta tampoco.
   **Cursor** (r17): «I» sobre texto seleccionable (`viewer._word_at`, también el
   texto de OCR), «I» sobre campos de texto, mano sobre casillas, listas y botones,
   flecha sobre campos de solo lectura.
@@ -1318,6 +1334,7 @@ motivos, invariantes, trampas y estado.
 
 | Rev | Fecha | Cambio |
 | :-- | :-- | :-- |
+| r144 | 2026-10-29 | **Iconos y herramientas en los menús del botón derecho** (Ricardo: «quiero que todos los submenús del ratón al pulsar el botón secundario tengan los iconos correspondientes de las herramientas y una de las herramientas que se tendrían que añadir en dicho submenú es la de recortar la página mostrada en el visor, además siempre que se pulse en uno de los submenús debe aparecer la herramienta en el panel lateral para poderse modificar»). `icons.qicon`; menú nuevo `MainWindow._tools_menu` (botón derecho en vacío o con herramienta puesta) con «Recortar la página mostrada»; iconos en los menús de texto seleccionado, anotación, «Editar contenido», miniaturas (+ «Recortar esta página…») y pestañas; cada opción abre su panel (detalle en §3 «Menús del botón derecho»). Texto nuevo traducido en en/ca/gl/eu. Pruebas nuevas: `test_menu_del_boton_derecho_con_herramientas`, `test_marcar_texto_desde_el_menu_abre_su_panel`, `test_menu_de_miniaturas_abre_operaciones_de_pagina`. 240 pruebas OK (7 omitidas). Manual (`docs/manual/*.md`) sin actualizar: pendiente de regenerar con capturas. |
 | r143 | 2026-10-29 | **Corregido: firmar fallaba con «Object with id 5 has an orphaned generation: generation 1 was not preceded by a free instruction for generation 0»** (informado por Ricardo al firmar con certificado). PDF con un objeto en generación 1 sin entrada «free» previa: pyHanko (0.37.0 en el entorno) lo rechaza en estricto, y la copia de rescate de `_tolerant_writer` (PyMuPDF `garbage=1`) conservaba la generación, así que volvía a fallar. Ahora `garbage=2`, que renumera a generación 0 (invariante 24). Prueba nueva `test_firma_pdf_con_objeto_de_generacion_mayor_que_cero` (construye ese PDF a mano). 237 pruebas OK (7 omitidas), ya sobre r142. Sin el PDF original de Ricardo: falta comprobarlo con él. |
 | r142 | 2026-10-08 | **0.9.15 publicada** (Ricardo: «empaqueta de nuevo la versión 0.9.15 y súbela»). Recompilada en el equipo `Aventya` con r141 (`construir.ps1 -ProbarInstalacion -SinStore`): autodiagnóstico 9/9, `AventyaPDF-Setup-0.9.15.exe` (5,1 MB, ya sin manual dentro), instalación de prueba descargándolo todo en 100 s, 338 MB, archivos idénticos, autodiagnóstico 9/9 y desinstalación limpia; lanzador 0.9.15. Pruebas: 236, todas OK salvo `test_instancia_secundaria_cede_sus_archivos`, que falla porque Ricardo tenía AventyaPDF abierto (mutex de instancia ocupado; r95). `desarrollo` → `main`, etiqueta `v0.9.15`, `gh release create` con `empaquetado/notas/0.9.15.md`; Sigstore OK (`.sigstore.json` adjunto); `actualizaciones.fetch_latest` la ve más nueva que la 0.9.14 y su huella coincide con el instalador. 2026-10-09, con autorización de Ricardo («fusiona y elimina la versión anterior»): 0.9.14 retirada (`gh release delete v0.9.14 --cleanup-tag`; ya estaba en `docs/historial_versiones.md`) y `desarrollo` fusionada en `main`. |
 | r141 | 2026-10-08 | **Icono propio de los PDF, fuera francés e italiano y manual descargado de GitHub** (Ricardo: «He visto que necesitamos un icono de ficheros PDF, te lo remito en formato SVG, debes usarlo para crear el icono necesario para el empaquetado y que se utilice como icono de los ficheros asociados a su apertura con nuestra aplicación cuando lo indiquemos en la configuración de Windows. Por otro lado puedes quitar los idiomas francés e italiano, pues con el ingles como internacional es suficiente. Además el manual que se empaqueta con la aplicación es un error, lo conveniente es tener acceso al PDF subido a Github de manera que se descargue y se abra automáticamente en la aplicación sin usar Powershell»). **Icono**: `vendor/icono/documento_pdf.svg` (el de Ricardo) → `documento_pdf.ico` (`create_app_icon.py --documento`: cada tamaño de `TAMANOS` pintado desde el vector con QSvgRenderer y guardado como PNG dentro del .ico, sin Pillow). El instalador escribe `DefaultIcon` de `AventyaPDF.Document` = `{app}\app\vendor\icono\documento_pdf.ico`; **sustituye a r87** (se copiaba el icono del visor anterior: `CopiarIconoDePdfSiHaceFalta` retirado). Store: `uap:Logo` en la asociación de .pdf (`DocumentoPDF*.png`). **Idiomas**: quedan es, en, ca, gl, eu (`idioma.IDIOMAS`, `_WINDOWS`, `[Languages]` de Inno, `LANGID`, qtbase); quien tenía fr/it guardado pasa al inglés (prueba). Borrados sus json, glosarios, manuales y diapositivas; los lingüistas de en/ca/gl/eu revisaron la lista de idiomas y tradujeron lo nuevo. **Manual**: ver §3 «Manual»; fuera del instalador (`[InstallDelete]` quita el de versiones anteriores, `[UninstallDelete]` la copia descargada), de `construir.ps1` (tamaño y comparación) y de `preparar_store.py`; `dependencias.ruta_manual` y la preselección de r103 retirados. Notas de la 0.9.15 (sin publicar) actualizadas. Pruebas nuevas: descarga del manual (ETag, 404 → español, sin red), icono de los PDF, Ayuda › Manual con descarga simulada. **Hay que recompilar la 0.9.15** en Windows. |

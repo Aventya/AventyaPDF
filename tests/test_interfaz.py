@@ -423,6 +423,110 @@ class TestVentanaPrincipal(unittest.TestCase):
         self.assertTrue(w._pages_panel.isHidden())
         w._toggle_tool("TEXT")
 
+    def _elegir_en_menu(self, texto: str):
+        """Sustituye QMenu.exec: apunta las acciones de cada menú que se abre
+        y devuelve la que se llama `texto` (sin el atajo tras el tabulador)."""
+        from PyQt6.QtWidgets import QMenu
+        abiertos = []
+
+        def exec_(menu, *_a, **_k):
+            acciones = [a for a in menu.actions() if not a.isSeparator()]
+            abiertos.append(acciones)
+            return next((a for a in acciones if a.text().split("\t")[0] == texto), None)
+        return mock.patch.object(QMenu, "exec", exec_), abiertos
+
+    def test_menu_del_boton_derecho_con_herramientas(self):
+        """(r144, petición de Ricardo) Botón derecho sobre la página: las
+        herramientas con su icono, también «Recortar la página mostrada»;
+        elegir una abre su panel lateral."""
+        from PyQt6.QtCore import QPoint
+        from PyQt6.QtGui import QContextMenuEvent
+        from idioma import tr
+        w = self.w
+        self.assertTrue(w.open_path(self._crear_pdf(2)))
+        self.app.processEvents()
+
+        parche, abiertos = self._elegir_en_menu(tr("Añadir texto"))
+        with parche:
+            w.viewer.contextMenuEvent(QContextMenuEvent(
+                QContextMenuEvent.Reason.Mouse, QPoint(5, 5), w.viewer.mapToGlobal(QPoint(5, 5))))
+        self.assertEqual(len(abiertos), 1)
+        textos = [a.text().split("\t")[0] for a in abiertos[0]]
+        self.assertIn(tr("Recortar la página mostrada en el visor…"), textos)
+        for a in abiertos[0]:
+            with self.subTest(accion=a.text()):
+                self.assertFalse(a.icon().isNull())
+        self.assertEqual(w.viewer.mode, "TEXT")
+        self.assertTrue(w._tool_btns["TEXT"].isChecked())
+        self.assertFalse(w._txt_panel.isHidden())
+
+        # Con una herramienta puesta también sale, y cambia a la elegida.
+        parche, _ = self._elegir_en_menu(tr("Remarcar con rectángulo"))
+        with parche:
+            w._tools_menu(QPoint())
+        self.assertEqual(w.viewer.mode, "RECT")
+        self.assertFalse(w._rect_panel.isHidden())
+        self.assertTrue(w._txt_panel.isHidden())
+
+        parche, _ = self._elegir_en_menu(tr("Recortar la página mostrada en el visor…"))
+        with parche:
+            w._tools_menu(QPoint())
+        self.assertEqual(w.viewer.mode, "CROP")
+        self.assertTrue(w._pages_mode)
+        self.assertFalse(w._pages_panel.isHidden())
+        self.assertEqual(w.viewer.crop_page_number, w.current_page)
+        w._cancel_crop()
+
+    def test_marcar_texto_desde_el_menu_abre_su_panel(self):
+        """(r144) Resaltar desde el botón derecho deja la marca nueva
+        seleccionada y su panel abierto, para cambiarle color u opacidad."""
+        from PyQt6.QtCore import QPoint
+        from idioma import tr
+        w = self.w
+        self.assertTrue(w.open_path(self._crear_pdf(1)))
+        self.app.processEvents()
+        r = w.doc[0].search_for("Hola")[0]
+        w.viewer._tsel_rects = [r]
+        w.viewer._tsel_quads = [r.quad]
+
+        parche, abiertos = self._elegir_en_menu(tr("Subrayar"))
+        with parche:
+            w.viewer._text_selection_menu(QPoint())
+        for a in abiertos[0]:
+            with self.subTest(accion=a.text()):
+                self.assertFalse(a.icon().isNull())
+        annots = list(w.doc[0].annots())
+        self.assertEqual([a.type[1] for a in annots], ["Underline"])
+        self.assertIsNotNone(w.viewer._sel)
+        self.assertEqual(w.viewer._sel.idx, 0)
+        self.assertFalse(w._markup_panel.isHidden())
+
+    def test_menu_de_miniaturas_abre_operaciones_de_pagina(self):
+        """(r144) Las opciones del botón derecho de las miniaturas llevan
+        icono, incluyen «Recortar esta página…» y abren «Operaciones de
+        página» en el panel lateral."""
+        from PyQt6.QtCore import QPoint
+        from idioma import tr
+        w = self.w
+        self.assertTrue(w.open_path(self._crear_pdf(3)))
+        self.app.processEvents()
+        th = w.sidebar.thumbs
+        th.select_rows([1])
+        self.assertFalse(w._pages_mode)
+
+        parche, abiertos = self._elegir_en_menu(tr("Recortar esta página…"))
+        with parche:
+            th._menu(QPoint())
+        for a in abiertos[0]:
+            with self.subTest(accion=a.text()):
+                self.assertFalse(a.icon().isNull())
+        self.assertTrue(w._pages_mode)
+        self.assertFalse(w._pages_panel.isHidden())
+        self.assertEqual(w.current_page, 1)
+        self.assertEqual(w.viewer.mode, "CROP")
+        self.assertEqual(w.viewer.crop_page_number, 1)
+        w._cancel_crop()
+
     def test_recortar_pagina_desde_operaciones_de_pagina(self):
         """(r99, petición de Ricardo) Botón «Recortar» en «Operaciones de
         página»: recuadro editable sobre la página mostrada, con tiradores;

@@ -106,6 +106,13 @@ ICONS = {
     "close": "dismiss",
     "find_prev": "chevron_up",
     "find_next": "chevron_down",
+    # (r144) Menús del botón derecho
+    "copy_text": "copy",
+    "underline": "text_underline",
+    "strike": "text_strikethrough",
+    "squiggly": "text_effects",       # Fluent no trae subrayado ondulado
+    "edit_text": "text_edit_style",
+    "image_replace": "image_arrow_counterclockwise",
     # Panel lateral y pestañas
     "panel_thumbs": "grid",
     "panel_bookmarks": "bookmark_multiple",
@@ -144,6 +151,28 @@ def glyph(key: str) -> str:
         if s in tallas:
             return chr(tallas[s])
     return chr(tallas[min(tallas)])
+
+
+@functools.lru_cache(maxsize=None)
+def qicon(key: str, color: str = "#323130"):
+    """(r144) El glifo `key` como QIcon, para los menús del botón derecho:
+    el mismo dibujo que el botón de la barra. Hace falta una QApplication."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
+    load_fonts()
+    icono = QIcon()
+    for px in (16, 20, 24, 32, 40):
+        pm = QPixmap(px, px)
+        pm.fill(Qt.GlobalColor.transparent)
+        p = QPainter(pm)
+        fuente = QFont(ICON_FAMILY)
+        fuente.setPixelSize(px)
+        p.setFont(fuente)
+        p.setPen(QColor(color))
+        p.drawText(pm.rect(), Qt.AlignmentFlag.AlignCenter, glyph(key))
+        p.end()
+        icono.addPixmap(pm)
+    return icono
 
 
 # ── Noto ─────────────────────────────────────────────────────────────────── #

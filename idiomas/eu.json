@@ -864,5 +864,6 @@
  "Windows no da acceso a la clave privada de este certificado (código 0x{valor:08X}).\n\nSi es de una tarjeta o un DNIe, comprueba que está insertado.": "Windows-ek ez du ziurtagiri honen gako pribaturako sarbiderik ematen (kodea: 0x{valor:08X}).\n\nTxartel batekoa edo DNIe batekoa bada, egiaztatu sartuta dagoela.",
  "Descargando el manual de AventyaPDF…": "AventyaPDF-ren eskuliburua deskargatzen…",
  "No se pudo descargar el manual ({razon}).": "Ezin izan da eskuliburua deskargatu ({razon}).",
- "Hace falta conexión a Internet la primera vez.": "Lehen aldian, Interneteko konexioa behar da."
+ "Hace falta conexión a Internet la primera vez.": "Lehen aldian, Interneteko konexioa behar da.",
+ "Recortar esta página…": "Moztu orrialde hau…"
 }

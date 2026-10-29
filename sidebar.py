@@ -492,17 +492,28 @@ class ThumbnailsPanel(QWidget):
         m = QMenu(self)
         n = len(rows)
         sfx = tr(" ({n} páginas)").format(n=n) if n > 1 else ""
-        a_l = m.addAction(tr("Girar a la izquierda") + sfx)
-        a_r = m.addAction(tr("Girar a la derecha") + sfx)
+        ico = icons.qicon
+        a_l = m.addAction(ico("rotate_left"), tr("Girar a la izquierda") + sfx)
+        a_r = m.addAction(ico("rotate_right"), tr("Girar a la derecha") + sfx)
         m.addSeparator()
-        a_dup = m.addAction(tr("Duplicar") + sfx)
-        a_ins = m.addAction(tr("Insertar página en blanco después"))
-        a_pdf = m.addAction(tr("Insertar otro PDF después…"))
-        a_ext = m.addAction(tr("Extraer") + sfx + "…")
+        a_dup = m.addAction(ico("duplicate"), tr("Duplicar") + sfx)
+        a_ins = m.addAction(ico("page_blank"), tr("Insertar página en blanco después"))
+        a_pdf = m.addAction(ico("insert_pdf"), tr("Insertar otro PDF después…"))
+        a_ext = m.addAction(ico("extract"), tr("Extraer") + sfx + "…")
+        # (r144) Recortar actúa sobre una sola página: la que se muestra.
+        a_crop = m.addAction(ico("crop"), tr("Recortar esta página…")) if n == 1 else None
         m.addSeparator()
-        a_del = m.addAction(tr("Eliminar") + sfx)
+        a_del = m.addAction(ico("delete"), tr("Eliminar") + sfx)
         chosen = m.exec(self.list.mapToGlobal(pos))
-        if chosen == a_l:
+        if chosen is None:
+            return
+        # (r144) Cualquier opción abre «Operaciones de página» en el panel,
+        # para seguir trabajando con las páginas desde allí.
+        self.mw._set_pages_mode(True)
+        if chosen == a_crop:
+            self.mw.go_to_page(rows[0])
+            self.mw._start_crop()
+        elif chosen == a_l:
             self.mw.rotate_pages(rows, -90)
         elif chosen == a_r:
             self.mw.rotate_pages(rows, 90)
@@ -1039,7 +1050,7 @@ class SidePanel(QWidget):
 
     def _doc_menu(self, index: int, btn: QPushButton, pos):
         m = QMenu(self)
-        a_close = m.addAction(tr("Cerrar documento"))
+        a_close = m.addAction(icons.qicon("close"), tr("Cerrar documento"))
         if m.exec(btn.mapToGlobal(pos)) == a_close:
             self.mw.close_document_at(index)
 

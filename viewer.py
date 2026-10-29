@@ -1024,17 +1024,27 @@ class PDFViewerWidget(QLabel):
     def contextMenuEvent(self, event):
         if not self.pdf_page:
             return
+        mw = self.main_window
         if self.mode == "EDIT":
-            self.content.context_menu(event.pos(), event.globalPos(),
-                                      self._to_pdf_pt(event.pos()))
+            if not self.content.context_menu(event.pos(), event.globalPos(),
+                                             self._to_pdf_pt(event.pos())):
+                mw._tools_menu(event.globalPos())
             return
+        if self.mode == "CROP":
+            return
+        # (r144) Con una herramienta puesta, o fuera de anotaciones y texto
+        # seleccionado: el menú de herramientas.
         if self.mode != "NONE":
+            mw._tools_menu(event.globalPos())
             return
         if self._tsel_rects:
             self._text_selection_menu(event.globalPos())
             return
         hit = self._annot_at(self._to_pdf_pt(event.pos()))
-        if hit and (self._sel is None or self._sel.idx != hit[0]):
+        if hit is None:
+            mw._tools_menu(event.globalPos())
+            return
+        if self._sel is None or self._sel.idx != hit[0]:
             self._select_hit(hit)
             self.update()
         if not self._sel:
@@ -1043,12 +1053,13 @@ class PDFViewerWidget(QLabel):
         if not a:
             return
         menu = QMenu(self)
-        act_edit = menu.addAction(tr("Editar texto…")) if self._sel.is_text else None
+        act_edit = (menu.addAction(icons.qicon("edit_text"), tr("Editar texto…"))
+                    if self._sel.is_text else None)
         act_del = None
         if self._sel.is_signature:
-            menu.addAction(tr("Firma — no se puede eliminar")).setEnabled(False)
+            menu.addAction(icons.qicon("sign"), tr("Firma — no se puede eliminar")).setEnabled(False)
         else:
-            act_del = menu.addAction(tr("Eliminar anotación"))
+            act_del = menu.addAction(icons.qicon("delete"), tr("Eliminar anotación"))
         chosen = menu.exec(event.globalPos())
         if act_edit is not None and chosen == act_edit:
             self._edit_selected_text()
@@ -1058,12 +1069,14 @@ class PDFViewerWidget(QLabel):
     def _text_selection_menu(self, global_pos) -> None:
         mw = self.main_window
         menu = QMenu(self)
-        a_copy = menu.addAction(tr("Copiar texto"))
+        a_copy = menu.addAction(icons.qicon("copy_text"), tr("Copiar texto"))
         menu.addSeparator()
         kinds = {}
-        for kind, label in (("highlight", tr("Resaltar")), ("underline", tr("Subrayar")),
-                            ("strike", tr("Tachar")), ("squiggly", tr("Subrayado ondulado"))):
-            kinds[menu.addAction(label)] = kind
+        for kind, glifo, label in (("highlight", "markup", tr("Resaltar")),
+                                   ("underline", "underline", tr("Subrayar")),
+                                   ("strike", "strike", tr("Tachar")),
+                                   ("squiggly", "squiggly", tr("Subrayado ondulado"))):
+            kinds[menu.addAction(icons.qicon(glifo), label)] = kind
         chosen = menu.exec(global_pos)
         if chosen is None:
             return
@@ -1075,7 +1088,12 @@ class PDFViewerWidget(QLabel):
             kind = kinds[chosen]
             color = self.markup_color if kind == self.markup_kind else doc_tools.MARKUP_COLORS[kind]
             self.clear_text_selection()
+            n = len(list(self.pdf_page.annots())) if self.pdf_page else 0
             mw.add_text_markup(rects, kind, color, quads=quads)
+            # (r144) La marca nueva queda seleccionada con su panel abierto,
+            # para cambiarle el tipo, el color o la opacidad.
+            if self.pdf_page and len(list(self.pdf_page.annots())) > n:
+                mw.select_annotation(mw.current_page, n)
 
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
