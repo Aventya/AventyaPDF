@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 | :-- | :-- |
-| Revisión de la memoria | **r145** |
+| Revisión de la memoria | **r146** |
 | Fecha de la revisión | 2026-10-29 |
 | Versión de la app | **0.9.15** publicada y firmada con Sigstore (r142, compilada de nuevo tras r141 en el equipo `Aventya`). La 0.9.14 retirada de GitHub (r142). La 1.0.0 queda para el lanzamiento en la Microsoft Store. |
 | Raíz del proyecto | (r94) Ricardo trabaja desde **dos equipos**: `C:\Users\ricardo\Proyectos\AventyaPDF` (tiene Inno Setup, Visual Studio con C++ y el certificado del paquete del menú contextual: aquí se puede empaquetar) y `C:\Users\Aventya\Proyectos\AVENTYAPDF` (antes `ANTIGRAVITY-PDF`) |
@@ -1237,12 +1237,15 @@ solo mira tres números: no publicar versiones de cuatro números en adelante.
 
 1. Subir `APP_VERSION` en `window_menus.py` y regenerar los manuales, que
    llevan la versión en la portada (r138): `python docs/manual/crear_manual.py`
-   (unos 2 minutos por idioma; vale una sesión en la nube). (r139) **En Windows no**:
-   con `QT_QPA_PLATFORM=offscreen` las capturas salen con las letras separadas
-   («Resaltar,   subrayar   o   tachar»). En el equipo `Aventya` se generan en el
-   Ubuntu de WSL (`wsl -d Ubuntu-24.04`) con un entorno propio en `~/avpdf-venv`
-   (`uv venv -p 3.12` + `uv pip install -r requirements.txt`; no usar `/tmp`, que
-   WSL vacía entre llamadas); así salen idénticas a las de la nube.
+   (unos 2 minutos por idioma; vale una sesión en la nube). (r139) En Windows,
+   con `QT_QPA_PLATFORM=offscreen`, las capturas salían con las letras separadas
+   («Resaltar,   subrayar   o   tachar»): offscreen no ve las fuentes del
+   sistema. **(r145) Resuelto**: `capturas.py` registra Segoe UI de
+   `%WINDIR%\Fonts` y ya se genera en Windows con el entorno de la app (así se
+   hizo la 0.9.16). La alternativa de r139, el Ubuntu de WSL
+   (`wsl -d Ubuntu-24.04`, entorno en `~/avpdf-venv`), sigue valiendo.
+   El script rehace también las diapositivas del instalador y las capturas del
+   README: si no cambia lo que enseñan, dejar las del repositorio (`git checkout`).
 2. Pruebas: `%LOCALAPPDATA%\aventyapdf\venv\Scripts\python.exe -m unittest discover -s tests`.
 3. `.\empaquetado\construir.ps1 -ProbarInstalacion` (autodiagnóstico e
    instalación de prueba incluidos; r120: genera también el `.msix` de la
@@ -1334,6 +1337,7 @@ motivos, invariantes, trampas y estado.
 
 | Rev | Fecha | Cambio |
 | :-- | :-- | :-- |
+| r146 | 2026-10-29 | **0.9.16 publicada** desde el equipo `Aventya` (Ricardo: «prosigue con la empaquetación y publicación en github»). `APP_VERSION` 0.9.16, la 0.9.15 al historial (commit `6e62de3`), notas `empaquetado/notas/0.9.16.md`, manuales regenerados **en Windows** (arreglo de r145; nota del paso 1 corregida). 240 pruebas OK (7 omitidas). `construir.ps1 -ProbarInstalacion -SinStore`: autodiagnóstico OK, instalación de prueba real en 73 s (338 MB, archivos idénticos a la copia probada) y desinstalada sin rastro; lanzador 0.9.16 de hoy; instalador 5,1 MB, SHA-256 `73300116…`. Sin MSIX de la Store (`-SinStore`). |
 | r145 | 2026-10-29 | **Manual al día con los menús del botón derecho** (Ricardo: «si», a actualizar el manual tras r144). En los cinco `docs/manual/<código>.md`: sección nueva «El menú del botón derecho» (1.4, con captura `menu_derecho` de `capturas.py`, que intercepta `QMenu.exec` y la pasa por `menus()`), el consejo de resaltar (la marca queda seleccionada con su panel), el botón derecho de las miniaturas y Recortar desde el botón derecho. `--revisar` bien; los cinco PDF regenerados (32 páginas). **Trampas encontradas**: (1) en **Windows** la plataforma offscreen no ve las fuentes del sistema y los menús y diálogos de las capturas salían con la fuente de iconos (palabras muy separadas; el manual anterior se generó en Linux): `capturas.py` registra ahora Segoe UI de `%WINDIR%\Fonts`. (2) La hoja del visor (`* { background: #D0D4D8; }` en el viewport) pintaba de **gris todos los menús del botón derecho** que cuelgan del visor, también en la app real: añadida `QMenu { background: #FFFFFF; }`. Diapositivas del instalador y capturas del README regeneradas sin contenido nuevo: se dejaron las del repositorio. 240 pruebas OK (7 omitidas). Los usuarios ven el manual nuevo al publicar (se descarga de `main`). |
 | r144 | 2026-10-29 | **Iconos y herramientas en los menús del botón derecho** (Ricardo: «quiero que todos los submenús del ratón al pulsar el botón secundario tengan los iconos correspondientes de las herramientas y una de las herramientas que se tendrían que añadir en dicho submenú es la de recortar la página mostrada en el visor, además siempre que se pulse en uno de los submenús debe aparecer la herramienta en el panel lateral para poderse modificar»). `icons.qicon`; menú nuevo `MainWindow._tools_menu` (botón derecho en vacío o con herramienta puesta) con «Recortar la página mostrada»; iconos en los menús de texto seleccionado, anotación, «Editar contenido», miniaturas (+ «Recortar esta página…») y pestañas; cada opción abre su panel (detalle en §3 «Menús del botón derecho»). Texto nuevo traducido en en/ca/gl/eu. Pruebas nuevas: `test_menu_del_boton_derecho_con_herramientas`, `test_marcar_texto_desde_el_menu_abre_su_panel`, `test_menu_de_miniaturas_abre_operaciones_de_pagina`. 240 pruebas OK (7 omitidas). Manual (`docs/manual/*.md`) sin actualizar: pendiente de regenerar con capturas. |
 | r143 | 2026-10-29 | **Corregido: firmar fallaba con «Object with id 5 has an orphaned generation: generation 1 was not preceded by a free instruction for generation 0»** (informado por Ricardo al firmar con certificado). PDF con un objeto en generación 1 sin entrada «free» previa: pyHanko (0.37.0 en el entorno) lo rechaza en estricto, y la copia de rescate de `_tolerant_writer` (PyMuPDF `garbage=1`) conservaba la generación, así que volvía a fallar. Ahora `garbage=2`, que renumera a generación 0 (invariante 24). Prueba nueva `test_firma_pdf_con_objeto_de_generacion_mayor_que_cero` (construye ese PDF a mano). 237 pruebas OK (7 omitidas), ya sobre r142. Sin el PDF original de Ricardo: falta comprobarlo con él. |
