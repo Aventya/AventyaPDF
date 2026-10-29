@@ -190,11 +190,11 @@ The **Edit PDF text and images** tool (`C`, in the Tools menu) changes the text 
 
 ![editar] The editable paragraphs and images, framed.
 
-**Text.** Click a paragraph and type: the text is spread over as many lines as needed within its box, with the same font, size and colour whenever possible. In the side panel you can change the size, the colour and bold or italic. If the text doesn't fit, the box turns red: drag one of its corners to make it bigger. `Ctrl+Enter` confirms, `Esc` cancels and `Tab` moves to the next paragraph. Leaving a paragraph empty deletes it.
+**Text.** Click a paragraph and type: the text is spread over as many lines as needed within its box, always with the document's original font. In the side panel you can change the size, the colour and bold or italic, but never the font. If the text doesn't fit, the box turns red: drag one of its corners to make it bigger. `Ctrl+Enter` confirms, `Esc` cancels and `Tab` moves to the next paragraph. Leaving a paragraph empty deletes it.
 
 **Images.** Click an image to select it: drag it to move it, drag a corner to resize it (without distorting it) or press `Del` to delete it. Right-click it to replace it with another image or save it to a file.
 
-> **Important:** if the document uses a font that isn't available, AventyaPDF uses the closest match and tells you so in the status bar. Check the result before saving.
+> **Important:** AventyaPDF never changes the font of a text. If that font isn't installed on the computer, it uses the one embedded in the PDF itself; if the font lacks a letter you have typed (or the PDF only includes the ones it already used), it warns you and changes nothing, so you can correct it. If the font has no bold or italic version, it is simulated with the same font.
 
 # Filling in forms
 

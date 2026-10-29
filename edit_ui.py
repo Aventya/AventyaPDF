@@ -13,8 +13,10 @@ Herramienta «Editar contenido» del visor (Qt), al estilo de Acrobat «Editar P
 * clic en una imagen = la selecciona: se arrastra, se redimensiona por las
   esquinas sin deformarla, Supr la borra y el menú contextual la sustituye o la
   guarda;
-* cada cambio es un paso de deshacer y los avisos (fuente sustituida, caracteres
-  sin glifo, texto que no cabe) se enseñan en la barra de estado.
+* cada cambio es un paso de deshacer y los avisos (estilo simulado, texto que
+  no cabe) se enseñan en la barra de estado;
+* (r148) la fuente del párrafo nunca cambia: si la del documento no puede
+  escribir lo tecleado, se avisa y se vuelve al editor sin tocar la página.
 
 La lógica de PDF está en pdf_edit (sin Qt).
 """
@@ -360,7 +362,7 @@ class ContentEditor:
             self._rect = fitz.Rect(block.bbox)
         editor = inplace_editor.InPlaceEditor(v, self._editor_rect())
         editor.apply_style(family=pdf_edit.family_for(block.font, block.flags,
-                                                      block.bold, block.italic),
+                                                      block.bold, block.italic, doc=self.mw.doc),
                            pixel_size=block.size * v.scale_factor,
                            bold=block.bold, italic=block.italic, color=block.color,
                            align=inplace_editor.ALIGN_INDEX.get(block.align, 0))
@@ -384,10 +386,16 @@ class ContentEditor:
         block, editor = self._editing, self.editor
         if block is None or editor is None or self._rect is None:
             return
+        texto = editor.toPlainText()
         try:
-            font, _ = pdf_edit.resolve_font(block.font, block.flags, block.bold, block.italic)
-            lineas = pdf_edit.wrap(editor.toPlainText(), font, block.size, self._rect.width)
+            font = pdf_edit.letra(block.font, block.flags, block.bold, block.italic,
+                                  doc=self.mw.doc, texto=texto).font
+            lineas = pdf_edit.wrap(texto, font, block.size, self._rect.width)
             alto = pdf_edit.needed_height(len(lineas), block, font, block.size)
+        except pdf_edit.FuenteNoDisponible as e:
+            # (r148) Se avisa mientras se escribe, no solo al confirmar.
+            self.mw._set_edit_font_problem(str(e))
+            return
         except Exception:  # noqa: BLE001
             return
         self.mw._set_edit_fit(len(lineas), alto, self._rect.height)
@@ -400,11 +408,14 @@ class ContentEditor:
         self.editor = self._editing = None
         texto = editor.toPlainText()
         editor.finish()
+        hecho = True
         try:
             if commit and texto != block.text:
-                self._write(block, texto, rect=caja, label=tr("Editar texto"))
+                hecho = self._write(block, texto, rect=caja, label=tr("Editar texto"))
         finally:
             self._busy = False
+        if not hecho:
+            return
         if move and self.blocks:
             orden = self._reading_order()
             actual = self._closest(caja)
@@ -431,18 +442,31 @@ class ContentEditor:
         self._write(block, text, rect=caja, label=tr("Editar texto"), reopen=True, **estilo)
 
     def _write(self, block, texto: str, *, rect=None, label="Editar texto",
-               reopen: bool = False, **estilo) -> None:
+               reopen: bool = False, **estilo) -> bool:
         """Reescribe el párrafo y, si hace falta, vuelve a abrir el editor
-        sobre el cuadro que ha quedado."""
+        sobre el cuadro que ha quedado. Devuelve False si no se pudo."""
         if not texto.strip():
             self._apply(tr("Eliminar texto"), lambda page: pdf_edit.delete_block(page, block))
-            return
+            return True
+        # (r148) La fuente nunca cambia: si la del documento no puede escribir
+        # el texto, se avisa y se vuelve al editor con lo tecleado, sin tocar
+        # la página.
+        try:
+            pdf_edit.letra(block.font, block.flags, estilo.get("bold", block.bold),
+                           estilo.get("italic", block.italic), doc=self.mw.doc, texto=texto)
+        except pdf_edit.FuenteNoDisponible as e:
+            QMessageBox.warning(self.mw, label, str(e))
+            self._rect = fitz.Rect(rect) if rect is not None else fitz.Rect(block.bbox)
+            self.open_editor(block)
+            if self.editor is not None:
+                self.editor.setPlainText(texto)
+            return False
         salida = {}
         self._apply(label, lambda page: salida.setdefault(
             "res", pdf_edit.replace_block(page, block, texto, rect=rect, **estilo)))
         res = salida.get("res")
         if res is None:
-            return
+            return True
         # Se guarda hasta dónde LLEGA el texto, no el cuadro: así el visor
         # enseña cuánto falta por estirar.
         caja_res = fitz.Rect(res.box) if res.box is not None else None
@@ -458,6 +482,7 @@ class ContentEditor:
             if reopen:
                 self.open_editor(nuevo)
         self.viewer.update()
+        return True
 
     # ── un cambio = un paso de deshacer ────────────────────────────────── #
 

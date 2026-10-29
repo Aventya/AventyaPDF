@@ -143,18 +143,23 @@ alto, y el texto se vuelve a repartir.
 * El cuadro nunca puede salirse de la página (`clamp_box`); si no, el texto se
   escribiría donde no se ve ni se puede volver a seleccionar.
 
-* **La fuente incrustada del PDF no se puede usar.** Los subconjuntos que
-  generan Word y Acrobat vienen **sin tabla `cmap`**: `fitz.Font(fontbuffer=…)`
-  devuelve el glifo 0 para todos los caracteres y la línea saldría **en blanco,
-  sin ningún error**. (r40) **La fuente del documento no cambia**: `resolve_font`
-  traduce el nombre base del PDF («BCDEEE+Calibri» → Calibri) al archivo de esa
-  misma fuente en `%WINDIR%\Fonts`; si no está instalada usa **la más parecida
-  del sistema** (sans → Arial, serif → Times New Roman, mono → Courier New) y,
-  solo si tampoco está, la Noto correspondiente (la fuente base de la app).
-  Negrita y cursiva se conservan. Si a la fuente le faltan glifos se prueban
-  otras y, si tampoco, se avisa por nombre de los caracteres. El editor en
-  pantalla usa la misma familia (`pdf_edit.family_for`) y la barra secundaria
-  dice cuál es.
+* **La fuente del documento nunca cambia** (r148, petición de Ricardo: «nunca
+  puede cambiar la fuente, siempre debe mantener la misma fuente original del
+  documento PDF»). Se cambian tamaño, color, negrita y cursiva; la familia, no.
+  `pdf_edit.letra` busca, por orden: (1) esa fuente instalada con el estilo
+  pedido, por su nombre completo en el registro de Windows (todas las
+  instaladas, también las del usuario: «SegoeUI-Semibold» → Segoe UI Semibold),
+  la tabla `_FAMILIES` (Helvetica → Arial, Times → Times New Roman: las
+  estándar del PDF) o las Noto de la app si el documento usa Noto; (2) otra
+  cara de la MISMA familia, simulando lo que falte (negrita = relleno y
+  contorno; cursiva = cada línea inclinada sobre su base); (3) la incrustada
+  en el PDF, solo si tiene todos los caracteres escritos: los subconjuntos
+  suelen venir **sin tabla `cmap`** y `fitz.Font(fontbuffer=…)` daría el glifo
+  0 (la línea saldría en blanco, sin error). Si nada de eso sirve, o a la
+  fuente le faltan caracteres, `FuenteNoDisponible`: la página no se toca, se
+  avisa (en vivo en la barra secundaria y al confirmar) y el editor sigue
+  abierto con lo tecleado. Hasta r147 se usaba la más parecida del sistema o
+  Noto.
 * Un párrafo con varios estilos se reescribe entero con el del tramo que tenga
   más caracteres (se avisa antes), así que las negritas sueltas dentro de una
   frase se pierden.

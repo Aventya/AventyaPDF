@@ -1471,22 +1471,64 @@ class TestEdicionTexto(unittest.TestCase):
         self.assertEqual(self.E.style_from_name("Arial-BoldItalic"), (True, True))
         # (r40) La fuente del documento no cambia: se usa la misma de Windows.
         f, usada = self.E.resolve_font("Calibri", self.E.FLAG_BOLD)
-        self.assertEqual((f.name, usada), ("Calibri Bold", "Calibri (la del documento)"))
+        self.assertEqual((f.name, usada), ("Calibri Bold", "Calibri"))
         f, usada = self.E.resolve_font("TimesNewRomanPS-ItalicMT", 0)
         self.assertEqual((f.name, usada),
-                         ("Times New Roman Italic", "Times New Roman (la del documento)"))
+                         ("Times New Roman Italic", "Times New Roman"))
         self.assertEqual(self.E.family_for("BCDEEE+Calibri", 0, True), "Calibri")
-        # Una fuente que no está en Windows: la más parecida, por sus flags.
-        f, usada = self.E.resolve_font("NoExisteEstaFuente", self.E.FLAG_MONO)
-        self.assertEqual(usada, "Courier New (la más parecida del sistema)")
-        self.assertTrue(f.has_glyph(ord("a")))
+        # (r148) Cualquier fuente instalada, no solo las de la tabla, y con su
+        # peso exacto: Segoe UI Semibold no pasa a Segoe UI Bold.
+        self.assertEqual(self.E.letra("SegoeUI-Semibold", self.E.FLAG_BOLD).font.name,
+                         "Segoe UI Semibold")
+        # (r148) Nunca otra fuente: sin la del documento, no se escribe.
+        with self.assertRaises(self.E.FuenteNoDisponible):
+            self.E.resolve_font("NoExisteEstaFuente", self.E.FLAG_MONO)
         self.assertEqual(self.E.family_for("NoExisteEstaFuente", self.E.FLAG_SERIF),
-                         "Times New Roman")
-        # Sin nada del sistema, la fuente base de la app (Noto).
-        with mock.patch.object(self.E, "_system_font", return_value=None):
-            f, usada = self.E.resolve_font("Calibri", self.E.FLAG_BOLD)
-            self.assertEqual((f.name, usada), ("Noto Sans Bold", "Noto Sans negrita"))
-            self.assertEqual(self.E.family_for("Consolas", 0), "Noto Sans Mono")
+                         "NoExisteEstaFuente")
+
+    def test_negrita_y_cursiva_simuladas_sin_cambiar_de_fuente(self):
+        """(r148, petición de Ricardo) Si la familia no trae negrita o cursiva
+        (Impact), se simulan con la misma fuente en vez de usar otra."""
+        l = self.E.letra("Impact", 0, True, True)
+        self.assertEqual(l.font.name, "Impact Regular")
+        self.assertEqual((l.negrita, l.cursiva), (True, True))
+        doc = fitz.open()
+        page = doc.new_page(width=400, height=120)
+        impact = fitz.Font(fontfile=_fuente_windows("impact.ttf"))
+        tw = fitz.TextWriter(page.rect)
+        tw.append(fitz.Point(10, 40), "Texto Impact", font=impact, fontsize=20)
+        tw.write_text(page)
+        res = self.E.replace_block(page, self.E.text_blocks(page)[0], "Inclinado",
+                                   bold=True, italic=True)
+        self.assertTrue(any("simulado" in a for a in res.warnings))
+        page = fitz.open("pdf", doc.tobytes())[0]
+        spans = [s for b in page.get_text("dict")["blocks"] for l in b["lines"] for s in l["spans"]]
+        self.assertEqual({s["font"] for s in spans}, {"Impact"})
+        # La cursiva inclina las letras: la línea «Inclinado» ya no es horizontal
+        # en su matriz de caracteres, pero sigue en su sitio.
+        self.assertIn("Inclinado", page.get_text())
+        doc.close()
+
+    def test_usa_la_fuente_incrustada_si_no_esta_instalada(self):
+        """(r148) Sin la fuente en el equipo, la del propio PDF si tiene las
+        letras; si no las tiene, no se toca la página."""
+        b = self.E.text_blocks(self.page)[1]   # «Segunda línea que no se toca»
+        with mock.patch.object(self.E, "_instalada", return_value=None):
+            l = self.E.letra(b.font, b.flags, doc=self.doc, texto="Segunda nota")
+            self.assertTrue(l.incrustada)
+            res = self.E.replace_block(self.page, b, "Segunda nota")
+            self.assertFalse(res.overflows)
+            antes = self.page.read_contents()
+            with self.assertRaises(self.E.FuenteNoDisponible):
+                self.E.replace_block(self.page, self.E.text_blocks(self.page)[1], "Kanji 漢")
+            self.assertEqual(self.page.read_contents(), antes)
+            # Un subconjunto sin `cmap` (invariante 32) no sirve: no se escribe.
+            sub = fitz.open("pdf", self.doc.tobytes())
+            sub.subset_fonts()
+            sub = fitz.open("pdf", sub.tobytes(garbage=3))
+            with self.assertRaises(self.E.FuenteNoDisponible):
+                self.E.letra(b.font, b.flags, doc=sub, texto="Segunda nota")
+        self.assertIn("Segunda nota", self.page.get_text().replace("\xa0", " "))
 
     def test_sustituir_conserva_todo_lo_demas(self):
         lineas = self.E.text_blocks(self.page)
@@ -1653,11 +1695,15 @@ class TestEdicionTexto(unittest.TestCase):
         self.assertEqual(otra_vez.lines, ancho.lines)
         doc.close()
 
-    def test_avisa_de_caracteres_sin_glifo(self):
+    def test_no_escribe_caracteres_que_la_fuente_no_tiene(self):
+        """(r148) Antes se escribían con otra fuente; ahora la fuente no cambia:
+        se explica qué caracteres faltan y la página queda intacta."""
         lineas = self.E.text_blocks(self.page)
-        res = self.E.replace_block(self.page, lineas[0], "Chino 漢字 y emoji")
-        self.assertTrue(res.warnings)
-        self.assertTrue(any("漢" in a for a in res.warnings))
+        antes = self.page.read_contents()
+        with self.assertRaises(self.E.FuenteNoDisponible) as e:
+            self.E.replace_block(self.page, lineas[0], "Chino 漢字 y emoji")
+        self.assertIn("漢", str(e.exception))
+        self.assertEqual(self.page.read_contents(), antes)
 
     def test_borrar_un_parrafo(self):
         lineas = self.E.text_blocks(self.page)

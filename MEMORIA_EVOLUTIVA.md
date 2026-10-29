@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 | :-- | :-- |
-| Revisión de la memoria | **r147** |
+| Revisión de la memoria | **r148** |
 | Fecha de la revisión | 2026-10-29 |
 | Versión de la app | **0.9.15** publicada y firmada con Sigstore (r142, compilada de nuevo tras r141 en el equipo `Aventya`). La 0.9.14 retirada de GitHub (r142). La 1.0.0 queda para el lanzamiento en la Microsoft Store. |
 | Raíz del proyecto | (r94) Ricardo trabaja desde **dos equipos**: `C:\Users\ricardo\Proyectos\AventyaPDF` (tiene Inno Setup, Visual Studio con C++ y el certificado del paquete del menú contextual: aquí se puede empaquetar) y `C:\Users\Aventya\Proyectos\AVENTYAPDF` (antes `ANTIGRAVITY-PDF`) |
@@ -279,8 +279,11 @@ ventana; ambos llaman a su API pública (`checkpoint`, `mark_modified`,
   Supr la borra y el menú contextual la sustituye por un archivo o la guarda,
   avisando si esa imagen está colocada en más sitios. Ningún cuadro puede
   salirse de la página (`clamp_box`). Cada cambio es un paso de deshacer y los
-  avisos (fuente sustituida, caracteres sin glifo, texto que no cabe, estilos
-  mezclados) salen en la barra de estado. **No se ofrecen** el texto de las
+  avisos (estilo simulado, texto que no cabe, estilos mezclados) salen en la
+  barra de estado. (r148) **La fuente nunca cambia**: se pueden cambiar
+  tamaño, color, negrita y cursiva, pero se escribe siempre con la fuente del
+  documento; si no puede escribir lo tecleado, se avisa (en vivo y al
+  confirmar) y no se toca la página. **No se ofrecen** el texto de las
   anotaciones ni de los campos, ni las imágenes sin xref (invariantes 33 y 34).
 - **Formularios** (r17, `form_ui`): campos resaltados en azul (Ver › Resaltar
   campos de formulario, `view/highlight_fields`); clic en campo de texto = editor
@@ -584,19 +587,25 @@ ventana; ambos llaman a su API pública (`checkpoint`, `mark_modified`,
     delante el arte vectorial ni las imágenes de debajo. Comprobado: MuPDF
     decide por el **centro** del carácter, así que la caja de una línea no se
     come las vecinas aunque se toquen.
-32. **(r21) La fuente incrustada del PDF NO sirve para escribir.** Los
-    subconjuntos que generan Word y Acrobat vienen **sin tabla `cmap`**:
+32. **(r21) La fuente incrustada del PDF casi nunca sirve para escribir.** Los
+    subconjuntos que generan Word, Acrobat y el propio MuPDF (`subset_fonts`)
+    vienen **sin tabla `cmap`**:
     `fitz.Font(fontbuffer=doc.extract_font(xref)[3])` devuelve glifo **0 para
     todos los caracteres** y el texto saldría en blanco, sin ningún error
     (comprobado con el Calibri de `Doc1.pdf`: 272 KB, 7.048 glifos, 0 accesibles).
-    `pdf_edit.resolve_font` traduce el nombre base — quitando el prefijo
-    `BCDEEE+` y los sufijos de estilo, pero **parando en cuanto queda una
-    familia conocida** (si no, «timesnewromanpsmt» acaba en «timesnew») — al
-    archivo de `%WINDIR%\Fonts` de **esa misma fuente**. (r40) La fuente del
-    documento **no se cambia**: si no está instalada se usa la más parecida del
-    sistema (sans → Arial, serif → Times New Roman, mono → Courier New) y, solo
-    si tampoco está, la Noto de la app (fuente base), con respaldo base-14. Si faltan glifos se prueba
-    otra fuente y, si tampoco, se avisa por nombre de los caracteres.
+    (r148, petición de Ricardo: «nunca puede cambiar la fuente, siempre debe
+    mantener la misma fuente original del documento PDF») **La fuente del
+    documento nunca se sustituye por otra.** `pdf_edit.letra` usa: (1) esa
+    fuente instalada con el estilo pedido, por su nombre completo en el
+    registro de Windows (`_registro`, HKLM y HKCU: «SegoeUI-Semibold» → Segoe UI
+    Semibold), la tabla `_FAMILIES` (Helvetica → Arial y demás estándar del
+    PDF) o las Noto de la app si el documento usa Noto; (2) otra cara de la
+    MISMA familia simulando la negrita (render mode 2) o la cursiva (cada línea
+    inclinada sobre su base, `_inclinada`); (3) la incrustada, solo si
+    `has_glyph` da todos los caracteres escritos. Si no, `FuenteNoDisponible`
+    **antes de borrar nada**: la página queda intacta, `edit_ui` avisa y vuelve
+    al editor con lo tecleado. Ya no hay «la más parecida» ni Noto de respaldo
+    para caracteres que falten (hasta r147 sí).
 33. **(r21) Las imágenes se tocan por APARICIÓN, no por xref.**
     `Page.replace_image` y `Page.delete_image` actúan sobre el objeto y cambian
     **todas** las copias de esa imagen en todo el documento (comprobado). Para
@@ -1356,6 +1365,7 @@ motivos, invariantes, trampas y estado.
 
 | Rev | Fecha | Cambio |
 | :-- | :-- | :-- |
+| r148 | 2026-10-29 | **La edición de texto nunca cambia la fuente** (Ricardo: «nunca puede cambiar la fuente, siempre debe mantener la misma fuente original del documento PDF»). `pdf_edit.letra`/`Letra`/`FuenteNoDisponible`: instalada por nombre completo (registro de Windows) → otra cara de la misma familia con negrita/cursiva simuladas → la incrustada si tiene todos los caracteres; si no, no se toca la página. Se quitan `_covering_font`, `_PARECIDAS`, `_BASE14`, `_FALLBACKS` y el parámetro `font_name` de `replace_block`. `edit_ui`: aviso en vivo (`main_window._set_edit_font_problem`) y al confirmar, el editor sigue abierto con lo tecleado. Manual (5 idiomas), `docs/edicion_pdf.md`, invariante 32, §3. Pruebas: `test_negrita_y_cursiva_simuladas_sin_cambiar_de_fuente`, `test_usa_la_fuente_incrustada_si_no_esta_instalada`, `test_no_escribe_caracteres_que_la_fuente_no_tiene`, `test_editar_texto_nunca_cambia_la_fuente` (sustituye a `test_avisa_de_los_caracteres_que_no_puede_escribir`). 244 pruebas OK (7 omitidas). |
 | r147 | 2026-10-29 | **Abrir XPS, EPUB, MOBI, FB2, CBZ, SVG y TXT y guardarlos como PDF** (Ricardo: «permite abrir cualquier fichero compatible con el visor para guardarlos como PDF»). `conversion_office.DOC_EXTS` + `documento_a_pdf` (MuPDF, A4 para libros y texto, índice → marcadores); Abrir, arrastrar, «Abrir con…» y Combinar; pestaña con el nombre del original y Guardar con su nombre .pdf (`_origen`). Detalle en §3. Textos nuevos traducidos (en/ca/gl/eu; el filtro de Abrir cambió de clave). Manual: párrafo de «Abrir documentos» ampliado en los cinco idiomas (`--revisar` bien); **los PDF del manual no se regeneraron**: se rehacen en el paso 1 de la próxima publicación. Pruebas nuevas: `test_documentos_del_visor_a_pdf`, `test_abrir_otros_documentos_y_guardarlos_como_pdf`; `test_tipos` actualizada (.txt ya es "doc"). 242 pruebas OK (7 omitidas). |
 | r146 | 2026-10-29 | **0.9.16 publicada** desde el equipo `Aventya` (Ricardo: «prosigue con la empaquetación y publicación en github»). `APP_VERSION` 0.9.16, la 0.9.15 al historial (commit `6e62de3`), notas `empaquetado/notas/0.9.16.md`, manuales regenerados **en Windows** (arreglo de r145; nota del paso 1 corregida). 240 pruebas OK (7 omitidas). `construir.ps1 -ProbarInstalacion -SinStore`: autodiagnóstico OK, instalación de prueba real en 73 s (338 MB, archivos idénticos a la copia probada) y desinstalada sin rastro; lanzador 0.9.16 de hoy; instalador 5,1 MB, SHA-256 `73300116…`. Sin MSIX de la Store (`-SinStore`). **Publicado**: `main` = `7c4a425` (fusión directa), etiqueta `v0.9.16`, `gh release create --latest --notes-file`; el `.exe` de GitHub tiene la misma huella; `releases/latest` = v0.9.16. Firma Sigstore: la primera ejecución (40869616881) falló por un **HTTP 502 de Rekor** (fallo temporal del registro público, no nuestro); `gh run rerun` la firmó bien y subió el `.sigstore.json`. Si vuelve a pasar: relanzar, no tocar la publicación. Paso 6 (retirar la 0.9.15) pendiente de la autorización expresa de Ricardo. |
 | r145 | 2026-10-29 | **Manual al día con los menús del botón derecho** (Ricardo: «si», a actualizar el manual tras r144). En los cinco `docs/manual/<código>.md`: sección nueva «El menú del botón derecho» (1.4, con captura `menu_derecho` de `capturas.py`, que intercepta `QMenu.exec` y la pasa por `menus()`), el consejo de resaltar (la marca queda seleccionada con su panel), el botón derecho de las miniaturas y Recortar desde el botón derecho. `--revisar` bien; los cinco PDF regenerados (32 páginas). **Trampas encontradas**: (1) en **Windows** la plataforma offscreen no ve las fuentes del sistema y los menús y diálogos de las capturas salían con la fuente de iconos (palabras muy separadas; el manual anterior se generó en Linux): `capturas.py` registra ahora Segoe UI de `%WINDIR%\Fonts`. (2) La hoja del visor (`* { background: #D0D4D8; }` en el viewport) pintaba de **gris todos los menús del botón derecho** que cuelgan del visor, también en la app real: añadida `QMenu { background: #FFFFFF; }`. Diapositivas del instalador y capturas del README regeneradas sin contenido nuevo: se dejaron las del repositorio. 240 pruebas OK (7 omitidas). Los usuarios ven el manual nuevo al publicar (se descarga de `main`). |

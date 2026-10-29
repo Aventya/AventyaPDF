@@ -190,11 +190,11 @@ La herramienta **Editar texto e imágenes del PDF** (`C`, en el menú Herramient
 
 ![editar] Los párrafos y las imágenes editables, enmarcados.
 
-**Texto.** Haz clic en un párrafo y escribe: el texto se reparte en las líneas que hagan falta dentro de su cuadro, con la misma fuente, tamaño y color siempre que es posible. En el panel lateral puedes cambiar el tamaño, el color y la negrita o cursiva. Si el texto no cabe, el cuadro se pone rojo: estira una de sus esquinas para hacerlo más grande. `Ctrl+Intro` confirma, `Esc` cancela y `Tab` pasa al párrafo siguiente. Dejar un párrafo vacío lo borra.
+**Texto.** Haz clic en un párrafo y escribe: el texto se reparte en las líneas que hagan falta dentro de su cuadro, siempre con la fuente original del documento. En el panel lateral puedes cambiar el tamaño, el color y la negrita o cursiva, pero nunca la fuente. Si el texto no cabe, el cuadro se pone rojo: estira una de sus esquinas para hacerlo más grande. `Ctrl+Intro` confirma, `Esc` cancela y `Tab` pasa al párrafo siguiente. Dejar un párrafo vacío lo borra.
 
 **Imágenes.** Haz clic en una imagen para seleccionarla: arrástrala para moverla, estira una esquina para cambiar su tamaño (sin deformarla) o pulsa `Supr` para borrarla. Con el botón derecho puedes sustituirla por otra imagen o guardarla en un archivo.
 
-> **Importante:** si el documento usa una fuente que no está disponible, AventyaPDF usa la más parecida y lo avisa en la barra de estado. Revisa el resultado antes de guardar.
+> **Importante:** AventyaPDF nunca cambia la fuente de un texto. Si esa fuente no está instalada en el equipo, usa la que trae el propio PDF; si la fuente no tiene alguna letra que has escrito (o el PDF solo trae las que ya usaba), te avisa y no cambia nada, para que puedas corregirlo. Si la fuente no tiene versión negrita o cursiva, se simula con la misma letra.
 
 # Rellenar formularios
 

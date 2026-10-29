@@ -2068,6 +2068,30 @@ class TestVentanaPrincipal(unittest.TestCase):
                                 Qt.KeyboardModifier.NoModifier))
         self.app.processEvents()
 
+    def test_editar_texto_nunca_cambia_la_fuente(self):
+        """(r148, petición de Ricardo: «nunca puede cambiar la fuente») Si la
+        fuente del documento no tiene lo que se ha escrito, se avisa en vivo y
+        al confirmar, la página no cambia y lo tecleado sigue en el editor."""
+        from PyQt6.QtCore import Qt
+        from PyQt6.QtTest import QTest
+        w = self._abrir_editable()
+        c = w.viewer.content
+        self._clic(self._centro(self._linea("Importe")))
+        antes = w.doc[0].read_contents()
+        c.editor.setPlainText("Importe 漢字")
+        self.app.processEvents()
+        self.assertIn("no puede escribir", w._lbl_edit_fit.text())
+        with mock.patch("edit_ui.QMessageBox.warning") as aviso:
+            QTest.keyClick(c.editor, Qt.Key.Key_Return, Qt.KeyboardModifier.ControlModifier)
+            self.app.processEvents()
+        aviso.assert_called_once()
+        self.assertIn("漢", aviso.call_args[0][2])
+        self.assertEqual(w.doc[0].read_contents(), antes)
+        self.assertFalse(w._history.can_undo())
+        self.assertIsNotNone(c.editor)
+        self.assertEqual(c.editor.toPlainText(), "Importe 漢字")
+        self.assertIn("la negrita y la cursiva, pero no la fuente", w._lbl_edit_hint.toolTip())
+
     def test_editar_texto_del_pdf_con_raton_y_teclado(self):
         from PyQt6.QtCore import Qt
         from PyQt6.QtTest import QTest
@@ -2149,18 +2173,6 @@ class TestVentanaPrincipal(unittest.TestCase):
         self.app.processEvents()
         self.assertTrue(self._linea("Segunda").bold)
         w.viewer.content.close_editor(commit=False)
-        w._modified = False
-
-    def test_avisa_de_los_caracteres_que_no_puede_escribir(self):
-        from PyQt6.QtCore import Qt
-        from PyQt6.QtTest import QTest
-        w = self._abrir_editable()
-        c = w.viewer.content
-        self._clic(self._centro(self._linea("Segunda")))
-        c.editor.setPlainText("Caracteres chinos 漢字")
-        QTest.keyClick(c.editor, Qt.Key.Key_Return, Qt.KeyboardModifier.ControlModifier)
-        self.app.processEvents()
-        self.assertIn("漢", w.statusBar().currentMessage())
         w._modified = False
 
     def test_estirar_el_cuadro_reajusta_el_texto(self):

@@ -190,11 +190,11 @@ A ferramenta **Editar texto e imaxes do PDF** (`C`, no menú Ferramentas) cambia
 
 ![editar] Os parágrafos e as imaxes editables, enmarcados.
 
-**Texto.** Fai clic nun parágrafo e escribe: o texto repártese nas liñas que fagan falta dentro da súa caixa, coa mesma fonte, tamaño e cor sempre que é posible. No panel lateral podes cambiar o tamaño, a cor e a negra ou cursiva. Se o texto non cabe, a caixa ponse vermella: estira unha das súas esquinas para facela máis grande. `Ctrl+Intro` confirma, `Esc` cancela e `Tab` pasa ao parágrafo seguinte. Deixar un parágrafo baleiro bórrao.
+**Texto.** Fai clic nun parágrafo e escribe: o texto repártese nas liñas que fagan falta dentro da súa caixa, sempre coa fonte orixinal do documento. No panel lateral podes cambiar o tamaño, a cor e a negra ou cursiva, pero nunca a fonte. Se o texto non cabe, a caixa ponse vermella: estira unha das súas esquinas para facela máis grande. `Ctrl+Intro` confirma, `Esc` cancela e `Tab` pasa ao parágrafo seguinte. Deixar un parágrafo baleiro bórrao.
 
 **Imaxes.** Fai clic nunha imaxe para seleccionala: arrástraa para movela, estira unha esquina para cambiar o seu tamaño (sen deformala) ou preme `Supr` para borrala. Co botón dereito podes substituíla por outra imaxe ou gardala nun ficheiro.
 
-> **Importante:** se o documento usa unha fonte que non está dispoñible, AventyaPDF usa a máis parecida e avísao na barra de estado. Revisa o resultado antes de gardar.
+> **Importante:** AventyaPDF nunca cambia a fonte dun texto. Se esa fonte non está instalada no equipo, usa a que trae o propio PDF; se a fonte non ten algunha letra que escribiches (ou o PDF só trae as que xa usaba), avísate e non cambia nada, para que o poidas corrixir. Se a fonte non ten versión negra ou cursiva, simúlase coa mesma letra.
 
 # Encher formularios
 

@@ -21,11 +21,11 @@ Cómo se hace (y por qué así):
    de redactar; invariante 31).
 3. **Escribir el texto nuevo = `TextWriter`** en la línea base original
    (`span["origin"]`), con el tamaño y el color originales.
-4. **La fuente incrustada NO sirve para escribir.** Los subconjuntos que generan
-   Word y Acrobat suelen venir sin tabla `cmap`: `fitz.Font(fontbuffer=…)`
-   devuelve glifo 0 para todos los caracteres y el texto saldría en blanco. Se
-   escribe con la familia **Noto** incluida en la app (r36): Noto Sans, Noto
-   Serif o Noto Sans Mono según el tipo de letra original (invariante 32).
+4. **La fuente nunca cambia** (r148). Se escribe con la del documento: la
+   instalada en Windows o, si no está, la incrustada en el PDF cuando tiene
+   todos los caracteres (muchos subconjuntos vienen sin `cmap` y darían glifo
+   0: invariante 32). Si ninguna sirve, `FuenteNoDisponible` y no se toca la
+   página. La negrita o cursiva que la familia no tenga se simulan.
 5. **Páginas giradas**: se trabaja con la rotación a 0 y se compensa el ángulo
    de la propia línea (`line["dir"]`), así la línea nueva queda como las demás.
 6. **Imágenes: por aparición, no por xref.** `Page.replace_image` y
@@ -35,9 +35,11 @@ Cómo se hace (y por qué así):
 
 Nada de este módulo toca Qt.
 """
+import functools
 import math
 import os
 import re
+from typing import NamedTuple
 
 import fitz
 
@@ -95,17 +97,15 @@ _FAMILIES = {
     "notosansmono": ("mono", ()), "liberationmono": ("mono", ()),
     "dejavusansmono": ("mono", ()),
 }
-# La más parecida del sistema cuando no se conoce la fuente del documento.
-_PARECIDAS = {"sans": "arial", "serif": "timesnewroman", "mono": "couriernew"}
-_NOMBRE_NOTO = {"sans": "Noto Sans", "serif": "Noto Serif", "mono": "Noto Sans Mono"}
-# Base-14 de MuPDF, solo por si faltase el archivo de Noto.
-_BASE14 = {
-    "serif": ("tiro", "tibo", "tiit", "tibi"),
-    "mono":  ("cour", "cobo", "coit", "cobi"),
-    "sans":  ("helv", "hebo", "heit", "hebi"),
-}
-# Si la fuente elegida no tiene algún carácter se prueban estas, por orden.
-_FALLBACKS = ("sans", "serif", "mono")
+# (r148) Las Noto de la app son esas mismas familias: si el documento las usa,
+# se reescribe con ellas.
+_NOTO_KEYS = {"notosans": "sans", "notoserif": "serif", "notosansmono": "mono"}
+# Sufijos con los que Windows nombra cada estilo de una familia («Calibri Bold»).
+_SUFIJOS = {(False, False): ("", "regular"), (True, False): ("bold", "semibold"),
+            (False, True): ("italic", "oblique"),
+            (True, True): ("bolditalic", "boldoblique", "semibolditalic")}
+# Inclinación de la cursiva simulada (unos 12°), como la de Word y Acrobat.
+_INCLINACION = 0.21
 
 
 def _fonts_dir() -> str:
@@ -171,10 +171,6 @@ def _load(path: str):
     return _font_cache[path]
 
 
-def _base14(flags: int, bold: bool, italic: bool) -> fitz.Font:
-    return fitz.Font(_BASE14[_kind(flags)][_variant(bold, italic)])
-
-
 def _kind(flags: int, key: str = "") -> str:
     """sans · serif · mono: por la familia conocida o, si no, por los flags."""
     conocida = _FAMILIES.get(key)
@@ -194,71 +190,183 @@ def _qt_family(font_name: str) -> str:
     return nombre
 
 
-def family_for(name: str, flags: int = 0, bold: bool = False, italic: bool = False) -> str:
-    """(r40) Familia con la que se reescribirá un texto de fuente `name`: la
-    misma del documento si está en Windows, si no la más parecida, y si tampoco
-    la Noto correspondiente. El editor en pantalla la usa para que lo que se
-    teclea se vea igual que lo que quedará en el PDF."""
+class FuenteNoDisponible(ValueError):
+    """(r148) Reescribir el párrafo obligaría a cambiar su tipografía: la
+    fuente del documento no está en el equipo ni sirve la incrustada, o no
+    tiene alguno de los caracteres escritos. No se toca nada."""
+
+
+class Letra(NamedTuple):
+    """Con qué se reescribe un párrafo: siempre la fuente del documento."""
+    font: fitz.Font
+    nombre: str                 # legible, para la barra y los avisos
+    negrita: bool = False       # negrita simulada: la familia no trae la suya
+    cursiva: bool = False       # cursiva simulada (inclinada)
+    incrustada: bool = False    # la del propio PDF, no una instalada
+
+
+def _sin_estilo_ps(name: str) -> str:
+    """«BCDEEE+TimesNewRomanPS-BoldMT» → «timesnewromanbold»: el nombre
+    completo, como lo registra Windows («Times New Roman Bold»)."""
+    partes = re.split(r"[,\-]", _SUBSET.sub("", name or ""))
+    partes = [re.sub(r"(PS)?(MT)?$", "", p) for p in partes]
+    return re.sub(r"[^A-Za-z]", "", "".join(partes)).lower()
+
+
+@functools.lru_cache(maxsize=1)
+def _registro() -> dict[str, str]:
+    """(r148) Fuentes instaladas en Windows (para todos y del usuario), por su
+    nombre completo sin espacios: {"segoeuisemibold": ruta}. Así se encuentra
+    cualquier familia, no solo las de `_FAMILIES`."""
+    indice: dict[str, str] = {}
+    try:
+        import winreg
+    except ImportError:
+        return indice
+    clave = r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+    for raiz in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
+        try:
+            k = winreg.OpenKey(raiz, clave)
+        except OSError:
+            continue
+        with k:
+            i = 0
+            while True:
+                try:
+                    nombre, archivo, _t = winreg.EnumValue(k, i)
+                except OSError:
+                    break
+                i += 1
+                if not isinstance(archivo, str):
+                    continue
+                ruta = archivo if os.path.isabs(archivo) else os.path.join(_fonts_dir(), archivo)
+                # «Cambria & Cambria Math (TrueType)»: de una .ttc solo se lee
+                # la primera cara, así que solo vale el primer nombre.
+                primero = re.sub(r"\(.*?\)", "", nombre).split("&")[0]
+                indice.setdefault(re.sub(r"[^A-Za-z]", "", primero).lower(), ruta)
+    return indice
+
+
+def _instalada(name: str, bold: bool, italic: bool, exacta: bool):
+    """La fuente instalada de esa familia con ese estilo (`exacta`) o, si no,
+    cualquier otra cara de la MISMA familia (luego se simula el estilo)."""
     key = family_key(name)
-    tipo = _kind(flags, key)
-    f = _system_font(key, bold, italic) or _system_font(_PARECIDAS[tipo], bold, italic)
-    return _qt_family(f.name) if f is not None else icons.noto_family(tipo)
+    reg = _registro()
+    if exacta:
+        nombres = [_sin_estilo_ps(name)] if (bold, italic) == style_from_name(name) else []
+        nombres += [key + s for s in _SUFIJOS[(bold, italic)]]
+    else:
+        nombres = [_sin_estilo_ps(name), key, key + "regular"]
+    candidatas = [_load(reg[n]) for n in nombres if n in reg]
+    if key in _NOTO_KEYS:
+        candidatas.append(_load(icons.noto_path(_NOTO_KEYS[key], bold and exacta, italic and exacta)))
+    candidatas.append(_system_font(key, bold and exacta, italic and exacta))
+    for f in candidatas:
+        # `_FAMILIES` repite el archivo normal donde la familia no tiene el
+        # estilo (Impact, Noto Sans Mono cursiva): eso no es «exacta».
+        if f is not None and (not exacta or (bool(f.is_bold), bool(f.is_italic)) == (bold, italic)):
+            return f
+    return None
 
 
-def _noto(kind: str, bold: bool, italic: bool):
-    return _load(icons.noto_path(kind, bold, italic))
+def _incrustada(doc, name: str, bold: bool, italic: bool, texto: str):
+    """(r148) La fuente que trae el propio PDF, si sirve para escribir `texto`:
+    los subconjuntos solo tienen los caracteres que ya se usaban y muchos
+    vienen sin `cmap` (invariante 32), así que se comprueba carácter a carácter.
+    Prefiere la cara del estilo pedido entre las de la misma familia."""
+    if doc is None:
+        return None
+    key = family_key(name)
+    caras, vistas = [], set()
+    for pno in range(len(doc)):
+        try:
+            fuentes = doc.get_page_fonts(pno, full=True)
+        except Exception:  # noqa: BLE001
+            continue
+        for xref, _ext, tipo, base, *_ in fuentes:
+            if xref and xref not in vistas and tipo != "Type3" and family_key(base) == key:
+                vistas.add(xref)
+                caras.append((xref, base))
+    caras.sort(key=lambda c: style_from_name(c[1]) != (bold, italic))
+    for xref, base in caras:
+        clave = (id(doc), xref, base)
+        if clave not in _font_cache:
+            try:
+                buf = doc.extract_font(xref)[3]
+                _font_cache[clave] = fitz.Font(fontbuffer=buf) if buf else None
+            except Exception:  # noqa: BLE001
+                _font_cache[clave] = None
+        f = _font_cache[clave]
+        if f is not None and f.has_glyph(32) and not _faltan(f, texto or "a"):
+            return f
+    return None
 
 
-def _noto_label(kind: str, bold: bool, italic: bool) -> str:
-    estilo = ("negrita " if bold else "") + ("cursiva" if italic and kind != "mono" else "")
-    return f"{_NOMBRE_NOTO[kind]} {estilo}".strip()
+def _faltan(font: fitz.Font, texto: str) -> str:
+    return "".join(dict.fromkeys(
+        c for c in texto if c not in "\r\n\t" and not font.has_glyph(ord(c))))
 
 
-def resolve_font(name: str, flags: int = 0, bold: bool | None = None,
-                 italic: bool | None = None) -> tuple[fitz.Font, str]:
-    """Devuelve (fuente utilizable para escribir, nombre legible de lo que se usó).
+def letra(name: str, flags: int = 0, bold: bool | None = None,
+          italic: bool | None = None, *, doc=None, texto: str = "") -> Letra:
+    """(r148, petición de Ricardo: «nunca puede cambiar la fuente, siempre debe
+    mantener la misma fuente original del documento PDF») Con qué se reescribe
+    un texto de fuente `name`. Solo con ESA fuente, por orden:
 
-    La fuente incrustada del PDF no se puede usar: los subconjuntos vienen sin
-    `cmap` y todos los caracteres darían el glifo 0 (invariante 32)."""
+    1. instalada en Windows con el estilo pedido (incluidas las del usuario y
+       las equivalentes de las estándar del PDF: Helvetica → Arial);
+    2. otra cara instalada de la misma familia, simulando la negrita o la
+       cursiva que le falten;
+    3. la incrustada en el PDF, si tiene todos los caracteres de `texto`.
+
+    Si no hay ninguna, o le faltan caracteres, lanza `FuenteNoDisponible`:
+    nunca se sustituye por otra (hasta r147 se usaba la más parecida)."""
     n_bold, n_italic = style_from_name(name)
     bold = (flags & FLAG_BOLD != 0 or n_bold) if bold is None else bold
     italic = (flags & FLAG_ITALIC != 0 or n_italic) if italic is None else italic
-    key = family_key(name)
-    kind = _kind(flags, key)
-    # 1) la MISMA fuente del documento, si está instalada en Windows
-    f = _system_font(key, bold, italic)
+    visible = display_name(name)
+    f = _instalada(name, bold, italic, exacta=True)
+    simulada = f is None
+    if simulada:
+        f = _instalada(name, bold, italic, exacta=False)
     if f is not None:
-        return f, tr("{qt_family} (la del documento)").format(qt_family=_qt_family(f.name))
-    # 2) la más parecida del sistema
-    f = _system_font(_PARECIDAS[kind], bold, italic)
+        faltan = _faltan(f, texto)
+        if faltan:
+            raise FuenteNoDisponible(
+                tr("La fuente del documento, {fuente}, no tiene estos caracteres: {faltan}. "
+                   "Para no cambiar la tipografía no se pueden escribir.").format(
+                    fuente=visible, faltan=" ".join(faltan)))
+        nb, ni = (bold and not f.is_bold, italic and not f.is_italic) if simulada else (False, False)
+        return Letra(f, _qt_family(f.name), nb, ni)
+    f = _incrustada(doc, name, bold, italic, texto)
     if f is not None:
-        return f, tr("{qt_family} (la más parecida del sistema)").format(qt_family=_qt_family(f.name))
-    # 3) la fuente base de la app
-    f = _noto(kind, bold, italic)
-    if f is not None:
-        return f, _noto_label(kind, bold, italic)
-    return _base14(flags, bold, italic), tr("fuente base del PDF")
+        nb, ni = style_from_name(f.name)
+        nb, ni = nb or bool(f.is_bold), ni or bool(f.is_italic)
+        return Letra(f, tr("{fuente} (la incrustada en el PDF)").format(fuente=visible),
+                     bold and not nb, italic and not ni, True)
+    raise FuenteNoDisponible(
+        tr("La fuente del documento, {fuente}, no está instalada en este equipo y el PDF "
+           "solo trae las letras que ya usaba: para no cambiar la tipografía, este texto "
+           "no se puede reescribir. Instala la fuente {fuente} para editarlo.").format(fuente=visible))
 
 
-def _covering_font(text: str, font: fitz.Font, flags: int,
-                   bold: bool, italic: bool) -> tuple[fitz.Font, str, str]:
-    """Si `font` no tiene todos los caracteres, busca una que sí.
-    Devuelve (fuente, nombre, caracteres que siguen faltando)."""
-    def missing(f: fitz.Font) -> str:
-        return "".join(dict.fromkeys(
-            c for c in text if c not in "\r\n\t" and not f.has_glyph(ord(c))))
+def family_for(name: str, flags: int = 0, bold: bool = False, italic: bool = False,
+               doc=None) -> str:
+    """Familia (para Qt) con la que se ve en pantalla lo que se teclea: la del
+    documento. Si no está instalada, su nombre: Qt pondrá una parecida solo en
+    el cuadro de escritura, nunca en el PDF."""
+    try:
+        l = letra(name, flags, bold, italic, doc=doc)
+    except FuenteNoDisponible:
+        return display_name(name)
+    return display_name(name) if l.incrustada else l.nombre
 
-    falta = missing(font)
-    if not falta:
-        return font, "", ""
-    for kind in _FALLBACKS:
-        alt = _noto(kind, bold, italic)
-        if alt is not None and alt is not font and not missing(alt):
-            return alt, _noto_label(kind, bold, italic), ""
-    alt = _base14(flags, bold, italic)
-    if not missing(alt):
-        return alt, tr("fuente base del PDF"), ""
-    return font, "", falta
+
+def resolve_font(name: str, flags: int = 0, bold: bool | None = None,
+                 italic: bool | None = None, doc=None) -> tuple[fitz.Font, str]:
+    """(fuente con la que se escribe, nombre legible). Ver `letra`."""
+    l = letra(name, flags, bold, italic, doc=doc)
+    return l.font, l.nombre
 
 
 # ── Lectura de la página ───────────────────────────────────────────────────── #
@@ -638,17 +746,31 @@ def delete_block(page: fitz.Page, block: TextBlock) -> None:
             page.set_rotation(rot)
 
 
+def _inclinada(tw: fitz.TextWriter, punto: fitz.Point, giro) -> fitz.Matrix:
+    """(r148) Matriz de `write_text` para la cursiva simulada: inclina la línea
+    sobre su línea base y después aplica el giro del párrafo. Va en el espacio
+    del PDF (y hacia arriba), como la de `morph`."""
+    def sobre(q: fitz.Point, m: fitz.Matrix) -> fitz.Matrix:
+        q = q * tw.ictm
+        return fitz.Matrix(1, 0, 0, 1, -q.x, -q.y) * m * fitz.Matrix(1, 0, 0, 1, q.x, q.y)
+    m = sobre(punto, fitz.Matrix(1, 0, _INCLINACION, 1, 0, 0))
+    return m * sobre(giro[0], giro[1]) if giro else m
+
+
 def replace_block(page: fitz.Page, block: TextBlock, new_text: str, *,
                   rect=None, size: float | None = None, color=None,
                   bold: bool | None = None, italic: bool | None = None,
-                  align: str | None = None,
-                  font_name: str | None = None) -> EditResult:
+                  align: str | None = None) -> EditResult:
     """Sustituye el párrafo por `new_text`, **reajustándolo** a su cuadro.
 
     `rect` (en coordenadas de la página vista) permite dar un cuadro nuevo: es
     lo que hace el visor al estirar una esquina, y el texto se reparte en tantas
     líneas como haga falta. Si no cabe, el `EditResult` lo dice (`overflows` y
-    `needed`) para que la interfaz avise y el usuario estire más."""
+    `needed`) para que la interfaz avise y el usuario estire más.
+
+    (r148) Se cambian tamaño, color, negrita y cursiva, **nunca la fuente**: si
+    la del documento no puede escribir el texto, `FuenteNoDisponible` y la
+    página queda intacta (se comprueba antes de borrar nada)."""
     new_text = (new_text or "").replace("\r\n", "\n").replace("\r", "\n").replace("\xa0", " ")
     avisos: list[str] = []
 
@@ -657,17 +779,14 @@ def replace_block(page: fitz.Page, block: TextBlock, new_text: str, *,
     bold = block.bold if bold is None else bold
     italic = block.italic if italic is None else italic
     align = align or block.align
-    nombre = font_name or block.font
 
-    font, usada = resolve_font(nombre, block.flags, bold, italic)
-    font, alt, faltan = _covering_font(new_text, font, block.flags, bold, italic)
-    if alt:
-        avisos.append(tr("«{nombre}» no tiene algunos caracteres; se han escrito con {alt}.").format(nombre=nombre, alt=alt))
-    elif family_key(nombre) not in _FAMILIES:
-        avisos.append(tr("«{nombre}» no es una familia conocida; se ha usado {usada}.").format(nombre=nombre, usada=usada))
-    if faltan:
-        avisos.append(tr("No hay ningún glifo para estos caracteres y saldrán en blanco: ")
-                      + " ".join(faltan))
+    le = letra(block.font, block.flags, bold, italic, doc=page.parent, texto=new_text)
+    font, usada = le.font, le.nombre
+    if le.negrita or le.cursiva:
+        avisos.append(tr("{usada} no tiene versión {estilo}: se ha simulado para no cambiar "
+                         "la fuente.").format(usada=usada, estilo=" ".join(
+                             e for e, si in ((tr("negrita"), le.negrita),
+                                             (tr("cursiva"), le.cursiva)) if si)))
     if block.mixed:
         avisos.append(tr("El párrafo mezclaba varios estilos; se ha reescrito entero "
                       "con {usada} de {size:g} pt.").format(usada=usada, size=size))
@@ -693,6 +812,10 @@ def replace_block(page: fitz.Page, block: TextBlock, new_text: str, *,
             escala = (size / block.size) if block.size else 1.0
             primera = (block.first_baseline if block.first_baseline > 0 else size) * escala
             salto = (block.line_height if block.line_height > 0 else size * 1.2) * escala
+            giro = ((fitz.Point(caja.x0, caja.y0), fitz.Matrix(-block.angle))
+                    if abs(block.angle) > 0.01 else None)
+            # (r148) Negrita simulada = relleno y contorno (render mode 2).
+            modo = 2 if le.negrita else 0
             tw = fitz.TextWriter(page.rect)
             ancho_max = 0.0
             for i, linea in enumerate(lineas):
@@ -701,10 +824,17 @@ def replace_block(page: fitz.Page, block: TextBlock, new_text: str, *,
                 ancho = font.text_length(linea, size)
                 ancho_max = max(ancho_max, ancho)
                 punto = fitz.Point(_x_for(align, caja, ancho), caja.y0 + primera + i * salto)
-                tw.append(punto, linea, font=font, fontsize=size)
+                if le.cursiva:
+                    # Cada línea se inclina sobre su propia línea base.
+                    una = fitz.TextWriter(page.rect)
+                    una.append(punto, linea, font=font, fontsize=size)
+                    una.write_text(page, color=color, overlay=True, render_mode=modo,
+                                   matrix=_inclinada(una, punto, giro))
+                else:
+                    tw.append(punto, linea, font=font, fontsize=size)
             res.width = ancho_max
-            morph = (fitz.Point(caja.x0, caja.y0), fitz.Matrix(-block.angle))                 if abs(block.angle) > 0.01 else None
-            tw.write_text(page, color=color, overlay=True, morph=morph)
+            if not le.cursiva:
+                tw.write_text(page, color=color, overlay=True, morph=giro, render_mode=modo)
     finally:
         if rot:
             page.set_rotation(rot)

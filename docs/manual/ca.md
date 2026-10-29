@@ -190,11 +190,11 @@ L'eina **Edita el text i les imatges del PDF** (`C`, al menú Eines) canvia el t
 
 ![editar] Els paràgrafs i les imatges editables, emmarcats.
 
-**Text.** Feu clic en un paràgraf i escriviu: el text es reparteix en les línies que calgui dins del seu quadre, amb el mateix tipus de lletra, mida i color sempre que és possible. Al tauler lateral podeu canviar la mida, el color i la negreta o la cursiva. Si el text no hi cap, el quadre es posa vermell: estireu una de les cantonades per fer-lo més gran. `Ctrl+Retorn` confirma, `Esc` cancel·la i `Tab` passa al paràgraf següent. Si deixeu un paràgraf buit, s'esborra.
+**Text.** Feu clic en un paràgraf i escriviu: el text es reparteix en les línies que calgui dins del seu quadre, sempre amb el tipus de lletra original del document. Al tauler lateral podeu canviar la mida, el color i la negreta o la cursiva, però mai el tipus de lletra. Si el text no hi cap, el quadre es posa vermell: estireu una de les cantonades per fer-lo més gran. `Ctrl+Retorn` confirma, `Esc` cancel·la i `Tab` passa al paràgraf següent. Si deixeu un paràgraf buit, s'esborra.
 
 **Imatges.** Feu clic en una imatge per seleccionar-la: arrossegueu-la per moure-la, estireu una cantonada per canviar-ne la mida (sense deformar-la) o premeu `Supr` per esborrar-la. Amb el botó dret la podeu substituir per una altra imatge o desar-la en un fitxer.
 
-> **Important:** si el document utilitza un tipus de lletra que no està disponible, AventyaPDF utilitza el més semblant i ho avisa a la barra d'estat. Reviseu el resultat abans de desar.
+> **Important:** AventyaPDF mai no canvia el tipus de lletra d'un text. Si aquest tipus de lletra no està instal·lat a l'equip, utilitza el que porta el mateix PDF; si no té alguna lletra que heu escrit (o el PDF només porta les que ja feia servir), us avisa i no canvia res, perquè ho pugueu corregir. Si el tipus de lletra no té versió negreta o cursiva, se simula amb la mateixa lletra.
 
 # Emplenar formularis
 

@@ -1253,10 +1253,16 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
             btn.blockSignals(True)
             btn.setChecked(val)
             btn.blockSignals(False)
-        familia = pdf_edit.family_for(block.font, block.flags, block.bold, block.italic)
+        # (r148) Siempre la fuente del documento: aquí solo se dice cuál.
+        try:
+            familia = pdf_edit.letra(block.font, block.flags, block.bold, block.italic,
+                                     doc=self.doc).nombre
+        except pdf_edit.FuenteNoDisponible:
+            familia = pdf_edit.display_name(block.font)
         self._lbl_edit_hint.setText(tr("Letra: {familia} {size:g} pt").format(familia=familia, size=block.size))
         self._lbl_edit_hint.setToolTip(
-            tr("Fuente del documento: {font}\nSe reescribe con {familia}").format(font=block.font, familia=familia))
+            tr("Fuente del documento: {font}\nSe reescribe siempre con ella: se pueden cambiar "
+               "el tamaño, la negrita y la cursiva, pero no la fuente.").format(font=block.font))
         self._lbl_edit_mixed.setVisible(block.mixed)
 
     def _set_edit_fit(self, lineas: int, alto: float, caja: float) -> None:
@@ -1269,6 +1275,14 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._lbl_edit_fit.setToolTip(
             tr("Ocupa {lineas} {plural}: {alto:.0f} de {caja:.0f} pt de alto").format(lineas=lineas, plural=plural, alto=alto, caja=caja))
         self._lbl_edit_fit.setStyleSheet("" if cabe else "color:#C42B1C; font-weight:600;")
+        self._lbl_edit_fit.show()
+
+    def _set_edit_font_problem(self, motivo: str) -> None:
+        """(r148) La fuente del documento no puede escribir lo tecleado: se
+        dice en vivo, en rojo, en lugar de las líneas que ocupa."""
+        self._lbl_edit_fit.setText(tr("La fuente del documento no puede escribir este texto"))
+        self._lbl_edit_fit.setToolTip(motivo)
+        self._lbl_edit_fit.setStyleSheet("color:#C42B1C; font-weight:600;")
         self._lbl_edit_fit.show()
 
     def _on_edit_size(self, v: int) -> None:

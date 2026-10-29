@@ -190,11 +190,11 @@ Alboko paneleko **Iruzkinak** panelak dokumentuko iruzkin guztiak zerrendatzen d
 
 ![editar] Paragrafo eta irudi editagarriak, markoztatuta.
 
-**Testua.** Egin klik paragrafo batean eta idatzi: testua behar adina lerrotan banatzen da bere koadroaren barruan, ahal den guztietan letra-tipo, tamaina eta kolore berarekin. Alboko panelean tamaina, kolorea eta letra lodia edo etzana alda ditzakezu. Testua sartzen ez bada, koadroa gorri jartzen da: tiratu haren izkinetako bati handiagoa egiteko. `Ctrl+Sartu` konbinazioak berresten du, `Esc` teklak bertan behera uzten du eta `Tab` teklak hurrengo paragrafora eramaten du. Paragrafo bat hutsik utzita, ezabatu egiten da.
+**Testua.** Egin klik paragrafo batean eta idatzi: testua behar adina lerrotan banatzen da bere koadroaren barruan, beti dokumentuaren jatorrizko letra-tipoarekin. Alboko panelean tamaina, kolorea eta letra lodia edo etzana alda ditzakezu, baina inoiz ez letra-tipoa. Testua sartzen ez bada, koadroa gorri jartzen da: tiratu haren izkinetako bati handiagoa egiteko. `Ctrl+Sartu` konbinazioak berresten du, `Esc` teklak bertan behera uzten du eta `Tab` teklak hurrengo paragrafora eramaten du. Paragrafo bat hutsik utzita, ezabatu egiten da.
 
 **Irudiak.** Egin klik irudi batean hautatzeko: arrastatu mugitzeko, tiratu izkina batetik tamaina aldatzeko (deformatu gabe) edo sakatu `Ezab` ezabatzeko. Eskuineko botoiarekin, beste irudi batez ordez dezakezu edo fitxategi batean gorde.
 
-> **Garrantzitsua:** dokumentuak erabilgarri ez dagoen letra-tipo bat erabiltzen badu, AventyaPDF-k antzekoena erabiltzen du, eta egoera-barran abisatzen du. Berrikusi emaitza gorde aurretik.
+> **Garrantzitsua:** AventyaPDF-k ez du inoiz testu baten letra-tipoa aldatzen. Letra-tipo hori ordenagailuan instalatuta ez badago, PDFak berak dakarrena erabiltzen du; idatzi duzun letraren bat ez badu (edo PDFak lehendik erabiltzen zituenak baino ez baditu), abisatu egiten dizu eta ez du ezer aldatzen, zuzendu ahal izan dezazun. Letra-tipoak ez badu bertsio lodirik edo etzanik, letra berarekin simulatzen da.
 
 # Bete inprimakiak
 
