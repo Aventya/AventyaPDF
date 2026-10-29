@@ -50,7 +50,6 @@
  "Magenta claro": "Magenta clar",
  "Color": "Color",
  "Opacidad": "Opacitat",
- "Todos los admitidos (*.pdf {_PATRON} *.doc *.docx);;Archivos PDF (*.pdf);;Imágenes ({_PATRON});;Documentos de Word (*.doc *.docx)": "Tots els admesos (*.pdf {_PATRON} *.doc *.docx);;Fitxers PDF (*.pdf);;Imatges ({_PATRON});;Documents de Word (*.doc *.docx)",
  "LibreOffice no generó el PDF": "LibreOffice no ha generat el PDF",
  "no está instalado LibreOffice": "LibreOffice no està instal·lat",
  "\n\nHace falta Microsoft Word o LibreOffice instalado.": "\n\nCal tenir instal·lat Microsoft Word o LibreOffice.",
@@ -865,5 +864,8 @@
  "Descargando el manual de AventyaPDF…": "S'està baixant el manual d'AventyaPDF…",
  "No se pudo descargar el manual ({razon}).": "No s'ha pogut baixar el manual ({razon}).",
  "Hace falta conexión a Internet la primera vez.": "La primera vegada cal connexió a Internet.",
- "Recortar esta página…": "Retalla aquesta pàgina…"
+ "Recortar esta página…": "Retalla aquesta pàgina…",
+ "Todos los admitidos (*.pdf {_PATRON} *.doc *.docx {_PATRON_DOC});;Archivos PDF (*.pdf);;Imágenes ({_PATRON});;Documentos de Word (*.doc *.docx);;Libros electrónicos, XPS, SVG y texto ({_PATRON_DOC})": "Tots els admesos (*.pdf {_PATRON} *.doc *.docx {_PATRON_DOC});;Fitxers PDF (*.pdf);;Imatges ({_PATRON});;Documents de Word (*.doc *.docx);;Llibres electrònics, XPS, SVG i text ({_PATRON_DOC})",
+ "«{nombre}» no contiene páginas.": "«{nombre}» no conté pàgines.",
+ "«{nombre}» no se puede abrir: {e}": "No es pot obrir «{nombre}»: {e}"
 }

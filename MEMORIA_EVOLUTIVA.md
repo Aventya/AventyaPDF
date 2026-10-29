@@ -6,7 +6,7 @@
 
 | Campo | Valor |
 | :-- | :-- |
-| Revisión de la memoria | **r146** |
+| Revisión de la memoria | **r147** |
 | Fecha de la revisión | 2026-10-29 |
 | Versión de la app | **0.9.15** publicada y firmada con Sigstore (r142, compilada de nuevo tras r141 en el equipo `Aventya`). La 0.9.14 retirada de GitHub (r142). La 1.0.0 queda para el lanzamiento en la Microsoft Store. |
 | Raíz del proyecto | (r94) Ricardo trabaja desde **dos equipos**: `C:\Users\ricardo\Proyectos\AventyaPDF` (tiene Inno Setup, Visual Studio con C++ y el certificado del paquete del menú contextual: aquí se puede empaquetar) y `C:\Users\Aventya\Proyectos\AVENTYAPDF` (antes `ANTIGRAVITY-PDF`) |
@@ -194,6 +194,25 @@ ventana; ambos llaman a su API pública (`checkpoint`, `mark_modified`,
   mostrar (`conversion_office.FILTRO_ABRIR`): cada PDF en su pestaña, cada
   imagen o Word convertido en la suya. Soltar varios PDF en la ventana los
   abre todos (antes, solo el primero).
+- **Abrir lo que el visor sabe mostrar y guardarlo como PDF** (r147, petición
+  de Ricardo: «permite abrir cualquier fichero compatible con el visor para
+  guardarlos como PDF»): además de PDF, imágenes y Word, **XPS/OXPS, EPUB,
+  MOBI, FB2, CBZ, SVG y TXT** (`conversion_office.DOC_EXTS`, tipo `"doc"`):
+  `documento_a_pdf` los abre con MuPDF y `convert_to_pdf`, sin programas
+  externos; los que no tienen páginas fijas (`is_reflowable`: libros y texto)
+  se maquetan en A4 a 11 pt y el índice del libro pasa a marcadores. Entran
+  por Abrir (filtro propio en `FILTRO_ABRIR`), arrastrar y soltar (antes solo
+  PDF e imágenes; ahora Word y estos también, cada uno en su pestaña),
+  **«Abrir con…»** (`main.procesar_argumentos` usa `open_paths`: antes
+  ignoraba todo lo que no fuera .pdf, imágenes incluidas) y Combinar. Cada
+  pestaña convertida guarda su original en `_origen` (en `_SESSION_ATTRS`):
+  se titula con su nombre (`_nombre_doc`, antes «Sin título») y **Guardar
+  propone su carpeta y su nombre con .pdf** (antes «documento.pdf» en la
+  última carpeta). MOBI y XPS no se han probado con archivos reales (no hay
+  cómo generarlos aquí); MuPDF los soporta. **No ampliado**: el menú
+  «Convertir a PDF» del Explorador (`shell/AventyaPDFShell.cpp` repite las
+  extensiones de imagen y hay que recompilarlo) ni la asociación de archivos
+  del instalador.
 - **Pestañas reordenables** (r123): las pestañas de documentos del rail se
   arrastran con el ratón (`sidebar._DocTab`): mientras se arrastra se mueve el
   propio botón entre los demás; al soltar, `move_document(src, dst)` reordena
@@ -1337,6 +1356,7 @@ motivos, invariantes, trampas y estado.
 
 | Rev | Fecha | Cambio |
 | :-- | :-- | :-- |
+| r147 | 2026-10-29 | **Abrir XPS, EPUB, MOBI, FB2, CBZ, SVG y TXT y guardarlos como PDF** (Ricardo: «permite abrir cualquier fichero compatible con el visor para guardarlos como PDF»). `conversion_office.DOC_EXTS` + `documento_a_pdf` (MuPDF, A4 para libros y texto, índice → marcadores); Abrir, arrastrar, «Abrir con…» y Combinar; pestaña con el nombre del original y Guardar con su nombre .pdf (`_origen`). Detalle en §3. Textos nuevos traducidos (en/ca/gl/eu; el filtro de Abrir cambió de clave). Manual: párrafo de «Abrir documentos» ampliado en los cinco idiomas (`--revisar` bien); **los PDF del manual no se regeneraron**: se rehacen en el paso 1 de la próxima publicación. Pruebas nuevas: `test_documentos_del_visor_a_pdf`, `test_abrir_otros_documentos_y_guardarlos_como_pdf`; `test_tipos` actualizada (.txt ya es "doc"). 242 pruebas OK (7 omitidas). |
 | r146 | 2026-10-29 | **0.9.16 publicada** desde el equipo `Aventya` (Ricardo: «prosigue con la empaquetación y publicación en github»). `APP_VERSION` 0.9.16, la 0.9.15 al historial (commit `6e62de3`), notas `empaquetado/notas/0.9.16.md`, manuales regenerados **en Windows** (arreglo de r145; nota del paso 1 corregida). 240 pruebas OK (7 omitidas). `construir.ps1 -ProbarInstalacion -SinStore`: autodiagnóstico OK, instalación de prueba real en 73 s (338 MB, archivos idénticos a la copia probada) y desinstalada sin rastro; lanzador 0.9.16 de hoy; instalador 5,1 MB, SHA-256 `73300116…`. Sin MSIX de la Store (`-SinStore`). **Publicado**: `main` = `7c4a425` (fusión directa), etiqueta `v0.9.16`, `gh release create --latest --notes-file`; el `.exe` de GitHub tiene la misma huella; `releases/latest` = v0.9.16. Firma Sigstore: la primera ejecución (40869616881) falló por un **HTTP 502 de Rekor** (fallo temporal del registro público, no nuestro); `gh run rerun` la firmó bien y subió el `.sigstore.json`. Si vuelve a pasar: relanzar, no tocar la publicación. Paso 6 (retirar la 0.9.15) pendiente de la autorización expresa de Ricardo. |
 | r145 | 2026-10-29 | **Manual al día con los menús del botón derecho** (Ricardo: «si», a actualizar el manual tras r144). En los cinco `docs/manual/<código>.md`: sección nueva «El menú del botón derecho» (1.4, con captura `menu_derecho` de `capturas.py`, que intercepta `QMenu.exec` y la pasa por `menus()`), el consejo de resaltar (la marca queda seleccionada con su panel), el botón derecho de las miniaturas y Recortar desde el botón derecho. `--revisar` bien; los cinco PDF regenerados (32 páginas). **Trampas encontradas**: (1) en **Windows** la plataforma offscreen no ve las fuentes del sistema y los menús y diálogos de las capturas salían con la fuente de iconos (palabras muy separadas; el manual anterior se generó en Linux): `capturas.py` registra ahora Segoe UI de `%WINDIR%\Fonts`. (2) La hoja del visor (`* { background: #D0D4D8; }` en el viewport) pintaba de **gris todos los menús del botón derecho** que cuelgan del visor, también en la app real: añadida `QMenu { background: #FFFFFF; }`. Diapositivas del instalador y capturas del README regeneradas sin contenido nuevo: se dejaron las del repositorio. 240 pruebas OK (7 omitidas). Los usuarios ven el manual nuevo al publicar (se descarga de `main`). |
 | r144 | 2026-10-29 | **Iconos y herramientas en los menús del botón derecho** (Ricardo: «quiero que todos los submenús del ratón al pulsar el botón secundario tengan los iconos correspondientes de las herramientas y una de las herramientas que se tendrían que añadir en dicho submenú es la de recortar la página mostrada en el visor, además siempre que se pulse en uno de los submenús debe aparecer la herramienta en el panel lateral para poderse modificar»). `icons.qicon`; menú nuevo `MainWindow._tools_menu` (botón derecho en vacío o con herramienta puesta) con «Recortar la página mostrada»; iconos en los menús de texto seleccionado, anotación, «Editar contenido», miniaturas (+ «Recortar esta página…») y pestañas; cada opción abre su panel (detalle en §3 «Menús del botón derecho»). Texto nuevo traducido en en/ca/gl/eu. Pruebas nuevas: `test_menu_del_boton_derecho_con_herramientas`, `test_marcar_texto_desde_el_menu_abre_su_panel`, `test_menu_de_miniaturas_abre_operaciones_de_pagina`. 240 pruebas OK (7 omitidas). Manual (`docs/manual/*.md`) sin actualizar: pendiente de regenerar con capturas. |

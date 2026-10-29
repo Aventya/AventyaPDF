@@ -50,7 +50,6 @@
  "Magenta claro": "Magenta argia",
  "Color": "Kolorea",
  "Opacidad": "Opakutasuna",
- "Todos los admitidos (*.pdf {_PATRON} *.doc *.docx);;Archivos PDF (*.pdf);;Imágenes ({_PATRON});;Documentos de Word (*.doc *.docx)": "Onartutako guztiak (*.pdf {_PATRON} *.doc *.docx);;PDF fitxategiak (*.pdf);;Irudiak ({_PATRON});;Word dokumentuak (*.doc *.docx)",
  "LibreOffice no generó el PDF": "LibreOffice-k ez du PDFa sortu",
  "no está instalado LibreOffice": "LibreOffice ez dago instalatuta",
  "\n\nHace falta Microsoft Word o LibreOffice instalado.": "\n\nMicrosoft Word edo LibreOffice instalatuta egon behar da.",
@@ -865,5 +864,8 @@
  "Descargando el manual de AventyaPDF…": "AventyaPDF-ren eskuliburua deskargatzen…",
  "No se pudo descargar el manual ({razon}).": "Ezin izan da eskuliburua deskargatu ({razon}).",
  "Hace falta conexión a Internet la primera vez.": "Lehen aldian, Interneteko konexioa behar da.",
- "Recortar esta página…": "Moztu orrialde hau…"
+ "Recortar esta página…": "Moztu orrialde hau…",
+ "Todos los admitidos (*.pdf {_PATRON} *.doc *.docx {_PATRON_DOC});;Archivos PDF (*.pdf);;Imágenes ({_PATRON});;Documentos de Word (*.doc *.docx);;Libros electrónicos, XPS, SVG y texto ({_PATRON_DOC})": "Onartutako guztiak (*.pdf {_PATRON} *.doc *.docx {_PATRON_DOC});;PDF fitxategiak (*.pdf);;Irudiak ({_PATRON});;Word dokumentuak (*.doc *.docx);;Liburu elektronikoak, XPS, SVG eta testua ({_PATRON_DOC})",
+ "«{nombre}» no contiene páginas.": "«{nombre}» fitxategiak ez du orrialderik.",
+ "«{nombre}» no se puede abrir: {e}": "Ezin da ireki «{nombre}»: {e}"
 }

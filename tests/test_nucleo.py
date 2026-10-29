@@ -2869,8 +2869,80 @@ class TestConversionOffice(_ConCarpeta):
 
     def test_tipos(self):
         import conversion_office as co
-        self.assertEqual([co.tipo_de(p) for p in ("a.PDF", "b.jpeg", "c.DocX", "d.doc", "e.txt")],
-                         ["pdf", "img", "word", "word", ""])
+        self.assertEqual([co.tipo_de(p) for p in ("a.PDF", "b.jpeg", "c.DocX", "d.doc", "e.txt",
+                                                  "f.EPUB", "g.xps", "h.zip")],
+                         ["pdf", "img", "word", "word", "doc", "doc", "doc", ""])
+
+    def test_documentos_del_visor_a_pdf(self):
+        """(r147, petición de Ricardo) Lo que MuPDF abre por sí mismo se
+        convierte a PDF: texto (con acentos, maquetado en A4), EPUB (con su
+        índice como marcadores), FB2, SVG y CBZ. Un archivo roto avisa."""
+        import zipfile
+        import conversion_office as co
+
+        def ruta(nombre):
+            return os.path.join(self.tmp, nombre)
+        with open(ruta("notas.txt"), "w", encoding="utf-8") as f:
+            f.write("Línea con acentos: áéíóú ñ\n" * 300)
+        with open(ruta("dibujo.svg"), "w", encoding="utf-8") as f:
+            f.write('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">'
+                    '<rect width="200" height="100" fill="red"/><text x="10" y="50">Hola</text></svg>')
+        with open(ruta("libro.fb2"), "w", encoding="utf-8") as f:
+            f.write('<?xml version="1.0" encoding="utf-8"?><FictionBook xmlns="http://www.gribuser.ru/'
+                    'xml/fictionbook/2.0"><body><section><title><p>Capítulo 1</p></title>'
+                    '<p>Texto uno.</p></section></body></FictionBook>')
+        pm = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 60, 80), False)
+        with zipfile.ZipFile(ruta("comic.cbz"), "w") as z:
+            z.writestr("01.png", pm.tobytes("png"))
+            z.writestr("02.png", pm.tobytes("png"))
+        with zipfile.ZipFile(ruta("libro.epub"), "w") as z:
+            z.writestr("mimetype", "application/epub+zip", compress_type=zipfile.ZIP_STORED)
+            z.writestr("META-INF/container.xml",
+                       '<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:'
+                       'opendocument:xmlns:container"><rootfiles><rootfile full-path="c.opf" '
+                       'media-type="application/oebps-package+xml"/></rootfiles></container>')
+            z.writestr("c.opf",
+                       '<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="2.0" '
+                       'unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/">'
+                       '<dc:title>Libro</dc:title><dc:identifier id="id">x</dc:identifier></metadata>'
+                       '<manifest><item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/>'
+                       '<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/></manifest>'
+                       '<spine toc="ncx"><itemref idref="c1"/></spine></package>')
+            z.writestr("toc.ncx",
+                       '<?xml version="1.0"?><ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" '
+                       'version="2005-1"><navMap><navPoint id="n1"><navLabel><text>Capítulo 1</text>'
+                       '</navLabel><content src="c1.xhtml"/></navPoint></navMap></ncx>')
+            z.writestr("c1.xhtml", '<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/'
+                       '1999/xhtml"><body><h1>Capítulo 1</h1>' + "<p>Texto del libro. </p>" * 300
+                       + "</body></html>")
+
+        txt = co.documento_a_pdf(ruta("notas.txt"))
+        self.assertGreater(len(txt), 1)
+        self.assertEqual((round(txt[0].rect.width), round(txt[0].rect.height)), (595, 842))
+        self.assertIn("áéíóú ñ", txt[0].get_text())
+
+        epub = co.documento_a_pdf(ruta("libro.epub"))
+        self.assertGreater(len(epub), 1)
+        self.assertEqual(epub.get_toc(), [[1, "Capítulo 1", 1]])
+        self.assertIn("Texto del libro.", epub[0].get_text())
+
+        self.assertIn("Capítulo 1", co.documento_a_pdf(ruta("libro.fb2"))[0].get_text())
+        self.assertIn("Hola", co.documento_a_pdf(ruta("dibujo.svg"))[0].get_text())
+        self.assertEqual(len(co.documento_a_pdf(ruta("comic.cbz"))), 2)
+
+        # Mezclados con un PDF, por la puerta común y al combinar.
+        pdf = ruta("a.pdf")
+        with fitz.open() as d:
+            d.new_page()
+            d.save(pdf)
+        docs = co.archivos_a_pdfs([pdf, ruta("dibujo.svg"), ruta("comic.cbz")])
+        self.assertEqual([len(d) for d in docs], [1, 1, 2])
+        self.assertEqual(len(co.combinar_archivos([pdf, ruta("comic.cbz")])), 3)
+
+        with open(ruta("roto.epub"), "wb") as f:
+            f.write(b"esto no es un epub")
+        with self.assertRaisesRegex(co.ConversionError, "roto.epub"):
+            co.documento_a_pdf(ruta("roto.epub"))
 
     @unittest.skipUnless(_hay_word_o_libreoffice(), "no hay Word ni LibreOffice")
     def test_docx_a_pdf_conserva_el_texto(self):

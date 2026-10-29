@@ -8,8 +8,11 @@ AventyaPDF no lee Word por sí misma: delega en lo que haya instalado.
    --headless --convert-to pdf`).
 Si no hay ninguno de los dos, `ConversionError` lo explica.
 
+(r147) `documento_a_pdf`: lo que MuPDF abre por sí mismo (XPS, EPUB, MOBI,
+FB2, CBZ, SVG y texto) se convierte sin programas externos.
+
 `archivos_a_pdfs` es la puerta común del menú contextual: convierte una lista
-mezclada de PDF, imágenes y documentos de Word en documentos fitz, en el mismo
+mezclada de PDF, imágenes, documentos de Word y esos otros en documentos fitz, en el mismo
 orden, sin escribir nada junto a los originales (todo pasa por una carpeta
 temporal que se borra).
 """
@@ -28,14 +31,23 @@ WORD_EXTS = {".doc", ".docx"}
 # Mismo conjunto que window_document.IMAGE_EXTS (y que la extensión del
 # Explorador, shell/AventyaPDFShell.cpp): si se amplía, en los tres sitios.
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tif", ".tiff", ".webp"}
+# (r147, petición de Ricardo: «permite abrir cualquier fichero compatible con
+# el visor para guardarlos como PDF») Lo que MuPDF, el motor del visor, abre
+# por sí mismo: se convierte a PDF sin programas externos.
+DOC_EXTS = {".xps", ".oxps", ".epub", ".mobi", ".fb2", ".cbz", ".svg", ".txt"}
+# Los libros y el texto no tienen páginas fijas: se maquetan en A4.
+_A4 = (595, 842)
 
 # (r123) Diálogos de abrir varios archivos: todo lo que la aplicación sabe
-# mostrar (PDF, y también imágenes y Word, que se convierten a PDF).
+# mostrar (PDF, y también imágenes, Word y otros documentos, que se convierten a PDF).
 _PATRON = " ".join("*" + e for e in sorted(IMAGE_EXTS))
-FILTRO_ABRIR = tr(("Todos los admitidos (*.pdf {_PATRON} *.doc *.docx);;"
+_PATRON_DOC = " ".join("*" + e for e in sorted(DOC_EXTS))
+FILTRO_ABRIR = tr(("Todos los admitidos (*.pdf {_PATRON} *.doc *.docx {_PATRON_DOC});;"
                 "Archivos PDF (*.pdf);;"
                 "Imágenes ({_PATRON});;"
-                "Documentos de Word (*.doc *.docx)")).format(_PATRON=_PATRON)
+                "Documentos de Word (*.doc *.docx);;"
+                "Libros electrónicos, XPS, SVG y texto ({_PATRON_DOC})")).format(
+                    _PATRON=_PATRON, _PATRON_DOC=_PATRON_DOC)
 
 _SIN_VENTANA = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 _TIEMPO_MAX = 300          # segundos para toda una tanda de documentos
@@ -120,6 +132,33 @@ def word_a_pdfs(paths: list[str]) -> list[fitz.Document]:
         return docs
 
 
+def documento_a_pdf(path: str) -> fitz.Document:
+    """(r147) XPS, EPUB, MOBI, FB2, CBZ, SVG o texto → PDF en memoria, con
+    MuPDF. Los que no tienen páginas fijas se maquetan en A4; el índice del
+    libro, si lo tiene, pasa a los marcadores del PDF."""
+    try:
+        src = fitz.open(path)
+    except Exception as e:
+        raise ConversionError(tr("«{nombre}» no se puede abrir: {e}").format(
+            nombre=os.path.basename(path), e=e)) from e
+    try:
+        if src.is_reflowable:
+            src.layout(width=_A4[0], height=_A4[1], fontsize=11)
+        pdf = fitz.open("pdf", src.convert_to_pdf())
+        try:
+            toc = src.get_toc()
+            if toc:
+                pdf.set_toc(toc)
+        except Exception:
+            pass                    # un índice raro no impide la conversión
+    finally:
+        src.close()
+    if len(pdf) == 0:
+        pdf.close()
+        raise ConversionError(tr("«{nombre}» no contiene páginas.").format(nombre=os.path.basename(path)))
+    return pdf
+
+
 def tipo_de(path: str) -> str:
     ext = os.path.splitext(path)[1].lower()
     if ext == ".pdf":
@@ -128,6 +167,8 @@ def tipo_de(path: str) -> str:
         return "img"
     if ext in WORD_EXTS:
         return "word"
+    if ext in DOC_EXTS:
+        return "doc"
     return ""
 
 
@@ -149,6 +190,8 @@ def archivos_a_pdfs(paths: list[str]) -> list[fitz.Document]:
             docs.append(src)
         elif t == "img":
             docs.append(doc_tools.images_to_pdf([p]))
+        elif t == "doc":
+            docs.append(documento_a_pdf(p))
         else:
             docs.append(convertidos[p])
     return docs
@@ -183,6 +226,8 @@ def combinar_archivos(paths: list[str]) -> fitz.Document:
                     raise ValueError(tr("«{nombre}» está protegido con contraseña.").format(nombre=os.path.basename(p)))
             elif t == "img":
                 src = doc_tools.images_to_pdf([p])
+            elif t == "doc":
+                src = documento_a_pdf(p)
             else:
                 src = convertidos.pop(p)
             try:

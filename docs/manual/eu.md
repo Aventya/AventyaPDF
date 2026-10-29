@@ -90,7 +90,7 @@ Hainbat modutara ireki daitezke dokumentuak:
 - **Fitxategia › Ireki azkenak**, azken aldian erabilitako dokumentuekin.
 - PDF batean klik bikoitza eginda, AventyaPDF zure PDF ikustailea bada.
 
-PDFez gain, AventyaPDF-k irudiak (PNG, JPG, BMP, GIF, TIFF eta WebP) eta Word dokumentuak (.doc eta .docx) irekitzen ditu: bakoitza PDF berri bihurtzen da, gorde gabe, bere fitxan. Jatorrizkoa ez da ukitzen. Word dokumentuak bihurtzeko, Microsoft Word edo LibreOffice instalatuta izan behar da.
+PDFez gain, AventyaPDF-k irudiak (PNG, JPG, BMP, GIF, TIFF eta WebP) eta Word dokumentuak (.doc eta .docx) irekitzen ditu: bakoitza PDF berri bihurtzen da, gorde gabe, bere fitxan. Jatorrizkoa ez da ukitzen. Word dokumentuak bihurtzeko, Microsoft Word edo LibreOffice instalatuta izan behar da. Liburu elektronikoak (EPUB, MOBI eta FB2), komikiak (CBZ), XPS eta OXPS dokumentuak, SVG marrazkiak eta testu-fitxategiak (.txt) ere irekitzen ditu, beste programarik gabe: liburuak eta testua A4 orrialdetan banatzen dira, eta liburuaren aurkibidea laster-marketara pasatzen da. Gordetzean, AventyaPDFk jatorrizkoaren izen eta karpeta bera proposatzen ditu, .pdf luzapenarekin.
 
 PDFa pasahitzez babestuta badago, AventyaPDF-k pasahitza eskatzen du ireki aurretik.
 

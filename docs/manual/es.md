@@ -90,7 +90,7 @@ Hay varias formas de abrir documentos:
 - **Archivo › Abrir reciente**, con los últimos documentos usados.
 - Hacer doble clic en un PDF, si AventyaPDF es tu visor de PDF.
 
-Además de PDF, AventyaPDF abre imágenes (PNG, JPG, BMP, GIF, TIFF y WebP) y documentos de Word (.doc y .docx): cada uno se convierte en un PDF nuevo, sin guardar, en su propia pestaña. El original no se toca. Para convertir documentos de Word hace falta tener instalado Microsoft Word o LibreOffice.
+Además de PDF, AventyaPDF abre imágenes (PNG, JPG, BMP, GIF, TIFF y WebP) y documentos de Word (.doc y .docx): cada uno se convierte en un PDF nuevo, sin guardar, en su propia pestaña. El original no se toca. Para convertir documentos de Word hace falta tener instalado Microsoft Word o LibreOffice. También abre libros electrónicos (EPUB, MOBI y FB2), cómics (CBZ), documentos XPS y OXPS, dibujos SVG y archivos de texto (.txt), sin necesidad de otros programas: los libros y el texto se reparten en páginas A4 y el índice del libro pasa a los marcadores. Al guardar, AventyaPDF propone el mismo nombre y la misma carpeta que el original, con la extensión .pdf.
 
 Si el PDF está protegido con contraseña, AventyaPDF la pide antes de abrirlo.
 

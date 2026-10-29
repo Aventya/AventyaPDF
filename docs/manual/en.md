@@ -90,7 +90,7 @@ There are several ways to open documents:
 - **File › Open recent**, with the most recently used documents.
 - Double-click a PDF, if AventyaPDF is your PDF viewer.
 
-As well as PDFs, AventyaPDF opens images (PNG, JPG, BMP, GIF, TIFF and WebP) and Word documents (.doc and .docx): each one is converted into a new, unsaved PDF in its own tab. The original isn't changed. To convert Word documents, Microsoft Word or LibreOffice must be installed.
+As well as PDFs, AventyaPDF opens images (PNG, JPG, BMP, GIF, TIFF and WebP) and Word documents (.doc and .docx): each one is converted into a new, unsaved PDF in its own tab. The original isn't changed. To convert Word documents, Microsoft Word or LibreOffice must be installed. It also opens e-books (EPUB, MOBI and FB2), comics (CBZ), XPS and OXPS documents, SVG drawings and text files (.txt) without any other program: books and text are laid out on A4 pages and the book's table of contents becomes the bookmarks. When you save, AventyaPDF suggests the same name and folder as the original, with the .pdf extension.
 
 If the PDF is password-protected, AventyaPDF asks for the password before opening it.
 

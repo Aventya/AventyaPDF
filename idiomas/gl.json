@@ -50,7 +50,6 @@
  "Magenta claro": "Maxenta claro",
  "Color": "Cor",
  "Opacidad": "Opacidade",
- "Todos los admitidos (*.pdf {_PATRON} *.doc *.docx);;Archivos PDF (*.pdf);;Imágenes ({_PATRON});;Documentos de Word (*.doc *.docx)": "Todos os admitidos (*.pdf {_PATRON} *.doc *.docx);;Ficheiros PDF (*.pdf);;Imaxes ({_PATRON});;Documentos de Word (*.doc *.docx)",
  "LibreOffice no generó el PDF": "LibreOffice non xerou o PDF",
  "no está instalado LibreOffice": "LibreOffice non está instalado",
  "\n\nHace falta Microsoft Word o LibreOffice instalado.": "\n\nCómpre ter instalado Microsoft Word ou LibreOffice.",
@@ -865,5 +864,8 @@
  "Descargando el manual de AventyaPDF…": "Descargando o manual de AventyaPDF…",
  "No se pudo descargar el manual ({razon}).": "Non se puido descargar o manual ({razon}).",
  "Hace falta conexión a Internet la primera vez.": "A primeira vez cómpre ter conexión a Internet.",
- "Recortar esta página…": "Recortar esta páxina…"
+ "Recortar esta página…": "Recortar esta páxina…",
+ "Todos los admitidos (*.pdf {_PATRON} *.doc *.docx {_PATRON_DOC});;Archivos PDF (*.pdf);;Imágenes ({_PATRON});;Documentos de Word (*.doc *.docx);;Libros electrónicos, XPS, SVG y texto ({_PATRON_DOC})": "Todos os admitidos (*.pdf {_PATRON} *.doc *.docx {_PATRON_DOC});;Ficheiros PDF (*.pdf);;Imaxes ({_PATRON});;Documentos de Word (*.doc *.docx);;Libros electrónicos, XPS, SVG e texto ({_PATRON_DOC})",
+ "«{nombre}» no contiene páginas.": "«{nombre}» non contén páxinas.",
+ "«{nombre}» no se puede abrir: {e}": "Non se pode abrir «{nombre}»: {e}"
 }

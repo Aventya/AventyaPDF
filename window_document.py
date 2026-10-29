@@ -92,7 +92,15 @@ class ValidateWorker(QThread):
 # de la ventana; los demás, en MainWindow._sessions. El zoom es de la ventana.
 _SESSION_ATTRS = ("doc", "pdf_path", "current_page", "_history", "_modified",
                   "_password", "_orig_encrypted", "_encrypt_opts", "_clean_bytes",
-                  "_pending_bytes", "_disk_stat", "_disk_ignored")
+                  "_pending_bytes", "_disk_stat", "_disk_ignored", "_origen")
+
+
+def _nombre_doc(path: str, origen: str = "") -> str:
+    """Nombre de la pestaña: el del archivo; (r147) si aún no se ha guardado
+    y salió de convertir otro (EPUB, imagen, Word…), el de ese original."""
+    if path:
+        return os.path.basename(path)
+    return os.path.basename(origen) if origen else tr("Sin título")
 
 
 def _file_stat(path: str) -> tuple | None:
@@ -120,6 +128,7 @@ class DocumentMixin:
         # versión del disco que el usuario ya decidió no cargar.
         self._disk_stat: tuple | None = None
         self._disk_ignored: str | None = None
+        self._origen = ""        # (r147) archivo del que se convirtió, si no era PDF
         self._checking_disk = False
         QApplication.instance().applicationStateChanged.connect(self._on_app_state)
         # Con la ventana a la vista pero sin foco (al lado de la otra
@@ -145,7 +154,7 @@ class DocumentMixin:
         if self.doc is None:
             self.setWindowTitle("AventyaPDF")
         else:
-            name = os.path.basename(self.pdf_path) if self.pdf_path else tr("Sin título")
+            name = _nombre_doc(self.pdf_path, self._origen)
             modified = self._modified
             self.setWindowTitle(tr("{valor}{name} — AventyaPDF").format(valor='● ' if modified else '', name=name))
         self._refresh_doc_tabs()
@@ -185,6 +194,7 @@ class DocumentMixin:
         self._pending_bytes = None
         self._disk_stat = None
         self._disk_ignored = None
+        self._origen = ""        # (r147) archivo del que se convirtió, si no era PDF
 
     def _session(self, index: int) -> dict:
         """Estado del documento `index` (el activo, leído en vivo)."""
@@ -254,7 +264,7 @@ class DocumentMixin:
         h, y = s.get("_scroll_pos", (0, 0))
         QTimer.singleShot(0, lambda: (self._scroll.horizontalScrollBar().setValue(h),
                                       self._scroll.verticalScrollBar().setValue(y)))
-        name = os.path.basename(self.pdf_path) if self.pdf_path else tr("Sin título")
+        name = _nombre_doc(self.pdf_path, self._origen)
         self.statusBar().showMessage(tr("Documento: {name}").format(name=name))
 
     def next_document(self, step: int = 1):
@@ -286,7 +296,7 @@ class DocumentMixin:
         for i in range(len(self._sessions)):
             s = self._session(i)
             path = s.get("pdf_path") or ""
-            items.append((os.path.basename(path) if path else tr("Sin título"), path,
+            items.append((_nombre_doc(path, s.get("_origen") or ""), path,
                           self._session_dirty(i)))
         self.sidebar.set_documents(items, self._active)
 
@@ -536,7 +546,7 @@ class DocumentMixin:
     def _confirm_discard(self) -> bool:
         if self.doc is None or not self._modified:
             return True
-        name = os.path.basename(self.pdf_path) if self.pdf_path else tr("Sin título")
+        name = _nombre_doc(self.pdf_path, self._origen)
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Icon.Warning)
         box.setWindowTitle(tr("Cambios sin guardar"))
@@ -568,8 +578,7 @@ class DocumentMixin:
 
     @staticmethod
     def _drop_kind(path: str) -> str:
-        ext = os.path.splitext(path)[1].lower()
-        return "pdf" if ext == ".pdf" else "img" if ext in IMAGE_EXTS else ""
+        return conversion_office.tipo_de(path)
 
     def dragEnterEvent(self, event):
         md = event.mimeData()
@@ -580,11 +589,15 @@ class DocumentMixin:
         paths = [u.toLocalFile() for u in event.mimeData().urls()]
         pdfs = [p for p in paths if self._drop_kind(p) == "pdf"]
         imgs = [p for p in paths if self._drop_kind(p) == "img"]
+        # (r147) Word, libros, XPS, SVG y texto: cada uno convertido en su pestaña.
+        otros = [p for p in paths if self._drop_kind(p) in ("word", "doc")]
         event.acceptProposedAction()
         if pdfs:                                # (r123) todos, no solo el primero
             QTimer.singleShot(0, lambda: [self.open_path(p) for p in pdfs])
         elif imgs:
             QTimer.singleShot(0, lambda: self.create_from_images(imgs))
+        if otros:
+            QTimer.singleShot(0, lambda: self.convert_files_to_pdfs(otros))
 
     # ── recientes ──────────────────────────────────────────────────────── #
 
@@ -631,8 +644,14 @@ class DocumentMixin:
     def save_pdf_as(self) -> bool:
         if self.doc is None:
             return False
-        suggested = self.pdf_path or os.path.join(
-            QSettings(*SETTINGS).value("recent/dir", ""), "documento.pdf")
+        # (r147) Un documento convertido (EPUB, imagen, Word…) propone el
+        # nombre y la carpeta de su original, con .pdf.
+        if self.pdf_path:
+            suggested = self.pdf_path
+        elif self._origen:
+            suggested = os.path.splitext(self._origen)[0] + ".pdf"
+        else:
+            suggested = os.path.join(QSettings(*SETTINGS).value("recent/dir", ""), "documento.pdf")
         path, _ = QFileDialog.getSaveFileName(self, tr("Guardar como"), suggested,
                                               tr("Archivos PDF (*.pdf)"))
         if not path:

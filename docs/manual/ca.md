@@ -90,7 +90,7 @@ Hi ha diverses maneres d'obrir documents:
 - **Fitxer › Obre un fitxer recent**, amb els últims documents utilitzats.
 - Fer doble clic en un PDF, si AventyaPDF és el vostre visualitzador de PDF.
 
-A més de PDF, AventyaPDF obre imatges (PNG, JPG, BMP, GIF, TIFF i WebP) i documents de Word (.doc i .docx): cada un es converteix en un PDF nou, sense desar, a la seva pròpia pestanya. L'original no es modifica. Per convertir documents de Word cal tenir instal·lat Microsoft Word o LibreOffice.
+A més de PDF, AventyaPDF obre imatges (PNG, JPG, BMP, GIF, TIFF i WebP) i documents de Word (.doc i .docx): cada un es converteix en un PDF nou, sense desar, a la seva pròpia pestanya. L'original no es modifica. Per convertir documents de Word cal tenir instal·lat Microsoft Word o LibreOffice. També obre llibres electrònics (EPUB, MOBI i FB2), còmics (CBZ), documents XPS i OXPS, dibuixos SVG i fitxers de text (.txt), sense cap altre programa: els llibres i el text es reparteixen en pàgines A4 i l'índex del llibre passa als marcadors. En desar, AventyaPDF proposa el mateix nom i la mateixa carpeta que l'original, amb l'extensió .pdf.
 
 Si el PDF està protegit amb contrasenya, AventyaPDF la demana abans d'obrir-lo.
 

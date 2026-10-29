@@ -514,14 +514,17 @@ class MenusMixin:
         """(r86) Menú contextual del Explorador, «Convertir a PDF»: cada imagen
         o documento de Word en su propio PDF, cada uno en una pestaña nueva sin
         guardar."""
-        paths = [p for p in paths if conversion_office.tipo_de(p) in ("img", "word")]
+        paths = [p for p in paths if conversion_office.tipo_de(p) in ("img", "word", "doc")]
         if not paths:
             return
         docs = self._convert_paths(paths, tr("Convertir a PDF"))
         if docs is None:
             return
-        for doc in docs:
+        for origen, doc in zip(paths, docs):
             self._begin_new_session()
+            # (r147) La pestaña lleva el nombre del original y «Guardar»
+            # propone su carpeta y su nombre con .pdf.
+            self._origen = os.path.abspath(origen)
             self._set_document(doc, "", None, modified=True)
         self.statusBar().showMessage(tr("{n} PDF creados — sin guardar").format(n=len(docs)))
 

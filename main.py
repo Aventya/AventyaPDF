@@ -519,9 +519,11 @@ def procesar_argumentos(window, argv: list[str]) -> None:
     if accion == ARG_IMAGENES_VARIOS_PDF:
         window.create_separate_pdfs_from_images(resto)
         return
-    for arg in argv:
-        if arg.lower().endswith(".pdf") and os.path.isfile(arg):
-            window.open_path(arg)
+    # (r147) «Abrir con…» admite todo lo que el visor sabe mostrar: los PDF se
+    # abren y el resto (imágenes, Word, EPUB, XPS…) se convierte, cada uno en
+    # su pestaña.
+    import conversion_office
+    window.open_paths([a for a in argv if os.path.isfile(a) and conversion_office.tipo_de(a)])
 
 
 def _start_instance_watch(window, interval_ms: int = 500) -> None:

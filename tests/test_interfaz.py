@@ -916,6 +916,46 @@ class TestVentanaPrincipal(unittest.TestCase):
         self.assertIn("pagina 1", w.doc[0].get_text())   # doc2 primero
         self.assertEqual(w.doc[2].get_text().strip(), "")  # luego la imagen (doc3)
 
+    def test_abrir_otros_documentos_y_guardarlos_como_pdf(self):
+        """(r147, petición de Ricardo) Abrir un archivo que el visor sabe
+        mostrar (texto, SVG…) lo convierte a PDF en su pestaña, con el nombre
+        del original; «Guardar» propone su carpeta y su nombre con .pdf.
+        «Abrir con…» (argumentos sueltos) hace lo mismo."""
+        from PyQt6.QtWidgets import QFileDialog
+        import main
+        w = self.w
+        txt = os.path.join(self.tmp, "notas del día.txt")
+        with open(txt, "w", encoding="utf-8") as f:
+            f.write("Acta de la reunión\n" * 120)
+        w.open_paths([txt])
+        self.assertEqual(len(w._sessions), 1)
+        self.assertTrue(w._modified)
+        self.assertEqual(w.pdf_path, "")
+        self.assertIn("Acta de la reunión", w.doc[0].get_text())
+        self.assertIn("notas del día.txt", w.windowTitle())
+
+        destino = os.path.join(self.tmp, "notas del día.pdf")
+        propuestas = []
+
+        def guardar(_padre, _titulo, propuesta, _filtro):
+            propuestas.append(propuesta)
+            return propuesta, ""
+        with mock.patch.object(QFileDialog, "getSaveFileName", guardar):
+            self.assertTrue(w.save_pdf())
+        self.assertEqual(os.path.normcase(propuestas[0]), os.path.normcase(destino))
+        self.assertTrue(os.path.isfile(destino))
+        self.assertEqual(os.path.normcase(w.pdf_path), os.path.normcase(destino))
+        self.assertFalse(w._modified)
+
+        svg = os.path.join(self.tmp, "logo.svg")
+        with open(svg, "w", encoding="utf-8") as f:
+            f.write('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100">'
+                    '<text x="10" y="50">Logo</text></svg>')
+        main.procesar_argumentos(w, [svg])
+        self.assertEqual(len(w._sessions), 2)
+        self.assertIn("Logo", w.doc[0].get_text())
+        self.assertIn("logo.svg", w.windowTitle())
+
     def test_anadir_al_final_varios_archivos(self):
         """(r123) «Añadir PDF al final…» admite varios archivos de una vez."""
         from PyQt6.QtWidgets import QFileDialog

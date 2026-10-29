@@ -50,7 +50,6 @@
  "Magenta claro": "Light magenta",
  "Color": "Colour",
  "Opacidad": "Opacity",
- "Todos los admitidos (*.pdf {_PATRON} *.doc *.docx);;Archivos PDF (*.pdf);;Imágenes ({_PATRON});;Documentos de Word (*.doc *.docx)": "All supported (*.pdf {_PATRON} *.doc *.docx);;PDF files (*.pdf);;Images ({_PATRON});;Word documents (*.doc *.docx)",
  "LibreOffice no generó el PDF": "LibreOffice didn't create the PDF",
  "no está instalado LibreOffice": "LibreOffice isn't installed",
  "\n\nHace falta Microsoft Word o LibreOffice instalado.": "\n\nMicrosoft Word or LibreOffice must be installed.",
@@ -865,5 +864,8 @@
  "Descargando el manual de AventyaPDF…": "Downloading the AventyaPDF manual…",
  "No se pudo descargar el manual ({razon}).": "Couldn't download the manual ({razon}).",
  "Hace falta conexión a Internet la primera vez.": "An Internet connection is required the first time.",
- "Recortar esta página…": "Crop this page…"
+ "Recortar esta página…": "Crop this page…",
+ "Todos los admitidos (*.pdf {_PATRON} *.doc *.docx {_PATRON_DOC});;Archivos PDF (*.pdf);;Imágenes ({_PATRON});;Documentos de Word (*.doc *.docx);;Libros electrónicos, XPS, SVG y texto ({_PATRON_DOC})": "All supported (*.pdf {_PATRON} *.doc *.docx {_PATRON_DOC});;PDF files (*.pdf);;Images ({_PATRON});;Word documents (*.doc *.docx);;E-books, XPS, SVG and text ({_PATRON_DOC})",
+ "«{nombre}» no contiene páginas.": "«{nombre}» has no pages.",
+ "«{nombre}» no se puede abrir: {e}": "«{nombre}» can't be opened: {e}"
 }
