@@ -61,6 +61,14 @@ Quan hi ha una versió nova, AventyaPDF ho avisa en iniciar-se. També ho podeu 
 - **Tauler lateral** (a l'esquerra, s'obre i es tanca amb **F4**): miniatures de pàgina, marcadors, comentaris i signatures certificades. A la part superior del tauler hi apareixen les opcions de l'eina que utilitzeu.
 - **Barra d'estat** (a baix): missatges de l'aplicació i, a la dreta, el zoom.
 
+## El menú del botó dret
+
+Feu clic amb el botó dret sobre la pàgina per tenir a mà totes les eines, cadascuna amb la mateixa icona que a la barra: afegir text, nota adhesiva, ressaltar, rectangle, emoji, esborrador, editar el contingut, signatura, **Retalla la pàgina que es mostra al visualitzador…** i **Operacions de pàgina**. En triar-ne una, les seves opcions apareixen a la part superior del tauler lateral perquè les pugueu ajustar.
+
+![menu_derecho] El menú del botó dret sobre la pàgina.
+
+Sobre un text seleccionat, un comentari, una miniatura o, en editar el contingut del PDF, un paràgraf o una imatge, el botó dret mostra en canvi les opcions d'aquest element, també amb les seves icones.
+
 ## Presentació, ajuda i idioma
 
 La primera vegada que obriu AventyaPDF apareix una presentació que en resumeix les funcions. Marqueu «No ho tornis a mostrar en iniciar» si no la voleu veure més; sempre la podeu tornar a obrir des d'**Ajuda › Presentació d'AventyaPDF**.
@@ -152,7 +160,7 @@ Amb **Ressalta, subratlla o ratlla** (`H`) trieu el tipus de marca i el color al
 
 ![resaltar] Text ressaltat.
 
-> **Consell:** també podeu seleccionar text amb l'eina de selecció i fer clic amb el botó dret per ressaltar-lo, subratllar-lo o ratllar-lo.
+> **Consell:** també podeu seleccionar text amb l'eina de selecció i fer clic amb el botó dret per ressaltar-lo, subratllar-lo o ratllar-lo. La marca queda seleccionada, amb les seves opcions al tauler lateral per canviar-ne el color o l'opacitat.
 
 ## Rectangles i emojis
 
@@ -211,12 +219,13 @@ El botó **Operacions de pàgina** de la barra d'eines (o **Organitza › Organi
 - **Reordenar**: arrossegueu una miniatura a la seva nova posició.
 - **Seleccionar-ne diverses**: amb `Ctrl` o `Maj` en fer clic. Sense selecció, els botons actuen sobre la pàgina actual.
 - **Botons**: girar a l'esquerra i a la dreta, duplicar, suprimir, inserir una pàgina en blanc, inserir un altre PDF, extreure les pàgines a un PDF nou i retallar.
+- **Botó dret sobre una miniatura**: les mateixes operacions amb les seves icones, i **Retalla aquesta pàgina…** si només n'hi ha una de seleccionada. En triar-ne una, s'obren les operacions de pàgina al tauler lateral.
 
 Tot s'aplica a l'instant i es pot desfer.
 
 ## Retallar una pàgina
 
-El botó **Retalla** dibuixa sobre la pàgina un requadre amb nanses a les cantonades i als costats: arrossegueu-les fins al marge que vulgueu. Els botons del centre del requadre apliquen o cancel·len el retall.
+El botó **Retalla** dibuixa sobre la pàgina un requadre amb nanses a les cantonades i als costats: arrossegueu-les fins al marge que vulgueu. Els botons del centre del requadre apliquen o cancel·len el retall. També podeu començar des del botó dret: sobre la pàgina (**Retalla la pàgina que es mostra al visualitzador…**) o sobre la seva miniatura (**Retalla aquesta pàgina…**).
 
 ![recortar] Retallar una pàgina.
 

@@ -61,6 +61,14 @@ Cuando hay una versión nueva, AventyaPDF lo avisa al iniciar. También puedes c
 - **Panel lateral** (a la izquierda, se abre y se cierra con **F4**): miniaturas de página, marcadores, comentarios y firmas certificadas. Arriba del panel aparecen las opciones de la herramienta que estés usando.
 - **Barra de estado** (abajo): mensajes de la aplicación y, a la derecha, el zoom.
 
+## El menú del botón derecho
+
+Pulsa el botón derecho sobre la página para tener a mano todas las herramientas, cada una con el mismo icono que en la barra: añadir texto, nota adhesiva, resaltar, rectángulo, emoji, borrador, editar el contenido, firma, **Recortar la página mostrada en el visor…** y **Operaciones de página**. Al elegir una, sus opciones aparecen arriba del panel lateral para que puedas ajustarlas.
+
+![menu_derecho] El menú del botón derecho sobre la página.
+
+Sobre un texto seleccionado, un comentario, una miniatura o, al editar el contenido del PDF, un párrafo o una imagen, el botón derecho muestra en cambio las opciones de ese elemento, también con sus iconos.
+
 ## Presentación, ayuda e idioma
 
 Al abrir AventyaPDF por primera vez sale una presentación que resume las funciones. Marca «No volver a mostrar al iniciar» si no quieres verla más; siempre puedes volver a abrirla desde **Ayuda › Presentación de AventyaPDF**.
@@ -152,7 +160,7 @@ Con **Resaltar, subrayar o tachar** (`H`) elige el tipo de marca y su color en e
 
 ![resaltar] Texto resaltado.
 
-> **Consejo:** también puedes seleccionar texto con la herramienta de selección y pulsar el botón derecho para resaltarlo, subrayarlo o tacharlo.
+> **Consejo:** también puedes seleccionar texto con la herramienta de selección y pulsar el botón derecho para resaltarlo, subrayarlo o tacharlo. La marca queda seleccionada, con sus opciones en el panel lateral para cambiarle el color o la opacidad.
 
 ## Rectángulos y emojis
 
@@ -211,12 +219,13 @@ El botón **Operaciones de página** de la barra de herramientas (o **Organizar 
 - **Reordenar**: arrastra una miniatura a su nueva posición.
 - **Seleccionar varias**: con `Ctrl` o `Mayús` al hacer clic. Sin selección, los botones actúan sobre la página actual.
 - **Botones**: girar a la izquierda y a la derecha, duplicar, eliminar, insertar una página en blanco, insertar otro PDF, extraer las páginas a un PDF nuevo y recortar.
+- **Botón derecho sobre una miniatura**: las mismas operaciones con sus iconos, más **Recortar esta página…** si solo hay una seleccionada. Al elegir una, se abren las operaciones de página en el panel lateral.
 
 Todo se aplica al momento y se puede deshacer.
 
 ## Recortar una página
 
-El botón **Recortar** dibuja sobre la página un recuadro con tiradores en las esquinas y en los lados: arrastra cada uno hasta el margen que quieras. Los botones del centro del recuadro aplican o cancelan el recorte.
+El botón **Recortar** dibuja sobre la página un recuadro con tiradores en las esquinas y en los lados: arrastra cada uno hasta el margen que quieras. Los botones del centro del recuadro aplican o cancelan el recorte. También puedes empezar desde el botón derecho: sobre la página (**Recortar la página mostrada en el visor…**) o sobre su miniatura (**Recortar esta página…**).
 
 ![recortar] Recortar una página.
 

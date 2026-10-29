@@ -61,6 +61,14 @@ When a new version is available, AventyaPDF tells you at startup. You can also c
 - **Side panel** (on the left, opened and closed with **F4**): page thumbnails, bookmarks, comments and digital signatures. The options of the tool you're using appear at the top of the panel.
 - **Status bar** (at the bottom): application messages and, on the right, the zoom.
 
+## The right-click menu
+
+Right-click on the page to have every tool at hand, each with the same icon as on the toolbar: add text, sticky note, highlight, rectangle, emoji, eraser, edit content, signature, **Crop the page shown in the viewer…** and **Page operations**. When you choose one, its options appear at the top of the side panel so you can adjust them.
+
+![menu_derecho] The right-click menu on the page.
+
+On selected text, a comment, a thumbnail or, while editing the PDF content, a paragraph or an image, right-clicking shows that item's options instead, also with their icons.
+
 ## Tour, help and language
 
 The first time you open AventyaPDF, a tour summarises its features. Tick “Don't show at startup” if you don't want to see it again; you can always reopen it from **Help › AventyaPDF tour**.
@@ -152,7 +160,7 @@ With **Highlight, underline or strike through** (`H`), choose the markup type an
 
 ![resaltar] Highlighted text.
 
-> **Tip:** you can also select text with the selection tool and right-click to highlight, underline or strike it through.
+> **Tip:** you can also select text with the selection tool and right-click to highlight, underline or strike it through. The mark stays selected, with its options in the side panel so you can change its colour or opacity.
 
 ## Rectangles and emojis
 
@@ -211,12 +219,13 @@ The **Page operations** button on the toolbar (or **Organise › Organise pages 
 - **Reorder**: drag a thumbnail to its new position.
 - **Select several**: hold down `Ctrl` or `Shift` while clicking. With no selection, the buttons act on the current page.
 - **Buttons**: rotate left and right, duplicate, delete, insert a blank page, insert another PDF, extract the pages to a new PDF and crop.
+- **Right-click on a thumbnail**: the same operations with their icons, plus **Crop this page…** when only one is selected. Choosing one opens the page operations in the side panel.
 
 Everything is applied immediately and can be undone.
 
 ## Cropping a page
 
-The **Crop** button draws a box on the page with handles at the corners and on the sides: drag each one to the margin you want. The buttons in the centre of the box apply or cancel the crop.
+The **Crop** button draws a box on the page with handles at the corners and on the sides: drag each one to the margin you want. The buttons in the centre of the box apply or cancel the crop. You can also start from the right-click menu: on the page (**Crop the page shown in the viewer…**) or on its thumbnail (**Crop this page…**).
 
 ![recortar] Cropping a page.
 

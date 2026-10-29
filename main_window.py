@@ -621,7 +621,10 @@ class MainWindow(DocumentMixin, MenusMixin, QMainWindow):
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(False)
         self._scroll.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._scroll.viewport().setStyleSheet("* { background: #D0D4D8; }" + TOOLTIP_QSS)
+        # (r144) El «*» alcanza también a los menús del botón derecho, que
+        # cuelgan del visor: sin la regla de QMenu salían grises.
+        self._scroll.viewport().setStyleSheet(
+            "* { background: #D0D4D8; } QMenu { background: #FFFFFF; }" + TOOLTIP_QSS)
 
         self.viewer = PDFViewerWidget()
         self.viewer.main_window = self

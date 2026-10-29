@@ -143,6 +143,16 @@ def generar(m: dict, destino: str) -> list[str]:
     from window_menus import OCR_LANGS, TSA_PRESETS
 
     icons.load_fonts()
+    # (r144) En Windows la plataforma «offscreen» no ve las fuentes del
+    # sistema: sin esto, menús y diálogos se pintan con la fuente de iconos
+    # (palabras con espacios enormes). En Linux las encuentra fontconfig.
+    if sys.platform == "win32":
+        from PyQt6.QtGui import QFontDatabase
+        sistema = os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts")
+        for nombre in ("SegUIVar.ttf", "segoeui.ttf", "segoeuib.ttf", "segoeuii.ttf",
+                       "seguisb.ttf", "seguiemj.ttf"):
+            if os.path.isfile(os.path.join(sistema, nombre)):
+                QFontDatabase.addApplicationFont(os.path.join(sistema, nombre))
     app.setStyleSheet(main.STYLESHEET + main.TOOLTIP_QSS)
     main._install_qt_translation(app)
     presentacion.set_show(False)
@@ -237,6 +247,16 @@ def generar(m: dict, destino: str) -> list[str]:
     w._set_custom_zoom(150)
     shot("zoom", (VENTANA[0] - 520, VENTANA[1] - 40, 520, 40))
     w._set_custom_zoom(100)
+
+    # (r144) Menú del botón derecho sobre la página: se captura en lugar de
+    # abrirlo (QMenu.exec bloquearía).
+    from unittest import mock
+
+    def _capturar_menu(menu, *_a, **_k):
+        menus([(menu, None)], "menu_derecho")
+        return None
+    with mock.patch.object(QMenu, "exec", _capturar_menu):
+        w._tools_menu(QPoint())
 
     # ── comentar ─────────────────────────────────────────────────────── #
     w._toggle_tool("TEXT")

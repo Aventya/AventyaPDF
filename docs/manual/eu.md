@@ -61,6 +61,14 @@ Bertsio berri bat dagoenean, AventyaPDF-k abisatu egiten du abiaraztean. **Lagun
 - **Alboko panela** (ezkerrean; **F4** sakatuta irekitzen eta ixten da): orrialdeen koadro txikiak, laster-markak, iruzkinak eta ziurtagiridun sinadurak. Panelaren goialdean, erabiltzen ari zaren tresnaren aukerak agertzen dira.
 - **Egoera-barra** (behean): aplikazioaren mezuak eta, eskuinean, zooma.
 
+## Eskuineko botoiaren menua
+
+Sakatu eskuineko botoia orrialdearen gainean tresna guztiak eskura izateko, bakoitza tresna-barrako ikono berarekin: gehitu testua, ohar itsaskorra, nabarmendu, laukizuzena, emojia, borragoma, editatu edukia, sinadura, **Moztu ikustailean erakutsitako orrialdea…** eta **Orrialde-eragiketak**. Bat aukeratzean, haren aukerak alboko panelaren goialdean agertzen dira, doitu ahal izateko.
+
+![menu_derecho] Eskuineko botoiaren menua orrialdearen gainean.
+
+Hautatutako testu baten, iruzkin baten edo koadro txiki baten gainean, edo, PDFaren edukia editatzean, paragrafo edo irudi baten gainean, eskuineko botoiak elementu horren aukerak erakusten ditu, haiek ere beren ikonoekin.
+
 ## Aurkezpena, laguntza eta hizkuntza
 
 AventyaPDF lehen aldiz irekitzean, funtzioak laburbiltzen dituen aurkezpen bat agertzen da. Markatu «Ez erakutsi berriro abiaraztean» gehiago ikusi nahi ez baduzu; nahi duzunean ireki dezakezu berriro **Laguntza › AventyaPDF-ren aurkezpena** aukeratik.
@@ -152,7 +160,7 @@ Iruzkintzeko tresnak **Iruzkindu** menuan eta tresna-barran daude. Bakoitzak let
 
 ![resaltar] Testu nabarmendua.
 
-> **Aholkua:** testua hautapen-tresnarekin hauta dezakezu, eta eskuineko botoia sakatu, nabarmentzeko, azpimarratzeko edo marratzeko.
+> **Aholkua:** testua hautapen-tresnarekin hauta dezakezu, eta eskuineko botoia sakatu, nabarmentzeko, azpimarratzeko edo marratzeko. Marka hautatuta geratzen da, eta haren aukerak alboko panelean daude, kolorea edo opakotasuna aldatzeko.
 
 ## Laukizuzenak eta emojiak
 
@@ -211,12 +219,13 @@ Tresna-barrako **Orrialde-eragiketak** botoiak (edo **Antolatu › Antolatu orri
 - **Ordenatu**: arrastatu koadro txiki bat bere posizio berrira.
 - **Hautatu hainbat**: `Ctrl` edo `Maius` sakatuta klik egitean. Hautapenik ez badago, botoiek uneko orrialdean eragiten dute.
 - **Botoiak**: biratu ezkerrera eta eskuinera, bikoiztu, ezabatu, txertatu orrialde zuri bat, txertatu beste PDF bat, atera orrialdeak PDF berri batera eta moztu.
+- **Eskuineko botoia koadro txiki baten gainean**: eragiketa berak, beren ikonoekin, eta **Moztu orrialde hau…**, bakarra hautatuta badago. Bat aukeratzean, orrialde-eragiketak alboko panelean irekitzen dira.
 
 Dena berehala aplikatzen da, eta desegin egin daiteke.
 
 ## Moztu orrialde bat
 
-**Moztu** botoiak lauki bat marrazten du orrialdearen gainean, izkinetan eta alboetan heldulekuak dituela: arrastatu bakoitza nahi duzun marjinaraino. Laukiaren erdiko botoiek moztea aplikatzen edo bertan behera uzten dute.
+**Moztu** botoiak lauki bat marrazten du orrialdearen gainean, izkinetan eta alboetan heldulekuak dituela: arrastatu bakoitza nahi duzun marjinaraino. Laukiaren erdiko botoiek moztea aplikatzen edo bertan behera uzten dute. Eskuineko botoitik ere has zaitezke: orrialdearen gainean (**Moztu ikustailean erakutsitako orrialdea…**) edo haren koadro txikiaren gainean (**Moztu orrialde hau…**).
 
 ![recortar] Moztu orrialde bat.
 
