@@ -1,6 +1,6 @@
 ---
 titulo: Manual d'AventyaPDF
-subtitulo: Visualitzar, comentar, organitzar, protegir, convertir i signar documents PDF
+subtitulo: Visualitzador i convertidor a PDF: visualitzar, comentar, organitzar, protegir i signar documents
 version: Versió {version}
 indice: Índex
 meses: gener|febrer|març|abril|maig|juny|juliol|agost|setembre|octubre|novembre|desembre
@@ -38,7 +38,7 @@ explorador_opciones: Obre|Obre amb|Comparteix
 
 ## Què és AventyaPDF
 
-AventyaPDF és una aplicació per a Windows que reuneix en un sol programa el que es fa cada dia amb els documents PDF: llegir-los, comentar-los, emplenar formularis, canviar-ne el text, organitzar-ne les pàgines, combinar-los, protegir-los amb contrasenya, reconèixer el text dels documents escanejats i signar-los amb certificat digital.
+AventyaPDF és el visualitzador i convertidor a PDF per a Windows: obre PDF, imatges, documents de Word, llibres electrònics, còmics, XPS i SVG, i reuneix en un sol programa el que es fa cada dia amb aquests documents. Tot el que no és PDF es pot obrir i desar com a PDF. Amb els PDF podeu llegir-los, comentar-los, emplenar formularis, canviar-ne el text, organitzar-ne les pàgines, combinar-los, protegir-los amb contrasenya, reconèixer el text dels documents escanejats i signar-los amb certificat digital.
 
 És de lliure distribució i el seu codi està publicat a GitHub. No envia els vostres documents enlloc: tot es fa al vostre ordinador.
 
@@ -48,11 +48,26 @@ AventyaPDF és una aplicació per a Windows que reuneix en un sol programa el qu
 
 L'instal·lador pregunta primer l'idioma (proposa el de Windows): AventyaPDF s'instal·la i s'obre en aquest idioma. Durant la instal·lació es baixen dels seus llocs web oficials Python, els seus components i els tipus de lletra, de manera que cal connexió a Internet. Mentrestant, l'instal·lador va mostrant les eines de l'aplicació.
 
-En acabar, AventyaPDF apareix al menú Inicia (i, si ho heu marcat, a l'escriptori) i a **Obre amb** dels fitxers PDF. Windows no permet que un programa es defineixi tot sol com a visualitzador predeterminat: si voleu que els PDF s'obrin sempre amb AventyaPDF, trieu-lo a **Obre amb › Tria una altra aplicació** i marqueu «Utilitza sempre aquesta aplicació».
+En acabar, AventyaPDF apareix al menú Inicia (i, si ho heu marcat, a l'escriptori) i a **Obre amb** dels PDF, les imatges, els documents de Word, els llibres electrònics, XPS i SVG (vegeu «Usar-lo com a visualitzador predeterminat»).
 
 Quan hi ha una versió nova, AventyaPDF ho avisa en iniciar-se. També ho podeu comprovar a **Ajuda › Cerca actualitzacions…**: l'instal·lador nou es baixa a la carpeta Baixades i només l'heu d'obrir. Es mantenen la configuració, el certificat i l'idioma.
 
 > **Important:** el reconeixement de text (OCR) utilitza Tesseract OCR, que no s'inclou a l'instal·lador. AventyaPDF el baixa i l'instal·la la primera vegada que l'utilitzeu; pot demanar permís d'administrador.
+
+## Usar-lo com a visualitzador predeterminat
+
+AventyaPDF està pensat per ser el programa amb què obriu i, si voleu, convertiu a PDF gairebé qualsevol document. Un cop instal·lat, apareix a **Obre amb** i a la configuració de Windows com a programa possible per a aquests fitxers:
+
+- PDF.
+- Imatges: PNG, JPG, BMP, GIF, TIFF, WebP, JPEG 2000, TGA, ICO i PNM.
+- Documents de Word (.doc i .docx).
+- Llibres electrònics (EPUB, MOBI i FB2), còmics (CBZ), documents XPS i OXPS i dibuixos SVG.
+
+Els fitxers de text (.txt) queden fora a propòsit: continuen obrint-se amb el Bloc de notes. Si en voleu convertir un a PDF, obriu-lo amb **Fitxer › Obre** o feu servir el botó dret de l'Explorador de fitxers.
+
+Windows no permet que un instal·lador triï per vosaltres el programa predeterminat. En acabar la instal·lació, marqueu la casella «Triar AventyaPDF com a programa predeterminat (s'obre la configuració de Windows)». Si no l'heu marcada, obriu **Configuració › Aplicacions › Aplicacions predeterminades**, cerqueu AventyaPDF i trieu-lo per a cada tipus de fitxer. També ho podeu fer amb un sol fitxer: botó dret › **Obre amb › Tria una altra aplicació** i marqueu «Utilitza sempre aquesta aplicació».
+
+> **Consell:** un cop triat, fer doble clic en una imatge, un document de Word o un llibre l'obre a AventyaPDF com a PDF nou, sense desar; l'original no es modifica. Per als de Word cal Microsoft Word o LibreOffice.
 
 ## La finestra
 
@@ -88,9 +103,9 @@ Hi ha diverses maneres d'obrir documents:
 - **Fitxer › Obre…** (`Ctrl+O`): podeu triar diversos fitxers alhora amb `Ctrl` o `Maj`.
 - Arrossegar-los des de l'Explorador de fitxers fins a la finestra.
 - **Fitxer › Obre un fitxer recent**, amb els últims documents utilitzats.
-- Fer doble clic en un PDF, si AventyaPDF és el vostre visualitzador de PDF.
+- Fer doble clic en un fitxer, si AventyaPDF és el vostre programa predeterminat per a aquest tipus (vegeu «Usar-lo com a visualitzador predeterminat»).
 
-A més de PDF, AventyaPDF obre imatges (PNG, JPG, BMP, GIF, TIFF i WebP) i documents de Word (.doc i .docx): cada un es converteix en un PDF nou, sense desar, a la seva pròpia pestanya. L'original no es modifica. Per convertir documents de Word cal tenir instal·lat Microsoft Word o LibreOffice. També obre llibres electrònics (EPUB, MOBI i FB2), còmics (CBZ), documents XPS i OXPS, dibuixos SVG i fitxers de text (.txt), sense cap altre programa: els llibres i el text es reparteixen en pàgines A4 i l'índex del llibre passa als marcadors. En desar, AventyaPDF proposa el mateix nom i la mateixa carpeta que l'original, amb l'extensió .pdf.
+A més de PDF, AventyaPDF obre imatges (PNG, JPG, BMP, GIF, TIFF, WebP, JPEG 2000, TGA, ICO i PNM; un TIFF de diverses pàgines s'obre amb totes les pàgines) i documents de Word (.doc i .docx): cada un es converteix en un PDF nou, sense desar, a la seva pròpia pestanya. L'original no es modifica. Per convertir documents de Word cal tenir instal·lat Microsoft Word o LibreOffice. També obre llibres electrònics (EPUB, MOBI i FB2), còmics (CBZ), documents XPS i OXPS, dibuixos SVG i fitxers de text (.txt), sense cap altre programa: els llibres i el text es reparteixen en pàgines A4 i l'índex del llibre passa als marcadors. En desar, AventyaPDF proposa el mateix nom i la mateixa carpeta que l'original, amb l'extensió .pdf: així AventyaPDF fa alhora de visualitzador i de convertidor a PDF.
 
 Si el PDF està protegit amb contrasenya, AventyaPDF la demana abans d'obrir-lo.
 
@@ -243,7 +258,7 @@ Al menú **Organitza** també hi ha:
 **Organitza › Combina PDF…** té dues opcions:
 
 - **Combina els oberts**: ajunta tots els documents oberts, en l'ordre de les pestanyes i amb els seus canvis, en un PDF nou.
-- **Combina fitxers…**: trieu diversos fitxers (PDF, imatges o Word, barrejats) i es combinen per ordre alfabètic del nom.
+- **Combina fitxers…**: trieu diversos fitxers (PDF, imatges, Word i la resta de documents que obre, barrejats) i es combinen per ordre alfabètic del nom.
 
 ![combinar] Organitza › Combina PDF.
 
@@ -255,7 +270,7 @@ El resultat queda obert sense desar; deseu-lo amb `Ctrl+S`. Els fitxers original
 
 - **Fitxer › PDF en blanc nou** (`Ctrl+N`) crea un document amb una pàgina buida.
 - **Fitxer › Crea un PDF a partir d'imatges…** ajunta diverses imatges en un PDF, una per pàgina.
-- Si obriu una imatge o un document de Word, es converteix a PDF (vegeu «Obrir documents»).
+- Si obriu una imatge, un document de Word o qualsevol altre document que obre AventyaPDF, es converteix a PDF (vegeu «Obrir documents»).
 
 ## Exportar
 
@@ -273,8 +288,8 @@ A **Fitxer › Exporta** podeu treure el contingut del document:
 Sense obrir abans l'aplicació, seleccioneu fitxers a l'Explorador de fitxers i feu clic amb el botó dret: al submenú **AventyaPDF** hi teniu:
 
 - **Signa digitalment** (només PDF): obre els documents amb l'eina de signatura preparada.
-- **Combina en un PDF** (dos fitxers o més): PDF, imatges i Word, barrejats, en un sol PDF.
-- **Converteix a PDF** (imatges i Word): un PDF per fitxer.
+- **Combina en un PDF** (dos fitxers o més): PDF, imatges, Word i altres documents, barrejats, en un sol PDF.
+- **Converteix a PDF** (imatges, Word i altres documents que obre AventyaPDF, inclosos els .txt): un PDF per fitxer.
 
 ![explorador] El submenú AventyaPDF del botó dret.
 
@@ -401,7 +416,7 @@ Utilitzeu **Ajuda › Repara el menú contextual de l'Explorador de fitxers…**
 
 ## Un document de Word no es converteix
 
-Cal tenir instal·lat Microsoft Word o LibreOffice. Si tots dos fallen, AventyaPDF en mostra el motiu.
+Cal tenir instal·lat Microsoft Word o LibreOffice (també si heu triat AventyaPDF com a programa predeterminat dels .doc i .docx). Si tots dos fallen, AventyaPDF en mostra el motiu.
 
 ## Una signatura surt com a «identitat no verificada»
 

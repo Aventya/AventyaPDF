@@ -1,6 +1,6 @@
 ---
 titulo: AventyaPDF manual
-subtitulo: View, comment, organise, protect, convert and sign PDF documents
+subtitulo: Viewer and PDF converter: view, comment on, organise, protect and sign documents
 version: Version {version}
 indice: Contents
 meses: January|February|March|April|May|June|July|August|September|October|November|December
@@ -38,7 +38,7 @@ explorador_opciones: Open|Open with|Share
 
 ## What AventyaPDF is
 
-AventyaPDF is a Windows application that brings together in a single program everything you do every day with PDF documents: read them, comment on them, fill in forms, change their text, organise their pages, combine them, protect them with a password, recognise the text of scans and sign them with a digital certificate.
+AventyaPDF is the Windows viewer and PDF converter: it opens PDFs, images, Word documents, e-books, comics, XPS files and SVG drawings, and brings together in a single program everything you do every day with them. Anything that isn't a PDF can be opened and saved as a PDF. With PDFs you can read them, comment on them, fill in forms, change their text, organise their pages, combine them, protect them with a password, recognise the text of scans and sign them with a digital certificate.
 
 It is freely distributed and its source code is published on GitHub. It doesn't send your documents anywhere: everything happens on your computer.
 
@@ -48,11 +48,26 @@ It is freely distributed and its source code is published on GitHub. It doesn't 
 
 The installer first asks for the language (it suggests the Windows language): AventyaPDF is installed and opens in that language. During installation, Python, its components and the fonts are downloaded from their official sites, so you need an Internet connection. Meanwhile, the installer shows you the application's tools.
 
-When it finishes, AventyaPDF appears in the Start menu (and on the desktop, if you selected that option) and under **Open with** for PDF files. Windows doesn't let a program make itself the default viewer: if you want PDFs to always open with AventyaPDF, select it in **Open with › Choose another app** and tick “Always use this app to open .pdf files”.
+When it finishes, AventyaPDF appears in the Start menu (and on the desktop, if you selected that option) and under **Open with** for PDFs, images, Word documents, e-books, XPS files and SVG drawings (see “Using it as your default viewer”).
 
 When a new version is available, AventyaPDF tells you at startup. You can also check in **Help › Check for updates…**: the new installer is downloaded to your Downloads folder and you just have to open it. Your settings, your certificate and your language are kept.
 
 > **Important:** text recognition (OCR) uses Tesseract OCR, which isn't included in the installer. AventyaPDF downloads and installs it the first time you use it; it may ask for administrator permission.
+
+## Using it as your default viewer
+
+AventyaPDF is designed to be the program you use to open, and if you want convert to PDF, almost any document. Once installed, it appears under **Open with** and in the Windows settings as an option for these files:
+
+- PDF.
+- Images: PNG, JPG, BMP, GIF, TIFF, WebP, JPEG 2000, TGA, ICO and PNM.
+- Word documents (.doc and .docx).
+- E-books (EPUB, MOBI and FB2), comics (CBZ), XPS and OXPS documents and SVG drawings.
+
+Text files (.txt) are deliberately left out: they keep opening in Notepad. To convert one to PDF, open it with **File › Open** or use the right-click menu in File Explorer.
+
+Windows doesn't let an installer choose the default program for you. When the installation finishes, tick the box “Choose AventyaPDF as the default app (opens Windows settings)”. If you didn't, open **Settings › Apps › Default apps**, find AventyaPDF and choose it for each file type. You can also do it with a single file: right-click › **Open with › Choose another app** and tick “Always use this app”.
+
+> **Tip:** once chosen, double-clicking an image, a Word document or an e-book opens it in AventyaPDF as a new, unsaved PDF; the original isn't changed. Word documents need Microsoft Word or LibreOffice.
 
 ## The window
 
@@ -88,9 +103,9 @@ There are several ways to open documents:
 - **File › Open…** (`Ctrl+O`): you can select several files at once with `Ctrl` or `Shift`.
 - Drag them from File Explorer onto the window.
 - **File › Open recent**, with the most recently used documents.
-- Double-click a PDF, if AventyaPDF is your PDF viewer.
+- Double-click a file, if AventyaPDF is your default program for that type (see “Using it as your default viewer”).
 
-As well as PDFs, AventyaPDF opens images (PNG, JPG, BMP, GIF, TIFF and WebP) and Word documents (.doc and .docx): each one is converted into a new, unsaved PDF in its own tab. The original isn't changed. To convert Word documents, Microsoft Word or LibreOffice must be installed. It also opens e-books (EPUB, MOBI and FB2), comics (CBZ), XPS and OXPS documents, SVG drawings and text files (.txt) without any other program: books and text are laid out on A4 pages and the book's table of contents becomes the bookmarks. When you save, AventyaPDF suggests the same name and folder as the original, with the .pdf extension.
+As well as PDFs, AventyaPDF opens images (PNG, JPG, BMP, GIF, TIFF, WebP, JPEG 2000, TGA, ICO and PNM; a multi-page TIFF opens with all its pages) and Word documents (.doc and .docx): each one is converted into a new, unsaved PDF in its own tab. The original isn't changed. To convert Word documents, Microsoft Word or LibreOffice must be installed. It also opens e-books (EPUB, MOBI and FB2), comics (CBZ), XPS and OXPS documents, SVG drawings and text files (.txt) without any other program: books and text are laid out on A4 pages and the book's table of contents becomes the bookmarks. When you save, AventyaPDF suggests the same name and folder as the original, with the .pdf extension: that way AventyaPDF works both as a viewer and as a PDF converter.
 
 If the PDF is password-protected, AventyaPDF asks for the password before opening it.
 
@@ -243,7 +258,7 @@ The **Organise** menu also contains:
 **Organise › Combine PDFs…** has two options:
 
 - **Combine open documents**: puts all the open documents, in the order of their tabs and with their changes, into a new PDF.
-- **Combine files…**: you choose several files (PDFs, images or Word documents, mixed) and they are combined in alphabetical order of name.
+- **Combine files…**: you choose several files (PDFs, images, Word documents and the other documents it opens, mixed) and they are combined in alphabetical order of name.
 
 ![combinar] Organise › Combine PDFs.
 
@@ -255,7 +270,7 @@ The result stays open without being saved; save it with `Ctrl+S`. The original f
 
 - **File › New blank PDF** (`Ctrl+N`) creates a document with one empty page.
 - **File › Create PDF from images…** puts several images into a PDF, one per page.
-- Opening an image or a Word document converts it to PDF (see “Opening documents”).
+- Opening an image, a Word document or any other document that AventyaPDF opens converts it to PDF (see “Opening documents”).
 
 ## Exporting
 
@@ -273,8 +288,8 @@ In **File › Export** you can extract the document's content:
 Without opening the application first, select files in File Explorer and right-click: the **AventyaPDF** submenu contains:
 
 - **Sign digitally** (PDFs only): opens the documents with the signing tool ready.
-- **Combine into one PDF** (two or more files): PDFs, images and Word documents, mixed, into a single PDF.
-- **Convert to PDF** (images and Word): one PDF per file.
+- **Combine into one PDF** (two or more files): PDFs, images, Word documents and other documents, mixed, into a single PDF.
+- **Convert to PDF** (images, Word documents and other documents that AventyaPDF opens, including .txt files): one PDF per file.
 
 ![explorador] The AventyaPDF right-click submenu.
 
@@ -401,7 +416,7 @@ Use **Help › Repair the File Explorer context menu…**. In Windows 11, for th
 
 ## A Word document isn't converted
 
-Microsoft Word or LibreOffice must be installed. If both fail, AventyaPDF shows the reason.
+Microsoft Word or LibreOffice must be installed (also if you have chosen AventyaPDF as the default program for .doc and .docx files). If both fail, AventyaPDF shows the reason.
 
 ## A signature shows as “identity not verified”
 

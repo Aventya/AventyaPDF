@@ -1,6 +1,6 @@
 ---
 titulo: AventyaPDF eskuliburua
-subtitulo: Ikusi, iruzkindu, antolatu, babestu, bihurtu eta sinatu PDF dokumentuak
+subtitulo: Ikustailea eta PDF bihurgailua: ikusi, iruzkindu, antolatu, babestu eta sinatu dokumentuak
 version: {version} bertsioa
 indice: Aurkibidea
 meses: urtarrila|otsaila|martxoa|apirila|maiatza|ekaina|uztaila|abuztua|iraila|urria|azaroa|abendua
@@ -38,7 +38,7 @@ explorador_opciones: Ireki|Ireki honekin|Partekatu
 
 ## Zer da AventyaPDF
 
-AventyaPDF Windows-erako aplikazio bat da, eta programa bakarrean biltzen du PDF dokumentuekin egunero egiten dena: irakurri, iruzkindu, inprimakiak bete, testua aldatu, orrialdeak antolatu, dokumentuak konbinatu, pasahitzarekin babestu, eskaneatutako dokumentuetako testua ezagutu eta ziurtagiri digitalarekin sinatu.
+AventyaPDF Windows-erako ikustailea eta PDF bihurgailua da: PDFak, irudiak, Word dokumentuak, liburu elektronikoak, komikiak, XPS fitxategiak eta SVG marrazkiak irekitzen ditu, eta programa bakarrean biltzen du horiekin egunero egiten dena. PDF ez den guztia ireki eta PDF gisa gorde daiteke. PDFekin irakurri, iruzkindu, inprimakiak bete, testua aldatu, orrialdeak antolatu, konbinatu, pasahitzarekin babestu, eskaneatutakoen testua ezagutu eta ziurtagiri digitalarekin sinatu dezakezu.
 
 Banaketa librekoa da, eta haren kodea GitHub-en argitaratuta dago. Ez ditu zure dokumentuak inora bidaltzen: dena zure ordenagailuan egiten da.
 
@@ -48,11 +48,26 @@ Banaketa librekoa da, eta haren kodea GitHub-en argitaratuta dago. Ez ditu zure 
 
 Instalatzaileak hizkuntza galdetzen du lehenik (Windows-ena proposatzen du): hizkuntza horretan instalatzen eta irekitzen da AventyaPDF. Instalazioan zehar, Python, haren osagaiak eta letra-tipoak deskargatzen dira beren webgune ofizialetatik; beraz, Interneteko konexioa behar da. Bitartean, instalatzaileak aplikazioaren tresnak erakusten ditu.
 
-Amaitzean, AventyaPDF Hasiera menuan agertzen da (eta, markatu baduzu, mahaigainean), baita PDF fitxategien **Ireki honekin** aukeran ere. Windows-ek ez dio uzten programa bati bere kabuz ikustaile lehenetsi bihurtzen: PDFak beti AventyaPDF-rekin irekitzea nahi baduzu, aukeratu **Ireki honekin › Aukeratu beste aplikazio bat** aukeran, eta markatu «Erabili beti aplikazio hau».
+Amaitzean, AventyaPDF Hasiera menuan agertzen da (eta, markatu baduzu, mahaigainean), baita PDFen, irudien, Word dokumentuen, liburu elektronikoen, XPS-en eta SVG-en **Ireki honekin** aukeran ere (ikus «Ikustaile lehenetsi gisa erabili»).
 
 Bertsio berri bat dagoenean, AventyaPDF-k abisatu egiten du abiaraztean. **Laguntza › Bilatu eguneratzeak…** aukeran ere egiazta dezakezu: instalatzaile berria zure Deskargak karpetan deskargatzen da, eta ireki besterik ez duzu egin behar. Zure ezarpenak, ziurtagiria eta hizkuntza mantendu egiten dira.
 
 > **Garrantzitsua:** testu-ezagutzak (OCR) Tesseract OCR erabiltzen du, eta hori ez dator instalatzailearen barruan. AventyaPDF-k lehen aldiz erabiltzen duzunean deskargatu eta instalatzen du; administratzaile-baimena eska dezake.
+
+## Ikustaile lehenetsi gisa erabili
+
+AventyaPDF ia edozein dokumentu irekitzeko eta, nahi baduzu, PDF bihurtzeko programa izateko pentsatuta dago. Instalatu ondoren, **Ireki honekin** aukeran eta Windows-en ezarpenetan agertzen da fitxategi hauetarako programa posible gisa:
+
+- PDFak.
+- Irudiak: PNG, JPG, BMP, GIF, TIFF, WebP, JPEG 2000, TGA, ICO eta PNM.
+- Word dokumentuak (.doc eta .docx).
+- Liburu elektronikoak (EPUB, MOBI eta FB2), komikiak (CBZ), XPS eta OXPS dokumentuak eta SVG marrazkiak.
+
+Testu-fitxategiak (.txt) nahita geratzen dira kanpoan: Notepad-ekin irekitzen jarraitzen dute. PDF bihurtu nahi baduzu, ireki **Fitxategia › Ireki** aukerarekin edo erabili Fitxategi-arakatzaileko eskuineko botoia.
+
+Windows-ek ez dio instalatzaile bati uzten zuretzat programa lehenetsia aukeratzen. Instalazioa amaitzean, markatu «Aukeratu AventyaPDF programa lehenetsi gisa (Windowsen ezarpenak irekitzen dira)» laukia. Markatu ez baduzu, ireki **Ezarpenak › Aplikazioak › Aplikazio lehenetsiak**, bilatu AventyaPDF eta aukeratu fitxategi-mota bakoitzerako. Fitxategi bakar batekin ere egin dezakezu: eskuineko botoia › **Ireki honekin › Aukeratu beste aplikazio bat**, eta markatu «Erabili beti aplikazio hau».
+
+> **Aholkua:** aukeratu ondoren, irudi batean, Word dokumentu batean edo liburu batean klik bikoitza eginda, AventyaPDF-n irekitzen da PDF berri gisa, gorde gabe; jatorrizkoa ez da ukitzen. Word dokumentuetarako, Microsoft Word edo LibreOffice behar da.
 
 ## Leihoa
 
@@ -88,9 +103,9 @@ Hainbat modutara ireki daitezke dokumentuak:
 - **Fitxategia › Ireki…** (`Ctrl+O`): hainbat fitxategi aukera ditzakezu batera, `Ctrl` edo `Maius` sakatuta.
 - Fitxategi-arakatzailetik leihora arrastatuta.
 - **Fitxategia › Ireki azkenak**, azken aldian erabilitako dokumentuekin.
-- PDF batean klik bikoitza eginda, AventyaPDF zure PDF ikustailea bada.
+- Fitxategi batean klik bikoitza eginda, AventyaPDF mota horretarako zure programa lehenetsia bada (ikus «Ikustaile lehenetsi gisa erabili»).
 
-PDFez gain, AventyaPDF-k irudiak (PNG, JPG, BMP, GIF, TIFF eta WebP) eta Word dokumentuak (.doc eta .docx) irekitzen ditu: bakoitza PDF berri bihurtzen da, gorde gabe, bere fitxan. Jatorrizkoa ez da ukitzen. Word dokumentuak bihurtzeko, Microsoft Word edo LibreOffice instalatuta izan behar da. Liburu elektronikoak (EPUB, MOBI eta FB2), komikiak (CBZ), XPS eta OXPS dokumentuak, SVG marrazkiak eta testu-fitxategiak (.txt) ere irekitzen ditu, beste programarik gabe: liburuak eta testua A4 orrialdetan banatzen dira, eta liburuaren aurkibidea laster-marketara pasatzen da. Gordetzean, AventyaPDFk jatorrizkoaren izen eta karpeta bera proposatzen ditu, .pdf luzapenarekin.
+PDFez gain, AventyaPDF-k irudiak (PNG, JPG, BMP, GIF, TIFF, WebP, JPEG 2000, TGA, ICO eta PNM; orrialde anitzeko TIFF bat orrialde guztiekin irekitzen da) eta Word dokumentuak (.doc eta .docx) irekitzen ditu: bakoitza PDF berri bihurtzen da, gorde gabe, bere fitxan. Jatorrizkoa ez da ukitzen. Word dokumentuak bihurtzeko, Microsoft Word edo LibreOffice instalatuta izan behar da. Liburu elektronikoak (EPUB, MOBI eta FB2), komikiak (CBZ), XPS eta OXPS dokumentuak, SVG marrazkiak eta testu-fitxategiak (.txt) ere irekitzen ditu, beste programarik gabe: liburuak eta testua A4 orrialdetan banatzen dira, eta liburuaren aurkibidea laster-marketara pasatzen da. Gordetzean, AventyaPDFk jatorrizkoaren izen eta karpeta bera proposatzen ditu, .pdf luzapenarekin: horrela AventyaPDF ikustaile eta PDF bihurgailu gisa aritzen da aldi berean.
 
 PDFa pasahitzez babestuta badago, AventyaPDF-k pasahitza eskatzen du ireki aurretik.
 
@@ -243,7 +258,7 @@ Dena berehala aplikatzen da, eta desegin egin daiteke.
 **Antolatu › Konbinatu PDFak…** aukerak bi aukera ditu:
 
 - **Konbinatu irekiak**: irekitako dokumentu guztiak PDF berri batean biltzen ditu, fitxen ordenan eta beren aldaketekin.
-- **Konbinatu fitxategiak…**: hainbat fitxategi aukeratzen dituzu (PDFak, irudiak edo Word dokumentuak, nahasian), eta izenen ordena alfabetikoan konbinatzen dira.
+- **Konbinatu fitxategiak…**: hainbat fitxategi aukeratzen dituzu (PDFak, irudiak, Word dokumentuak eta irekitzen dituen gainerako dokumentuak, nahasian), eta izenen ordena alfabetikoan konbinatzen dira.
 
 ![combinar] Antolatu › Konbinatu PDFak.
 
@@ -255,7 +270,7 @@ Emaitza irekita geratzen da, gorde gabe; gorde ezazu `Ctrl+S` sakatuta. Jatorriz
 
 - **Fitxategia › PDF zuri berria** (`Ctrl+N`) aukerak orrialde huts bat duen dokumentu bat sortzen du.
 - **Fitxategia › Sortu PDFa irudietatik…** aukerak hainbat irudi biltzen ditu PDF batean, bat orrialde bakoitzeko.
-- Irudi bat edo Word dokumentu bat irekitzean, PDF bihurtzen da (ikus «Ireki dokumentuak»).
+- Irudi bat, Word dokumentu bat edo AventyaPDF-k irekitzen duen beste edozein dokumentu irekitzean, PDF bihurtzen da (ikus «Ireki dokumentuak»).
 
 ## Esportatu
 
@@ -273,8 +288,8 @@ Emaitza irekita geratzen da, gorde gabe; gorde ezazu `Ctrl+S` sakatuta. Jatorriz
 Aplikazioa aurretik ireki gabe, hautatu fitxategiak Windows-en Fitxategi-arakatzailean eta sakatu eskuineko botoia: **AventyaPDF** azpimenuan hauek dituzu:
 
 - **Sinatu digitalki** (PDFak soilik): dokumentuak irekitzen ditu, sinatzeko tresna prest dagoela.
-- **Konbinatu PDF bakarrean** (bi fitxategi edo gehiago): PDFak, irudiak eta Word dokumentuak, nahasian, PDF bakar batean.
-- **Bihurtu PDF** (irudiak eta Word): PDF bat fitxategi bakoitzeko.
+- **Konbinatu PDF bakarrean** (bi fitxategi edo gehiago): PDFak, irudiak, Word dokumentuak eta beste dokumentu batzuk, nahasian, PDF bakar batean.
+- **Bihurtu PDF** (irudiak, Word dokumentuak eta AventyaPDF-k irekitzen dituen beste dokumentu batzuk, .txt fitxategiak barne): PDF bat fitxategi bakoitzeko.
 
 ![explorador] Eskuineko botoiaren AventyaPDF azpimenua.
 
@@ -401,7 +416,7 @@ Erabili **Laguntza › Konpondu Fitxategi-arakatzailearen laster-menua…**. Win
 
 ## Word dokumentu bat ez da bihurtzen
 
-Microsoft Word edo LibreOffice instalatuta izan behar da. Biek huts egiten badute, AventyaPDF-k arrazoia erakusten du.
+Microsoft Word edo LibreOffice instalatuta izan behar da (baita AventyaPDF .doc eta .docx fitxategien programa lehenetsi gisa aukeratu baduzu ere). Biek huts egiten badute, AventyaPDF-k arrazoia erakusten du.
 
 ## Sinadura bat «identitatea egiaztatu gabe» ateratzen da
 
