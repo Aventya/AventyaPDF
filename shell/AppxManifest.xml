@@ -122,6 +122,30 @@
             <desktop5:ItemType Type=".docx">
               <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
             </desktop5:ItemType>
+            <desktop5:ItemType Type=".cbz">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".epub">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".fb2">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".mobi">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".oxps">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".svg">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".txt">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".xps">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
           </desktop4:FileExplorerContextMenus>
         </desktop4:Extension>
         <com:Extension Category="windows.comServer">

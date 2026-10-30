@@ -3030,16 +3030,26 @@ class TestConversionOffice(_ConCarpeta):
         def leer(*partes):
             with open(os.path.join(raiz, *partes), encoding="utf-8") as f:
                 return f.read()
+        import conversion_office
         esperado = set(doc_tools.IMAGE_EXTS)
+        docs = set(conversion_office.DOC_EXTS)          # (r152) XPS, EPUB, SVG, texto…
         cpp = leer("shell", "AventyaPDFShell.cpp")
-        bloque = re.search(r"EXT_IMAGEN\[\] = \{(.*?)\};", cpp, re.S).group(1)
-        self.assertEqual(set(re.findall(r'L"(\.\w+)"', bloque)), esperado)
+        for lista, quiere in (("EXT_IMAGEN", esperado), ("EXT_DOCUMENTO", docs)):
+            bloque = re.search(lista + r"\[\] = \{(.*?)\};", cpp, re.S).group(1)
+            self.assertEqual(set(re.findall(r'L"(\.\w+)"', bloque)), quiere, lista)
         manifiesto = set(re.findall(r'ItemType Type="(\.\w+)"', leer("shell", "AppxManifest.xml")))
-        self.assertEqual(manifiesto, esperado | {".pdf", ".doc", ".docx"})
-        iss = re.search(r"ExtImagenWord = '([^']*)'", leer("empaquetado", "AventyaPDF.iss")).group(1)
+        self.assertEqual(manifiesto, esperado | docs | {".pdf", ".doc", ".docx"})
+        texto_iss = leer("empaquetado", "AventyaPDF.iss")
+        iss = re.search(r"ExtImagenWord = '([^']*)'", texto_iss).group(1)
         self.assertEqual(set(iss.split()), esperado | {".doc", ".docx"})
+        iss_docs = re.search(r"ExtDocumentos = '([^']*)'", texto_iss).group(1)
+        self.assertEqual(set(iss_docs.split()), docs)
+        abrir_con = set(re.findall(r'SupportedTypes"; ValueType: string; ValueName: "(\.\w+)"', texto_iss))
+        self.assertEqual(abrir_con, docs | {".pdf"})
         tienda = re.search(r'EXTENSIONES = \("([^"]*)"\)', leer("empaquetado", "store", "preparar_store.py")).group(1)
-        self.assertEqual(set(tienda.split()), esperado | {".pdf", ".doc", ".docx"})
+        self.assertEqual(set(tienda.split()), esperado | docs | {".pdf", ".doc", ".docx"})
+        asoc = set(re.findall(r"<uap:FileType>(\.\w+)</uap:FileType>", leer("empaquetado", "store", "AppxManifest.xml")))
+        self.assertEqual(asoc, docs | {".pdf"})
 
     def test_todos_los_formatos_de_imagen_a_pdf(self):
         """(r149, petición de Ricardo) Cada extensión de IMAGE_EXTS se

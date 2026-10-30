@@ -187,6 +187,15 @@ Root: HKA; Subkey: "Software\Classes\{#ProgId}\shell\open\command"; ValueType: s
 Root: HKA; Subkey: "Software\Classes\.pdf\OpenWithProgids"; ValueType: string; ValueName: "{#ProgId}"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}"; ValueType: string; ValueName: "FriendlyAppName"; ValueData: "{#AppName}"; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\SupportedTypes"; ValueType: string; ValueName: ".pdf"; ValueData: ""
+; (r152) «Abrir con» también para los documentos que AventyaPDF convierte a PDF (sin cambiar el programa predeterminado)
+Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\SupportedTypes"; ValueType: string; ValueName: ".cbz"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\SupportedTypes"; ValueType: string; ValueName: ".epub"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\SupportedTypes"; ValueType: string; ValueName: ".fb2"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\SupportedTypes"; ValueType: string; ValueName: ".mobi"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\SupportedTypes"; ValueType: string; ValueName: ".oxps"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\SupportedTypes"; ValueType: string; ValueName: ".svg"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\SupportedTypes"; ValueType: string; ValueName: ".txt"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\SupportedTypes"; ValueType: string; ValueName: ".xps"; ValueData: ""
 Root: HKA; Subkey: "Software\Classes\Applications\{#AppExe}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
 ; Para que aparezca en Configuración › Aplicaciones predeterminadas
 ; (las dos primeras solo para que el desinstalador no deje claves vacías)
@@ -238,6 +247,8 @@ const
   ClaveClasica = 'Software\Classes\SystemFileAssociations\';
   // Mismas extensiones que shell\AventyaPDFShell.cpp y conversion_office.py.
   ExtImagenWord = '.bmp .dib .gif .ico .j2k .jfif .jp2 .jpe .jpeg .jpg .jpx .pbm .pgm .png .pnm .ppm .tga .tif .tiff .webp .doc .docx';
+  // (r152) Documentos que MuPDF abre (conversion_office.DOC_EXTS): mismo menú.
+  ExtDocumentos = '.cbz .epub .fb2 .mobi .oxps .svg .txt .xps';
 
 // (r127, petición de Ricardo: «la aplicación está usando PowerShell y
 // debería dejar de usarlo») Todo lo del menú de Windows 11 lo hace
@@ -379,7 +390,7 @@ begin
   Raiz := RaizClasica('.pdf');
   OpcionClasica(Raiz, '01Firmar', Msg('MenuFirmar'), '--firmar');
   OpcionClasica(Raiz, '02Combinar', Msg('MenuCombinar'), '--combinar');
-  Lista := ExtImagenWord;
+  Lista := ExtImagenWord + ' ' + ExtDocumentos;
   while Lista <> '' do begin
     Ext := SiguienteExt(Lista);
     Raiz := RaizClasica(Ext);
@@ -392,7 +403,7 @@ procedure QuitarMenuClasico;
 var
   Lista: String;
 begin
-  Lista := '.pdf ' + ExtImagenWord;
+  Lista := '.pdf ' + ExtImagenWord + ' ' + ExtDocumentos;
   while Lista <> '' do
     RegDeleteKeyIncludingSubkeys(HKCU, ClaveClasica + SiguienteExt(Lista) + '\shell\AventyaPDF');
 end;

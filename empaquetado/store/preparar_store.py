@@ -30,7 +30,7 @@ import tesseract_setup  # noqa: E402
 from componentes import _importa  # noqa: E402
 
 # Mismas extensiones que shell\AventyaPDFShell.cpp y el instalador.
-EXTENSIONES = (".pdf .bmp .dib .gif .ico .j2k .jfif .jp2 .jpe .jpeg .jpg .jpx .pbm .pgm .png .pnm .ppm .tga .tif .tiff .webp .doc .docx").split()
+EXTENSIONES = (".pdf .bmp .dib .gif .ico .j2k .jfif .jp2 .jpe .jpeg .jpg .jpx .pbm .pgm .png .pnm .ppm .tga .tif .tiff .webp .doc .docx .cbz .epub .fb2 .mobi .oxps .svg .txt .xps").split()
 CLSID = "CFCBA067-9C58-4229-95F8-2F5912C3611F"
 
 

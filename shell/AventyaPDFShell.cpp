@@ -45,8 +45,11 @@ static const wchar_t* const EXT_IMAGEN[] = {
     L".jpeg", L".jpg", L".jpx", L".pbm", L".pgm", L".png", L".pnm", L".ppm",
     L".tga", L".tif", L".tiff", L".webp"};
 static const wchar_t* const EXT_WORD[] = {L".doc", L".docx"};
+// (r152) Lo que MuPDF abre y AventyaPDF convierte a PDF: conversion_office.DOC_EXTS.
+static const wchar_t* const EXT_DOCUMENTO[] = {
+    L".cbz", L".epub", L".fb2", L".mobi", L".oxps", L".svg", L".txt", L".xps"};
 
-enum class Tipo { Otro, Pdf, Imagen, Word };
+enum class Tipo { Otro, Pdf, Imagen, Word, Documento };
 
 static bool EnLista(const wchar_t* ext, const wchar_t* const* lista, size_t n) {
     for (size_t i = 0; i < n; ++i)
@@ -59,13 +62,14 @@ static Tipo TipoDe(const std::wstring& ruta) {
     if (_wcsicmp(ext, L".pdf") == 0) return Tipo::Pdf;
     if (EnLista(ext, EXT_IMAGEN, ARRAYSIZE(EXT_IMAGEN))) return Tipo::Imagen;
     if (EnLista(ext, EXT_WORD, ARRAYSIZE(EXT_WORD))) return Tipo::Word;
+    if (EnLista(ext, EXT_DOCUMENTO, ARRAYSIZE(EXT_DOCUMENTO))) return Tipo::Documento;
     return Tipo::Otro;
 }
 
 struct Seleccion {
     std::vector<std::wstring> rutas;
-    int pdf = 0, imagen = 0, word = 0, otro = 0;
-    int Total() const { return pdf + imagen + word + otro; }
+    int pdf = 0, imagen = 0, word = 0, documento = 0, otro = 0;
+    int Total() const { return pdf + imagen + word + documento + otro; }
 };
 
 static Seleccion LeerSeleccion(IShellItemArray* items) {
@@ -88,6 +92,7 @@ static Seleccion LeerSeleccion(IShellItemArray* items) {
             case Tipo::Pdf:    ++s.pdf; break;
             case Tipo::Imagen: ++s.imagen; break;
             case Tipo::Word:   ++s.word; break;
+            case Tipo::Documento: ++s.documento; break;
             default:           ++s.otro; break;
         }
         s.rutas.push_back(std::move(r));
@@ -142,7 +147,7 @@ static DatosAccion Datos(Accion a) {
 static bool Aplicable(Accion a, const Seleccion& s) {
     if (s.otro > 0 || s.Total() == 0) return false;
     switch (a) {
-        case Accion::Firmar:   return s.pdf > 0 && s.imagen + s.word == 0;
+        case Accion::Firmar:   return s.pdf > 0 && s.imagen + s.word + s.documento == 0;
         case Accion::Combinar: return s.Total() >= 2;
         default:               return s.pdf == 0;
     }

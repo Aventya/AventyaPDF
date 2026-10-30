@@ -64,6 +64,22 @@
             </uap:SupportedFileTypes>
           </uap:FileTypeAssociation>
         </uap:Extension>
+        <!-- (r152) «Abrir con» de los documentos que AventyaPDF convierte a PDF. -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="documentos">
+            <uap:DisplayName>Libro, texto o dibujo</uap:DisplayName>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.cbz</uap:FileType>
+              <uap:FileType>.epub</uap:FileType>
+              <uap:FileType>.fb2</uap:FileType>
+              <uap:FileType>.mobi</uap:FileType>
+              <uap:FileType>.oxps</uap:FileType>
+              <uap:FileType>.svg</uap:FileType>
+              <uap:FileType>.txt</uap:FileType>
+              <uap:FileType>.xps</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
         <!-- «aventyapdf» desde la consola (y para el autodiagnóstico del paquete). -->
         <uap3:Extension Category="windows.appExecutionAlias" Executable="AventyaPDF.exe"
                         EntryPoint="Windows.FullTrustApplication">

@@ -10,7 +10,7 @@ están en [MEMORIA_EVOLUTIVA.md](../MEMORIA_EVOLUTIVA.md) §4.
 | Área | Función | Dónde | Módulo |
 | :-- | :-- | :-- | :-- |
 | Archivo | Nuevo PDF en blanco, crear desde imágenes, abrir recientes, arrastrar y soltar, abrir desde el Explorador | Archivo | `window_document`, `window_menus`, `main.py` |
-| Archivo | Menú contextual del Explorador de Windows (submenú «AventyaPDF»): firmar PDF, combinar PDF, imágenes y Word en un PDF, convertir imágenes y Word a PDF (uno por archivo) — sin abrir antes la aplicación | Clic derecho en el Explorador | `shell/AventyaPDFShell.cpp`, `empaquetado/AventyaPDF.iss` ([Code]), `menu_contextual.py`, `main.procesar_argumentos`, `window_menus.sign_files` / `combine_files_to_pdf` / `convert_files_to_pdfs`, `conversion_office.py` |
+| Archivo | Menú contextual del Explorador de Windows (submenú «AventyaPDF»): firmar PDF, combinar PDF, imágenes, Word y documentos del visor (EPUB, XPS, SVG, texto…) en un PDF, convertirlos a PDF (uno por archivo) — sin abrir antes la aplicación | Clic derecho en el Explorador | `shell/AventyaPDFShell.cpp`, `empaquetado/AventyaPDF.iss` ([Code]), `menu_contextual.py`, `main.procesar_argumentos`, `window_menus.sign_files` / `combine_files_to_pdf` / `convert_files_to_pdfs`, `conversion_office.py` |
 | Archivo | Guardar (Ctrl+S) sobre el mismo archivo, aviso de cambios sin guardar | Archivo | `window_document` |
 | Archivo | Exportar a imágenes, texto y Word; propiedades del documento | Archivo › Exportar / Propiedades | `window_menus`, `doc_tools`, `dialogs` |
 | Edición | Deshacer / rehacer con etiqueta de la acción | Edición, barra superior | `history`, `window_document` |
