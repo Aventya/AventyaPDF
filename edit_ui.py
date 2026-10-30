@@ -27,6 +27,7 @@ from PyQt6.QtCore import QPoint, QRect, Qt
 from PyQt6.QtGui import QColor, QPen
 from PyQt6.QtWidgets import QFileDialog, QMenu, QMessageBox
 
+import doc_tools
 import icons
 import inplace_editor
 import pdf_edit
@@ -40,8 +41,7 @@ _OVERFLOW = QColor(196, 43, 28)            # rojo: el texto no cabe en el cuadro
 _HANDLE = 8                                # lado del tirador de esquina, en píxeles
 _OUT = 6                                   # cuánto se salen los tiradores del cuadro
 
-_FILTRO_IMG = tr(("Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)"
-               ";;Todos los archivos (*.*)"))
+_FILTRO_IMG = doc_tools.IMAGE_FILTER_TODOS
 
 
 class ContentEditor:
@@ -317,8 +317,7 @@ class ContentEditor:
         if not ruta:
             return
         try:
-            with open(ruta, "rb") as f:
-                datos = f.read()
+            datos = doc_tools.imagen_para_mupdf(ruta)   # recodifica WebP, TGA, ICO
             fitz.Pixmap(datos)          # comprueba que MuPDF sabe leerla
         except Exception as e:  # noqa: BLE001
             QMessageBox.warning(self.mw, tr("Sustituir imagen"),

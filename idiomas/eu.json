@@ -184,7 +184,6 @@
  "Todas las páginas ({page_count}) — recomendado": "Orrialde guztiak ({page_count}) — gomendatua",
  "Solo las páginas sin texto ({pages_without_text})": "Testurik gabeko orrialdeak soilik ({pages_without_text})",
  "{valor:.0f} × {valor2:.0f} mm": "{valor:.0f} × {valor2:.0f} mm",
- "Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)": "Irudiak (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)",
  "Título": "Izenburua",
  "Autor": "Egilea",
  "Asunto": "Gaia",
@@ -212,7 +211,6 @@
  "Rango fuera del documento (1–{page_count}): «{part}»": "Barrutia dokumentutik kanpo dago (1–{page_count}): «{part}»",
  "──────── Página {valor} ────────\n": "──────── {valor}. orrialdea ────────\n",
  "Rango no válido: «{part}»": "Barruti baliogabea: «{part}»",
- "Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp);;Todos los archivos (*.*)": "Irudiak (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp);;Fitxategi guztiak (*.*)",
  "Sustituir imagen…": "Ordeztu irudia…",
  "Guardar imagen como…": "Gorde irudia honela…",
  "Eliminar imagen": "Ezabatu irudia",
@@ -868,5 +866,7 @@
  "{usada} no tiene versión {estilo}: se ha simulado para no cambiar la fuente.": "{usada} letra-tipoak ez du {estilo} bertsiorik: simulatu egin da letra-tipoa ez aldatzeko.",
  "La fuente del documento, {fuente}, no tiene estos caracteres: {faltan}. Para no cambiar la tipografía no se pueden escribir.": "Dokumentuaren letra-tipoak, {fuente}, ez ditu karaktere hauek: {faltan}. Tipografia ez aldatzeko, ezin dira idatzi.",
  "negrita": "lodia",
- "cursiva": "etzana"
+ "cursiva": "etzana",
+ "Imágenes ({_PATRON})": "Irudiak ({_PATRON})",
+ "Imágenes ({_PATRON});;Todos los archivos (*.*)": "Irudiak ({_PATRON});;Fitxategi guztiak (*.*)"
 }

@@ -3217,6 +3217,55 @@ class TestVentanaPrincipal(unittest.TestCase):
         self.assertGreater(out.pixelColor(out.width() // 2, out.height() // 2).alpha(), 240)
         self.assertEqual(fmu.load_signature_image(ruta, False).pixelColor(1, 1).alpha(), 255)
 
+    def test_sustituir_imagen_y_firma_con_formatos_que_mupdf_no_abre(self):
+        """(r149, petición de Ricardo) «Sustituir imagen» admite WebP (MuPDF no
+        lo abre: se recodifica con Qt) y la imagen de la firma manuscrita
+        admite también JPEG 2000 (Qt no lo abre: se lee con MuPDF). Los
+        selectores de archivo ofrecen todas las extensiones nuevas."""
+        import base64
+        import doc_tools
+        import firma_manuscrita_ui as fmu
+        from PyQt6.QtGui import QColor, QImage
+        from PyQt6.QtWidgets import QFileDialog
+        for ext in ("*.webp", "*.jp2", "*.tga", "*.ico", "*.ppm"):
+            self.assertIn(ext, doc_tools.IMAGE_FILTER)
+            self.assertIn(ext, fmu.IMAGE_FILTER)
+            self.assertIn(ext, doc_tools.IMAGE_FILTER_TODOS)
+
+        w = self._abrir_editable()
+        c = w.viewer.content
+        verde = QImage(30, 30, QImage.Format.Format_RGB32)
+        verde.fill(QColor(20, 180, 60))
+        ruta = os.path.join(self.tmp, "verde.webp")
+        self.assertTrue(verde.save(ruta))
+        antes = fitz.Rect(c.boxes[0].bbox)
+        with mock.patch.object(QFileDialog, "getOpenFileName", return_value=(ruta, "")):
+            c.replace_image(c.boxes[0])
+        self.app.processEvents()
+        self.assertEqual(len(c.boxes), 2)
+        r, g, b = w.doc[0].get_pixmap(
+            clip=fitz.Rect(antes.x0 + 5, antes.y0 + 5, antes.x0 + 11, antes.y0 + 11),
+            dpi=72).pixel(0, 0)
+        self.assertTrue(g > 120 and r < 100, f"no se sustituyó con el WebP: {(r, g, b)}")
+        w._modified = False
+
+        jp2 = os.path.join(self.tmp, "firma.jp2")
+        with open(jp2, "wb") as f:
+            f.write(base64.b64decode(
+                "AAAADGpQICANCocKAAAAFGZ0eXBqcDIgAAAAAGpwMiAAAAAtanAyaAAAABZpaGRyAAAAEAAAABgAAwcHAAAAAA"
+                "APY29scgEAAAAAABAAAACwanAyY/9P/1EALwAAAAAAGAAAABAAAAAAAAAAAAAAABgAAAAQAAAAAAAAAAAAAwcB"
+                "AQcBAQcBAf9SAAwAAAABAAQEBAAB/1wAEEBASEhQSEhQSEhQSEhQ/2QAJQABQ3JlYXRlZCBieSBPcGVuSlBFRy"
+                "B2ZXJzaW9uIDIuNS40/5AACgAAAAAALAAB/5PPtAwCZZ/PtAwJA2/PtAwJA2+AgICAgICAgICAgID/2Q=="))
+        self.assertFalse(fmu.load_signature_image(jp2, False).isNull())
+        webp = os.path.join(self.tmp, "firma.webp")
+        self.assertTrue(verde.save(webp))
+        self.assertFalse(fmu.load_signature_image(webp, False).isNull())
+        falsa = os.path.join(self.tmp, "falsa.jp2")
+        with open(falsa, "wb") as f:
+            f.write(b"no es una imagen")
+        with self.assertRaises(ValueError):
+            fmu.load_signature_image(falsa)
+
     def test_texto_se_escribe_con_la_fuente_elegida_y_sin_justificar(self):
         """(r69) El combo enseña cada fuente con su tipografía, el cuadro de
         escritura usa la fuente, el tamaño y el estilo elegidos mientras se

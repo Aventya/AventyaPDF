@@ -19,12 +19,15 @@ from PyQt6.QtWidgets import (
     QPushButton, QSpinBox, QTabWidget, QVBoxLayout, QWidget,
 )
 
+import fitz
+
+import doc_tools
 import firma_manuscrita as fm
 from dialogs import ColorButton
 from idioma import tr
 
 _SETTINGS = ("aventyapdf", "config")
-IMAGE_FILTER = tr("Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)")
+IMAGE_FILTER = doc_tools.IMAGE_FILTER
 MAX_IMAGE_SIDE = 1600          # px: una firma no necesita más
 BG_OPAQUE, BG_CLEAR = 170, 235  # luminancia: ≤ opaca, ≥ fondo transparente
 
@@ -94,6 +97,15 @@ def load_signature_image(path: str, remove_background: bool = True) -> QImage:
     transparente el papel (claro) con un degradado suave hacia la tinta, y
     recorta lo que sobra alrededor. Lanza ValueError si no es una imagen."""
     img = QImage(path)
+    if img.isNull():
+        # Qt no lee JPEG 2000 (ni algún TIFF raro): se intenta con MuPDF.
+        try:
+            pix = fitz.Pixmap(path)
+            if pix.colorspace is not None and pix.colorspace.n > 3:     # CMYK
+                pix = fitz.Pixmap(fitz.csRGB, pix)
+            img = QImage.fromData(pix.tobytes("png"))
+        except Exception:  # noqa: BLE001
+            img = QImage()
     if img.isNull():
         raise ValueError(tr("No se pudo leer la imagen (¿formato no admitido?)."))
     if max(img.width(), img.height()) > MAX_IMAGE_SIDE:

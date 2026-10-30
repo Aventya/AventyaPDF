@@ -184,7 +184,6 @@
  "Todas las páginas ({page_count}) — recomendado": "Todas as páxinas ({page_count}) — recomendado",
  "Solo las páginas sin texto ({pages_without_text})": "Só as páxinas sen texto ({pages_without_text})",
  "{valor:.0f} × {valor2:.0f} mm": "{valor:.0f} × {valor2:.0f} mm",
- "Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)": "Imaxes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)",
  "Título": "Título",
  "Autor": "Autor",
  "Asunto": "Asunto",
@@ -212,7 +211,6 @@
  "Rango fuera del documento (1–{page_count}): «{part}»": "Intervalo fóra do documento (1–{page_count}): «{part}»",
  "──────── Página {valor} ────────\n": "──────── Páxina {valor} ────────\n",
  "Rango no válido: «{part}»": "Intervalo non válido: «{part}»",
- "Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp);;Todos los archivos (*.*)": "Imaxes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp);;Todos os ficheiros (*.*)",
  "Sustituir imagen…": "Substituír imaxe…",
  "Guardar imagen como…": "Gardar imaxe como…",
  "Eliminar imagen": "Eliminar imaxe",
@@ -868,5 +866,7 @@
  "{usada} no tiene versión {estilo}: se ha simulado para no cambiar la fuente.": "{usada} non ten versión {estilo}: simulouse para non cambiar o tipo de letra.",
  "La fuente del documento, {fuente}, no tiene estos caracteres: {faltan}. Para no cambiar la tipografía no se pueden escribir.": "O tipo de letra do documento, {fuente}, non ten estes caracteres: {faltan}. Para non cambiar a tipografía non se poden escribir.",
  "negrita": "negra",
- "cursiva": "cursiva"
+ "cursiva": "cursiva",
+ "Imágenes ({_PATRON})": "Imaxes ({_PATRON})",
+ "Imágenes ({_PATRON});;Todos los archivos (*.*)": "Imaxes ({_PATRON});;Todos os ficheros (*.*)"
 }

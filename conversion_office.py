@@ -28,13 +28,9 @@ import doc_tools
 from idioma import tr
 
 WORD_EXTS = {".doc", ".docx"}
-# (r149) Las que lee MuPDF (PNG, JPEG, BMP, GIF, TIFF, JPEG 2000, PNM) y las
-# que descodifica Qt (WebP, TGA, ICO): ver doc_tools._imagen_a_pdf_bytes. El
-# menú del Explorador (shell/AventyaPDFShell.cpp, el instalador y la Store)
-# conserva la lista corta hasta recompilarlos.
-IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".jpe", ".jfif", ".bmp", ".dib", ".gif",
-              ".tif", ".tiff", ".webp", ".jp2", ".j2k", ".jpx", ".tga", ".ico",
-              ".pbm", ".pgm", ".ppm", ".pnm"}
+# (r149) La lista vive en doc_tools (la usan también los selectores de «Sustituir
+# imagen», «Imagen de la firma» y «Crear PDF desde imágenes»).
+IMAGE_EXTS = doc_tools.IMAGE_EXTS
 # (r147, petición de Ricardo: «permite abrir cualquier fichero compatible con
 # el visor para guardarlos como PDF») Lo que MuPDF, el motor del visor, abre
 # por sí mismo: se convierte a PDF sin programas externos.

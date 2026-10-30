@@ -455,14 +455,58 @@ def _lines_to_text(lines: list[list]) -> str:
 
 # ── Conversión y exportación ───────────────────────────────────────────────── #
 
-IMAGE_FILTER = tr("Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)")
+# (r149) Las que lee MuPDF (PNG, JPEG, BMP, GIF, TIFF, JPEG 2000, PNM) y las
+# que descodifica Qt (WebP, TGA, ICO): ver `_recodificar_con_qt`. El menú del
+# Explorador (shell/AventyaPDFShell.cpp), el instalador y la Store conservan
+# la lista corta hasta recompilarlos.
+IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".jpe", ".jfif", ".bmp", ".dib", ".gif",
+              ".tif", ".tiff", ".webp", ".jp2", ".j2k", ".jpx", ".tga", ".ico",
+              ".pbm", ".pgm", ".ppm", ".pnm"}
+IMAGE_PATRON = " ".join("*" + e for e in sorted(IMAGE_EXTS))
+IMAGE_FILTER = tr("Imágenes ({_PATRON})").format(_PATRON=IMAGE_PATRON)
+IMAGE_FILTER_TODOS = tr("Imágenes ({_PATRON});;Todos los archivos (*.*)").format(_PATRON=IMAGE_PATRON)
+
+
+def _recodificar_con_qt(path: str, e_mupdf: Exception) -> tuple[bytes, str]:
+    """(r149) Lo que MuPDF no abre (WebP, TGA, ICO) se descodifica con Qt
+    (que aplica el giro EXIF) y se devuelve como PNG, o como JPEG si es una
+    foto WebP sin transparencia (en PNG pesaría mucho más). Devuelve los
+    bytes y su tipo («png» o «jpeg»); ValueError si Qt tampoco puede."""
+    from PyQt6.QtCore import QBuffer, QByteArray, QIODevice
+    from PyQt6.QtGui import QImageReader
+    # Un TGA sin comprimir empieza igual que un ICO/CUR y Qt, que mira el
+    # contenido, lo confunde: para ese hace falta decirle el formato.
+    lector = QImageReader(path, b"tga" if path.lower().endswith(".tga") else b"")
+    lector.setAutoTransform(True)
+    imagen = lector.read()
+    if imagen.isNull():
+        raise ValueError(tr("«{nombre}» no se puede abrir: {e}").format(
+            nombre=os.path.basename(path), e=e_mupdf)) from e_mupdf
+    foto = os.path.splitext(path)[1].lower() == ".webp" and not imagen.hasAlphaChannel()
+    datos = QByteArray()
+    buf = QBuffer(datos)
+    buf.open(QIODevice.OpenModeFlag.WriteOnly)
+    imagen.save(buf, "JPEG" if foto else "PNG", 92 if foto else -1)
+    buf.close()
+    return bytes(datos), "jpeg" if foto else "png"
+
+
+def imagen_para_mupdf(path: str) -> bytes:
+    """(r149) Los bytes de una imagen en un formato que MuPDF sabe leer, para
+    `insert_image(stream=…)`: el propio archivo si MuPDF lo abre; si no
+    (WebP, TGA, ICO), recodificado con Qt. ValueError si no es una imagen."""
+    with open(path, "rb") as f:
+        datos = f.read()
+    try:
+        fitz.Pixmap(datos)
+        return datos
+    except Exception as e:  # noqa: BLE001
+        return _recodificar_con_qt(path, e)[0]
 
 
 def _imagen_a_pdf_bytes(path: str) -> bytes:
     """(r149) Una imagen → PDF. MuPDF lee PNG, JPEG, BMP, GIF, TIFF (también
-    de varias páginas), JPEG 2000 y PNM; lo que MuPDF no abre (WebP, TGA, ICO)
-    se descodifica con Qt y se le pasa como PNG, o como JPEG si es una foto
-    WebP sin transparencia (en PNG pesaría mucho más). Qt aplica el giro EXIF."""
+    de varias páginas), JPEG 2000 y PNM; el resto pasa por Qt."""
     try:
         img = fitz.open(path)
         try:
@@ -470,24 +514,8 @@ def _imagen_a_pdf_bytes(path: str) -> bytes:
         finally:
             img.close()
     except Exception as e_mupdf:
-        from PyQt6.QtCore import QBuffer, QByteArray, QIODevice
-        from PyQt6.QtGui import QImageReader
-        # Un TGA sin comprimir empieza igual que un ICO/CUR y Qt, que mira el
-        # contenido, lo confunde: para ese hace falta decirle el formato.
-        lector = QImageReader(path, b"tga" if path.lower().endswith(".tga") else b"")
-        lector.setAutoTransform(True)
-        imagen = lector.read()
-        if imagen.isNull():
-            raise ValueError(tr("«{nombre}» no se puede abrir: {e}").format(
-                nombre=os.path.basename(path), e=e_mupdf)) from e_mupdf
-        foto = (os.path.splitext(path)[1].lower() == ".webp"
-                and not imagen.hasAlphaChannel())
-        datos = QByteArray()
-        buf = QBuffer(datos)
-        buf.open(QIODevice.OpenModeFlag.WriteOnly)
-        imagen.save(buf, "JPEG" if foto else "PNG", 92 if foto else -1)
-        buf.close()
-        puente = fitz.open(stream=bytes(datos), filetype="jpeg" if foto else "png")
+        datos, tipo = _recodificar_con_qt(path, e_mupdf)
+        puente = fitz.open(stream=datos, filetype=tipo)
         try:
             return puente.convert_to_pdf()
         finally:

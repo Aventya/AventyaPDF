@@ -184,7 +184,6 @@
  "Todas las páginas ({page_count}) — recomendado": "All pages ({page_count}) — recommended",
  "Solo las páginas sin texto ({pages_without_text})": "Only pages without text ({pages_without_text})",
  "{valor:.0f} × {valor2:.0f} mm": "{valor:.0f} × {valor2:.0f} mm",
- "Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)": "Images (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)",
  "Título": "Title",
  "Autor": "Author",
  "Asunto": "Subject",
@@ -212,7 +211,6 @@
  "Rango fuera del documento (1–{page_count}): «{part}»": "Range outside the document (1–{page_count}): “{part}”",
  "──────── Página {valor} ────────\n": "──────── Page {valor} ────────\n",
  "Rango no válido: «{part}»": "Invalid range: “{part}”",
- "Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp);;Todos los archivos (*.*)": "Images (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp);;All files (*.*)",
  "Sustituir imagen…": "Replace image…",
  "Guardar imagen como…": "Save image as…",
  "Eliminar imagen": "Delete image",
@@ -868,5 +866,7 @@
  "{usada} no tiene versión {estilo}: se ha simulado para no cambiar la fuente.": "{usada} has no {estilo} version: it has been simulated so the font does not change.",
  "La fuente del documento, {fuente}, no tiene estos caracteres: {faltan}. Para no cambiar la tipografía no se pueden escribir.": "The document's font, {fuente}, does not have these characters: {faltan}. To keep the typeface unchanged they cannot be written.",
  "negrita": "bold",
- "cursiva": "italic"
+ "cursiva": "italic",
+ "Imágenes ({_PATRON})": "Images ({_PATRON})",
+ "Imágenes ({_PATRON});;Todos los archivos (*.*)": "Images ({_PATRON});;All files (*.*)"
 }

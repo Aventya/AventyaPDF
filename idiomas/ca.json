@@ -184,7 +184,6 @@
  "Todas las páginas ({page_count}) — recomendado": "Totes les pàgines ({page_count}) — recomanat",
  "Solo las páginas sin texto ({pages_without_text})": "Només les pàgines sense text ({pages_without_text})",
  "{valor:.0f} × {valor2:.0f} mm": "{valor:.0f} × {valor2:.0f} mm",
- "Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)": "Imatges (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)",
  "Título": "Títol",
  "Autor": "Autor",
  "Asunto": "Assumpte",
@@ -212,7 +211,6 @@
  "Rango fuera del documento (1–{page_count}): «{part}»": "Interval fora del document (1–{page_count}): «{part}»",
  "──────── Página {valor} ────────\n": "──────── Pàgina {valor} ────────\n",
  "Rango no válido: «{part}»": "Interval no vàlid: «{part}»",
- "Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp);;Todos los archivos (*.*)": "Imatges (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp);;Tots els fitxers (*.*)",
  "Sustituir imagen…": "Substitueix la imatge…",
  "Guardar imagen como…": "Desa la imatge com a…",
  "Eliminar imagen": "Suprimeix la imatge",
@@ -868,5 +866,7 @@
  "{usada} no tiene versión {estilo}: se ha simulado para no cambiar la fuente.": "{usada} no té versió {estilo}: s'ha simulat per no canviar la font.",
  "La fuente del documento, {fuente}, no tiene estos caracteres: {faltan}. Para no cambiar la tipografía no se pueden escribir.": "La font del document, {fuente}, no té aquests caràcters: {faltan}. Per no canviar la tipografia no es poden escriure.",
  "negrita": "negreta",
- "cursiva": "cursiva"
+ "cursiva": "cursiva",
+ "Imágenes ({_PATRON})": "Imatges ({_PATRON})",
+ "Imágenes ({_PATRON});;Todos los archivos (*.*)": "Imatges ({_PATRON});;Tots els fitxers (*.*)"
 }
