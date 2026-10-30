@@ -22,7 +22,8 @@ código, más:
   programas; la app usa el incluido antes que ninguno
   (`tesseract_setup._incluido`).
 * **El manual** y los logotipos de la Store, generados de `ICONO.png`.
-* **Manifiesto** (`store\AppxManifest.xml`): «Abrir con» de los `.pdf`, el
+* **Manifiesto** (`store\AppxManifest.xml`): «Abrir con» de los `.pdf`, de las
+  imágenes, de Word y de los documentos del visor (todos menos `.txt`), el
   menú contextual de Windows 11 (la misma extensión `AventyaPDFShell.dll`, aquí
   sin certificado propio ni permiso de administrador) y el alias de consola
   `aventyapdf`.

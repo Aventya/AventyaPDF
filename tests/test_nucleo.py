@@ -3044,12 +3044,21 @@ class TestConversionOffice(_ConCarpeta):
         self.assertEqual(set(iss.split()), esperado | {".doc", ".docx"})
         iss_docs = re.search(r"ExtDocumentos = '([^']*)'", texto_iss).group(1)
         self.assertEqual(set(iss_docs.split()), docs)
+        # (r153) Visor definitivo salvo para .txt: imágenes, Word y documentos
+        # (sin .txt) en «Abrir con» y en Aplicaciones predeterminadas; .txt solo
+        # tiene el menú del Explorador.
+        asociadas = (esperado | docs | set(conversion_office.WORD_EXTS)) - {".txt"}
         abrir_con = set(re.findall(r'SupportedTypes"; ValueType: string; ValueName: "(\.\w+)"', texto_iss))
-        self.assertEqual(abrir_con, docs | {".pdf"})
+        self.assertEqual(abrir_con, asociadas | {".pdf"})
+        con_progid = set(re.findall(r'Classes\\(\.\w+)\\OpenWithProgids"; ValueType: string; ValueName: "\{#ProgIdArchivo\}"', texto_iss))
+        self.assertEqual(con_progid, asociadas)
+        capacidades = set(re.findall(r'Capabilities\\FileAssociations"; ValueType: string; ValueName: "(\.\w+)"; ValueData: "\{#ProgIdArchivo\}"', texto_iss))
+        self.assertEqual(capacidades, asociadas)
+        self.assertNotIn('".txt"', "".join(l for l in texto_iss.splitlines() if "Software\\Classes" in l or "Capabilities" in l))
         tienda = re.search(r'EXTENSIONES = \("([^"]*)"\)', leer("empaquetado", "store", "preparar_store.py")).group(1)
         self.assertEqual(set(tienda.split()), esperado | docs | {".pdf", ".doc", ".docx"})
         asoc = set(re.findall(r"<uap:FileType>(\.\w+)</uap:FileType>", leer("empaquetado", "store", "AppxManifest.xml")))
-        self.assertEqual(asoc, docs | {".pdf"})
+        self.assertEqual(asoc, asociadas | {".pdf"})
 
     def test_todos_los_formatos_de_imagen_a_pdf(self):
         """(r149, petición de Ricardo) Cada extensión de IMAGE_EXTS se

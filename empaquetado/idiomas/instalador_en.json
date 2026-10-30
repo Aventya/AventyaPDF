@@ -13,5 +13,7 @@
  "MenuCombinar": "Combine into one PDF",
  "MenuConvertir": "Convert to PDF",
  "TipoDocumento": "PDF document",
- "DescripcionApp": "PDF viewer and editor with digital signature and OCR"
+ "DescripcionApp": "PDF viewer and editor with digital signature and OCR",
+ "TipoArchivo": "AventyaPDF file",
+ "ElegirPredeterminado": "Choose AventyaPDF as the default app (opens Windows settings)"
 }

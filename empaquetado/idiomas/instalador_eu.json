@@ -13,5 +13,7 @@
  "MenuCombinar": "Konbinatu PDF bakarrean",
  "MenuConvertir": "Bihurtu PDF",
  "TipoDocumento": "PDF dokumentua",
- "DescripcionApp": "PDF ikustailea eta editorea, sinadura digitalarekin eta OCRarekin"
+ "DescripcionApp": "PDF ikustailea eta editorea, sinadura digitalarekin eta OCRarekin",
+ "TipoArchivo": "AventyaPDF fitxategia",
+ "ElegirPredeterminado": "Aukeratu AventyaPDF programa lehenetsi gisa (Windowsen ezarpenak irekitzen dira)"
 }

@@ -64,7 +64,44 @@
             </uap:SupportedFileTypes>
           </uap:FileTypeAssociation>
         </uap:Extension>
-        <!-- (r152) «Abrir con» de los documentos que AventyaPDF convierte a PDF. -->
+        <!-- (r153) «Abrir con» y Aplicaciones predeterminadas para todo lo demás que AventyaPDF abre.
+             .txt no se registra: sigue siendo del Bloc de notas. -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="imagenes">
+            <uap:DisplayName>Imagen</uap:DisplayName>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.bmp</uap:FileType>
+              <uap:FileType>.dib</uap:FileType>
+              <uap:FileType>.gif</uap:FileType>
+              <uap:FileType>.ico</uap:FileType>
+              <uap:FileType>.j2k</uap:FileType>
+              <uap:FileType>.jfif</uap:FileType>
+              <uap:FileType>.jp2</uap:FileType>
+              <uap:FileType>.jpe</uap:FileType>
+              <uap:FileType>.jpeg</uap:FileType>
+              <uap:FileType>.jpg</uap:FileType>
+              <uap:FileType>.jpx</uap:FileType>
+              <uap:FileType>.pbm</uap:FileType>
+              <uap:FileType>.pgm</uap:FileType>
+              <uap:FileType>.png</uap:FileType>
+              <uap:FileType>.pnm</uap:FileType>
+              <uap:FileType>.ppm</uap:FileType>
+              <uap:FileType>.tga</uap:FileType>
+              <uap:FileType>.tif</uap:FileType>
+              <uap:FileType>.tiff</uap:FileType>
+              <uap:FileType>.webp</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="word">
+            <uap:DisplayName>Documento de Word</uap:DisplayName>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.doc</uap:FileType>
+              <uap:FileType>.docx</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
         <uap:Extension Category="windows.fileTypeAssociation">
           <uap:FileTypeAssociation Name="documentos">
             <uap:DisplayName>Libro, texto o dibujo</uap:DisplayName>
@@ -75,7 +112,6 @@
               <uap:FileType>.mobi</uap:FileType>
               <uap:FileType>.oxps</uap:FileType>
               <uap:FileType>.svg</uap:FileType>
-              <uap:FileType>.txt</uap:FileType>
               <uap:FileType>.xps</uap:FileType>
             </uap:SupportedFileTypes>
           </uap:FileTypeAssociation>

@@ -14,6 +14,8 @@
   "MenuCombinar": "Combinar en un PDF",
   "MenuConvertir": "Convertir a PDF",
   "TipoDocumento": "Documento PDF",
-  "DescripcionApp": "Visor y editor de PDF con firma digital y OCR"
+  "DescripcionApp": "Visor y editor de PDF con firma digital y OCR",
+  "TipoArchivo": "Archivo de AventyaPDF",
+  "ElegirPredeterminado": "Elegir AventyaPDF como programa predeterminado (se abre la configuración de Windows)"
  }
 }

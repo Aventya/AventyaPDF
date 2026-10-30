@@ -13,5 +13,7 @@
  "MenuCombinar": "Combina en un PDF",
  "MenuConvertir": "Converteix a PDF",
  "TipoDocumento": "Document PDF",
- "DescripcionApp": "Visualitzador i editor de PDF amb signatura digital i OCR"
+ "DescripcionApp": "Visualitzador i editor de PDF amb signatura digital i OCR",
+ "TipoArchivo": "Fitxer d'AventyaPDF",
+ "ElegirPredeterminado": "Triar AventyaPDF com a programa predeterminat (s'obre la configuració de Windows)"
 }
