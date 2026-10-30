@@ -45,7 +45,7 @@ MARKUP_COLORS = doc_tools.MARKUP_COLORS
 FREEHAND_PREFIX = doc_tools.FREEHAND_PREFIX
 MARKUP_LABELS = {"highlight": tr("Resaltar"), "underline": tr("Subrayar"),
                  "strike": tr("Tachar"), "squiggly": tr("Subrayado ondulado")}
-IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tif", ".tiff", ".webp"}
+IMAGE_EXTS = conversion_office.IMAGE_EXTS
 
 
 class SignWorker(QThread):

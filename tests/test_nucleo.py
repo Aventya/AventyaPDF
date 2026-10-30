@@ -2943,8 +2943,9 @@ class TestConversionOffice(_ConCarpeta):
     def test_tipos(self):
         import conversion_office as co
         self.assertEqual([co.tipo_de(p) for p in ("a.PDF", "b.jpeg", "c.DocX", "d.doc", "e.txt",
-                                                  "f.EPUB", "g.xps", "h.zip")],
-                         ["pdf", "img", "word", "word", "doc", "doc", "doc", ""])
+                                                  "f.EPUB", "g.xps", "h.zip", "i.WebP", "j.jp2",
+                                                  "k.tga")],
+                         ["pdf", "img", "word", "word", "doc", "doc", "doc", "", "img", "img", "img"])
 
     def test_documentos_del_visor_a_pdf(self):
         """(r147, petición de Ricardo) Lo que MuPDF abre por sí mismo se
@@ -3016,6 +3017,86 @@ class TestConversionOffice(_ConCarpeta):
             f.write(b"esto no es un epub")
         with self.assertRaisesRegex(co.ConversionError, "roto.epub"):
             co.documento_a_pdf(ruta("roto.epub"))
+
+    def test_todos_los_formatos_de_imagen_a_pdf(self):
+        """(r149, petición de Ricardo) Cada extensión de IMAGE_EXTS se
+        convierte a PDF con la proporción de la imagen. WebP, TGA e ICO no
+        los abre MuPDF: pasan por Qt (antes WebP, anunciado como admitido,
+        fallaba). Una foto WebP opaca queda como JPEG; una con transparencia,
+        como PNG. Un archivo que no es imagen avisa con su nombre."""
+        import base64
+        import struct
+        from PyQt6.QtGui import QColor, QImage
+        import conversion_office as co
+        import doc_tools
+
+        def ruta(nombre):
+            return os.path.join(self.tmp, nombre)
+        img = QImage(30, 20, QImage.Format.Format_RGB32)
+        img.fill(QColor(200, 40, 40))
+        escritos = {}
+        for ext in ("png", "jpg", "jpeg", "jfif", "bmp", "tif", "tiff", "webp", "ico",
+                    "pgm", "pbm", "ppm"):
+            self.assertTrue(img.save(ruta("imagen." + ext)), ext)
+            escritos[ext] = ruta("imagen." + ext)
+        # Los que Qt no sabe escribir: se generan a mano.
+        with open(ruta("imagen.pnm"), "wb") as f:
+            f.write(b"P6\n30 20\n255\n" + bytes((200, 40, 40)) * 600)
+        with open(ruta("imagen.tga"), "wb") as f:
+            f.write(b"\0\0\2" + b"\0" * 9 + struct.pack("<HH", 30, 20) + bytes((24, 0x20))
+                    + bytes((40, 40, 200)) * 600 + b"\0" * 8 + b"TRUEVISION-XFILE.\0")
+        with open(ruta("imagen.jp2"), "wb") as f:
+            f.write(base64.b64decode(
+                "AAAADGpQICANCocKAAAAFGZ0eXBqcDIgAAAAAGpwMiAAAAAtanAyaAAAABZpaGRyAAAAEAAAABgAAwcHAAAAAA"
+                "APY29scgEAAAAAABAAAACwanAyY/9P/1EALwAAAAAAGAAAABAAAAAAAAAAAAAAABgAAAAQAAAAAAAAAAAAAwcB"
+                "AQcBAQcBAf9SAAwAAAABAAQEBAAB/1wAEEBASEhQSEhQSEhQSEhQ/2QAJQABQ3JlYXRlZCBieSBPcGVuSlBFRy"
+                "B2ZXJzaW9uIDIuNS40/5AACgAAAAAALAAB/5PPtAwCZZ/PtAwJA2/PtAwJA2+AgICAgICAgICAgID/2Q=="))
+        with open(ruta("imagen.gif"), "wb") as f:
+            f.write(base64.b64decode("R0lGODdhHgAUAIEAAMgoKAAAAAAAAAAAACwAAAAAHgAUAEAIKgABCBxIsKDBgwgTKlzIsKHDh"
+                                     "xAjSpxIsaLFixgzatzIsaPHjyBDiiwYEAA7"))
+        for ext in ("pnm", "tga", "jp2", "gif"):
+            escritos[ext] = ruta("imagen." + ext)
+        copiados = {"j2k": "jp2", "jpx": "jp2", "jpe": "jpg", "dib": "bmp"}
+        for ext, origen in copiados.items():
+            shutil.copy(escritos[origen], ruta("imagen." + ext))
+            escritos[ext] = ruta("imagen." + ext)
+
+        self.assertEqual({"." + e for e in escritos}, co.IMAGE_EXTS)
+        for ext, p in escritos.items():
+            self.assertEqual(co.tipo_de(p), "img", ext)
+            doc = doc_tools.images_to_pdf([p])
+            self.assertEqual(len(doc), 1, ext)
+            r = doc[0].rect
+            esperado = 24 / 16 if ext in ("jp2", "j2k", "jpx") else 30 / 20
+            self.assertAlmostEqual(r.width / r.height, esperado, places=2, msg=ext)
+            doc.close()
+
+        # WebP opaco → JPEG, con transparencia → PNG; el color llega al PDF.
+        doc = doc_tools.images_to_pdf([escritos["webp"]])
+        self.assertEqual(doc.extract_image(doc[0].get_images()[0][0])["ext"], "jpeg")
+        pix = doc[0].get_pixmap(dpi=36)
+        rojo, verde, _azul = pix.pixel(pix.width // 2, pix.height // 2)
+        self.assertGreater(rojo, 150)
+        self.assertLess(verde, 100)
+        con_alfa = QImage(30, 20, QImage.Format.Format_ARGB32)
+        con_alfa.fill(QColor(200, 40, 40, 120))
+        self.assertTrue(con_alfa.save(ruta("alfa.webp")))
+        doc = doc_tools.images_to_pdf([ruta("alfa.webp")])
+        self.assertEqual(doc.extract_image(doc[0].get_images()[0][0])["ext"], "png")
+
+        # Se mezclan con un PDF por la puerta común y al combinar.
+        pdf = ruta("a.pdf")
+        with fitz.open() as d:
+            d.new_page()
+            d.save(pdf)
+        docs = co.archivos_a_pdfs([escritos["webp"], pdf, escritos["tga"]])
+        self.assertEqual([len(d) for d in docs], [1, 1, 1])
+        self.assertEqual(len(co.combinar_archivos([escritos["ico"], pdf, escritos["jp2"]])), 3)
+
+        with open(ruta("falsa.webp"), "wb") as f:
+            f.write(b"esto no es una imagen")
+        with self.assertRaisesRegex(ValueError, "falsa.webp"):
+            doc_tools.images_to_pdf([ruta("falsa.webp")])
 
     @unittest.skipUnless(_hay_word_o_libreoffice(), "no hay Word ni LibreOffice")
     def test_docx_a_pdf_conserva_el_texto(self):

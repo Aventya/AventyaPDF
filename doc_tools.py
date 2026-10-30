@@ -458,12 +458,46 @@ def _lines_to_text(lines: list[list]) -> str:
 IMAGE_FILTER = tr("Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.tif *.tiff *.webp)")
 
 
+def _imagen_a_pdf_bytes(path: str) -> bytes:
+    """(r149) Una imagen → PDF. MuPDF lee PNG, JPEG, BMP, GIF, TIFF (también
+    de varias páginas), JPEG 2000 y PNM; lo que MuPDF no abre (WebP, TGA, ICO)
+    se descodifica con Qt y se le pasa como PNG, o como JPEG si es una foto
+    WebP sin transparencia (en PNG pesaría mucho más). Qt aplica el giro EXIF."""
+    try:
+        img = fitz.open(path)
+        try:
+            return img.convert_to_pdf()
+        finally:
+            img.close()
+    except Exception as e_mupdf:
+        from PyQt6.QtCore import QBuffer, QByteArray, QIODevice
+        from PyQt6.QtGui import QImageReader
+        # Un TGA sin comprimir empieza igual que un ICO/CUR y Qt, que mira el
+        # contenido, lo confunde: para ese hace falta decirle el formato.
+        lector = QImageReader(path, b"tga" if path.lower().endswith(".tga") else b"")
+        lector.setAutoTransform(True)
+        imagen = lector.read()
+        if imagen.isNull():
+            raise ValueError(tr("«{nombre}» no se puede abrir: {e}").format(
+                nombre=os.path.basename(path), e=e_mupdf)) from e_mupdf
+        foto = (os.path.splitext(path)[1].lower() == ".webp"
+                and not imagen.hasAlphaChannel())
+        datos = QByteArray()
+        buf = QBuffer(datos)
+        buf.open(QIODevice.OpenModeFlag.WriteOnly)
+        imagen.save(buf, "JPEG" if foto else "PNG", 92 if foto else -1)
+        buf.close()
+        puente = fitz.open(stream=bytes(datos), filetype="jpeg" if foto else "png")
+        try:
+            return puente.convert_to_pdf()
+        finally:
+            puente.close()
+
+
 def images_to_pdf(paths: list[str]) -> fitz.Document:
     out = fitz.open()
     for path in paths:
-        img = fitz.open(path)
-        pdf_bytes = img.convert_to_pdf()
-        img.close()
+        pdf_bytes = _imagen_a_pdf_bytes(path)
         img_pdf = fitz.open("pdf", pdf_bytes)
         out.insert_pdf(img_pdf)
         img_pdf.close()

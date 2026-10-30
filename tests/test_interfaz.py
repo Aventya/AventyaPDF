@@ -956,6 +956,34 @@ class TestVentanaPrincipal(unittest.TestCase):
         self.assertIn("Logo", w.doc[0].get_text())
         self.assertIn("logo.svg", w.windowTitle())
 
+    def test_abrir_imagenes_de_varios_formatos_y_guardarlas_como_pdf(self):
+        """(r149, petición de Ricardo) Una imagen WebP o ICO se abre en su
+        pestaña como PDF y «Guardar» propone su nombre con .pdf. Antes WebP,
+        anunciado como admitido, daba error al abrirlo."""
+        from PyQt6.QtGui import QColor, QImage
+        from PyQt6.QtWidgets import QFileDialog
+        w = self.w
+        img = QImage(60, 40, QImage.Format.Format_RGB32)
+        img.fill(QColor(30, 90, 200))
+        webp = os.path.join(self.tmp, "foto del móvil.webp")
+        self.assertTrue(img.save(webp))
+        ico = os.path.join(self.tmp, "logo.ico")
+        self.assertTrue(img.save(ico))
+        w.open_paths([webp, ico])
+        self.assertEqual(len(w._sessions), 2)
+        self.assertEqual(len(w.doc), 1)
+        self.assertIn("logo.ico", w.windowTitle())
+
+        propuestas = []
+
+        def guardar(_padre, _titulo, propuesta, _filtro):
+            propuestas.append(propuesta)
+            return propuesta, ""
+        with mock.patch.object(QFileDialog, "getSaveFileName", guardar):
+            self.assertTrue(w.save_pdf())
+        self.assertTrue(propuestas[0].lower().endswith("logo.pdf"))
+        self.assertTrue(os.path.isfile(propuestas[0]))
+
     def test_anadir_al_final_varios_archivos(self):
         """(r123) «Añadir PDF al final…» admite varios archivos de una vez."""
         from PyQt6.QtWidgets import QFileDialog
