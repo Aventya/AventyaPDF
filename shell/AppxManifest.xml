@@ -80,6 +80,42 @@
             <desktop5:ItemType Type=".webp">
               <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
             </desktop5:ItemType>
+            <desktop5:ItemType Type=".dib">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".ico">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".j2k">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".jfif">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".jp2">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".jpe">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".jpx">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".pbm">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".pgm">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".pnm">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".ppm">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type=".tga">
+              <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
+            </desktop5:ItemType>
             <desktop5:ItemType Type=".doc">
               <desktop5:Verb Id="AventyaPDF" Clsid="CFCBA067-9C58-4229-95F8-2F5912C3611F" />
             </desktop5:ItemType>

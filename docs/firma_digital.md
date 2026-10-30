@@ -143,7 +143,7 @@ criptográfico**; si hace falta validez legal, se firma además digitalmente.
   por separado**, de modo que donde dos trazos se cruzan la tinta se superpone y
   se oscurece, como en el papel (también en los bucles de un mismo trazo). Se
   eligen el color (la paleta de la aplicación) y el grosor de la plumilla.
-* **Imagen** (`firma_manuscrita_ui.py`): PNG, JPG, BMP, GIF, TIFF o WebP. Por
+* **Imagen** (`firma_manuscrita_ui.py`): PNG, JPG, BMP, GIF, TIFF, WebP, JPEG 2000, TGA, ICO o PNM. Por
   defecto el papel blanco se vuelve transparente y se recorta el margen.
 * En el PDF es una anotación *Stamp* con apariencia propia (vectorial si se
   dibujó), igual que los emojis: se mueve, se redimensiona sin deformarse, se

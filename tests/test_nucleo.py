@@ -3018,6 +3018,29 @@ class TestConversionOffice(_ConCarpeta):
         with self.assertRaisesRegex(co.ConversionError, "roto.epub"):
             co.documento_a_pdf(ruta("roto.epub"))
 
+    def test_las_extensiones_de_imagen_coinciden_en_todo_el_empaquetado(self):
+        """(r151) El menú del Explorador (C++ y manifiesto de Windows 11), el
+        menú clásico del instalador y la Store repiten la lista de imágenes de
+        `doc_tools.IMAGE_EXTS`: si una se queda atrás, ese formato no ofrece
+        «Convertir a PDF» en el Explorador."""
+        import re
+        import doc_tools
+        raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        def leer(*partes):
+            with open(os.path.join(raiz, *partes), encoding="utf-8") as f:
+                return f.read()
+        esperado = set(doc_tools.IMAGE_EXTS)
+        cpp = leer("shell", "AventyaPDFShell.cpp")
+        bloque = re.search(r"EXT_IMAGEN\[\] = \{(.*?)\};", cpp, re.S).group(1)
+        self.assertEqual(set(re.findall(r'L"(\.\w+)"', bloque)), esperado)
+        manifiesto = set(re.findall(r'ItemType Type="(\.\w+)"', leer("shell", "AppxManifest.xml")))
+        self.assertEqual(manifiesto, esperado | {".pdf", ".doc", ".docx"})
+        iss = re.search(r"ExtImagenWord = '([^']*)'", leer("empaquetado", "AventyaPDF.iss")).group(1)
+        self.assertEqual(set(iss.split()), esperado | {".doc", ".docx"})
+        tienda = re.search(r'EXTENSIONES = \("([^"]*)"\)', leer("empaquetado", "store", "preparar_store.py")).group(1)
+        self.assertEqual(set(tienda.split()), esperado | {".pdf", ".doc", ".docx"})
+
     def test_todos_los_formatos_de_imagen_a_pdf(self):
         """(r149, petición de Ricardo) Cada extensión de IMAGE_EXTS se
         convierte a PDF con la proporción de la imagen. WebP, TGA e ICO no

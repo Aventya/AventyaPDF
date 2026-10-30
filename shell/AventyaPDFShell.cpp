@@ -37,10 +37,13 @@ static HMODULE g_modulo = nullptr;
 
 // ── Selección ────────────────────────────────────────────────────────────── //
 
-// Mismas extensiones que conversion_office.py (IMAGE_EXTS, WORD_EXTS) y que
-// shell\AppxManifest.xml: si se amplían, en los tres sitios.
+// Mismas extensiones que doc_tools.py (IMAGE_EXTS), conversion_office.py
+// (WORD_EXTS), shell\AppxManifest.xml, el instalador y preparar_store.py: si
+// se amplían, en todos (lo vigila una prueba automática).
 static const wchar_t* const EXT_IMAGEN[] = {
-    L".png", L".jpg", L".jpeg", L".bmp", L".gif", L".tif", L".tiff", L".webp"};
+    L".bmp", L".dib", L".gif", L".ico", L".j2k", L".jfif", L".jp2", L".jpe",
+    L".jpeg", L".jpg", L".jpx", L".pbm", L".pgm", L".png", L".pnm", L".ppm",
+    L".tga", L".tif", L".tiff", L".webp"};
 static const wchar_t* const EXT_WORD[] = {L".doc", L".docx"};
 
 enum class Tipo { Otro, Pdf, Imagen, Word };

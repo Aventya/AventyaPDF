@@ -237,7 +237,7 @@ Type: filesandordirs; Name: "{%TEMP}\aventyapdf-actualizacion"
 const
   ClaveClasica = 'Software\Classes\SystemFileAssociations\';
   // Mismas extensiones que shell\AventyaPDFShell.cpp y conversion_office.py.
-  ExtImagenWord = '.png .jpg .jpeg .bmp .gif .tif .tiff .webp .doc .docx';
+  ExtImagenWord = '.bmp .dib .gif .ico .j2k .jfif .jp2 .jpe .jpeg .jpg .jpx .pbm .pgm .png .pnm .ppm .tga .tif .tiff .webp .doc .docx';
 
 // (r127, petición de Ricardo: «la aplicación está usando PowerShell y
 // debería dejar de usarlo») Todo lo del menú de Windows 11 lo hace

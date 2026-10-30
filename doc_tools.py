@@ -456,9 +456,10 @@ def _lines_to_text(lines: list[list]) -> str:
 # ── Conversión y exportación ───────────────────────────────────────────────── #
 
 # (r149) Las que lee MuPDF (PNG, JPEG, BMP, GIF, TIFF, JPEG 2000, PNM) y las
-# que descodifica Qt (WebP, TGA, ICO): ver `_recodificar_con_qt`. El menú del
-# Explorador (shell/AventyaPDFShell.cpp), el instalador y la Store conservan
-# la lista corta hasta recompilarlos.
+# que descodifica Qt (WebP, TGA, ICO): ver `_recodificar_con_qt`. Se repite en
+# shell/AventyaPDFShell.cpp, shell/AppxManifest.xml, el instalador
+# (`ExtImagenWord`) y empaquetado/store/preparar_store.py: si se amplía, en los
+# cinco sitios (`test_las_extensiones_de_imagen_coinciden_en_todo_el_empaquetado`).
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".jpe", ".jfif", ".bmp", ".dib", ".gif",
               ".tif", ".tiff", ".webp", ".jp2", ".j2k", ".jpx", ".tga", ".ico",
               ".pbm", ".pgm", ".ppm", ".pnm"}

@@ -82,7 +82,8 @@ derecho sobre archivos, submenú **«AventyaPDF»** con el icono de la aplicaci�
 | **Combinar en un PDF** | 2 o más PDF, imágenes o Word, mezclados | Un PDF nuevo sin guardar con todo, en orden. |
 | **Convertir a PDF** | Imágenes o Word (sin PDF) | Un PDF sin guardar por archivo, cada uno en su pestaña. |
 
-Imágenes: png, jpg/jpeg, bmp, gif, tif/tiff, webp. Word: doc, docx, que se
+Imágenes: png, jpg/jpeg/jpe/jfif, bmp/dib, gif, tif/tiff, webp, jp2/j2k/jpx,
+tga, ico y pbm/pgm/ppm/pnm (`doc_tools.IMAGE_EXTS`). Word: doc, docx, que se
 convierten con Microsoft Word (automatización COM) o, si no está, con
 LibreOffice (`conversion_office.py`). Ningún original se toca: el resultado
 queda sin guardar en la aplicación.
