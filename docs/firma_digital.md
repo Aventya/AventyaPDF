@@ -39,6 +39,7 @@ def sign_pdf_visible_with_widget(
 ```
 
 ### Proceso de Firmado:
+0. **Aplanado previo** (r155): `_aplanar_para_firmar` integra anotaciones y formularios en el contenido antes de firmar (a veces la firma fallaba y aplanar lo arreglaba). Con firmas previas no se toca, para no invalidarlas; si aplanar falla, se firma el PDF tal cual. Aplanar borra también el recuadro de firma vacío del formulario: se guarda su sitio y la firma se crea ahí con el mismo nombre.
 1. **Extracción de Identidad**: Invoca `extract_cert_info` para recuperar los datos legibles del firmante.
 2. **Carga de Claves**: Carga la clave privada y el certificado digital desde el archivo PKCS#12 (PFX) usando `SimpleSigner.load_pkcs12`.
 3. **Configuración de Metadatos**: Crea un objeto `PdfSignatureMetadata` asignando el subfiltro de firma a `SigSeedSubFilter.PADES` e indicando la razón, localización y nombre del firmante.

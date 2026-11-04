@@ -404,6 +404,44 @@ def _tolerant_writer(pdf_bytes: bytes, doc_password: str) -> IncrementalPdfFileW
     return IncrementalPdfFileWriter(BytesIO(clean))
 
 
+def _aplanar_para_firmar(pdf_bytes: bytes, doc_password: str,
+                         field_name: str) -> tuple[bytes, tuple | None]:
+    """(r155) Aplana anotaciones y formularios antes de firmar: a Ricardo la firma
+    fallaba a veces y aplanar el PDF lo arreglaba. Devuelve los bytes y, si se
+    firma en un recuadro de firma vacío del formulario, (página, recuadro PDF):
+    aplanar borra ese campo y la firma se crea en el mismo sitio.
+    Con firmas previas no se toca nada (reescribir las invalidaría) y, si aplanar
+    falla, se firma el PDF tal cual."""
+    try:
+        doc = fitz.open("pdf", pdf_bytes)
+    except Exception:
+        return pdf_bytes, None
+    try:
+        if doc.needs_pass and not (doc_password and doc.authenticate(doc_password)):
+            return pdf_bytes, None
+        if doc_tools.has_signatures(doc) or not hasattr(doc, "bake"):
+            return pdf_bytes, None
+        campo = None
+        if field_name:
+            for page in doc:
+                for w in page.widgets():
+                    if (w.field_name == field_name
+                            and w.field_type == fitz.PDF_WIDGET_TYPE_SIGNATURE):
+                        campo = (page.number, doc_tools.unrotated_rect_to_pdf(
+                            page, fitz.Rect(w.rect)))
+                        break
+                if campo:
+                    break
+        doc.bake(annots=True, widgets=True)
+        nuevo = doc.tobytes(garbage=2, deflate=True, encryption=fitz.PDF_ENCRYPT_KEEP)
+        return nuevo, campo
+    except Exception:
+        traceback.print_exc()
+        return pdf_bytes, None
+    finally:
+        doc.close()
+
+
 class PAdESSigner:
     @staticmethod
     def sign_pdf_bytes(
@@ -459,6 +497,9 @@ class PAdESSigner:
             if cms_signer is None:   # pyHanko devuelve None en lugar de lanzar
                 raise SigningError(tr("No se pudo cargar la clave privada del certificado."))
 
+        pdf_bytes, campo = _aplanar_para_firmar(pdf_bytes, doc_password, field_name)
+        if campo:
+            page_num, box = campo
         try:
             w = IncrementalPdfFileWriter(BytesIO(pdf_bytes))
             if w.prev.xrefs.hybrid_xrefs_present:
@@ -471,7 +512,7 @@ class PAdESSigner:
             w.encrypt(doc_password)
 
         existente = field_name and _empty_sig_field(w, field_name)
-        if not existente:
+        if not existente and not campo:   # (r155) con campo aplanado, su nombre queda libre
             field_name = _unique_field_name(w)
         meta_kwargs = dict(
             field_name=field_name,

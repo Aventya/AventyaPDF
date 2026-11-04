@@ -2246,6 +2246,29 @@ class TestFirma(_ConCarpeta):
         self.assertEqual(len(nombres), 1)
         self.assertNotEqual(nombres[0], "FIRMA")
 
+    def test_firmar_aplana_antes_las_anotaciones_y_el_formulario(self):
+        """(r155, pedido por Ricardo) Al firmar con certificado el PDF se aplana
+        solo: la nota y el campo de texto pasan al contenido. Con firmas previas
+        no se toca (las invalidaría)."""
+        from signature_validation import validate_signatures
+        from signer_backend import PAdESSigner
+        d = fitz.open()
+        p = d.new_page()
+        t = fitz.Widget()
+        t.field_type, t.field_name = fitz.PDF_WIDGET_TYPE_TEXT, "T"
+        t.field_value, t.rect = "hola", fitz.Rect(50, 150, 200, 180)
+        p.add_widget(t)
+        p.add_text_annot((300, 300), "nota")
+        uno = PAdESSigner.sign_pdf_bytes(d.tobytes(), self.pfx, "1234", 0, (72, 600, 272, 680))
+        firmado = fitz.open("pdf", uno)
+        self.assertEqual([w.field_type_string for w in firmado[0].widgets()], ["Signature"])
+        self.assertEqual(len(list(firmado[0].annots())), 0)
+        self.assertIn("hola", firmado[0].get_text())
+        dos = PAdESSigner.sign_pdf_bytes(uno, self.pfx, "1234", 0, (72, 500, 272, 580))
+        informes = validate_signatures(dos)
+        self.assertEqual(len(informes), 2)
+        self.assertTrue(all(r.intact and r.valid for r in informes))
+
     # ── (r61) Quitar la última firma ──────────────────────────────────── #
 
     def _dos_firmas(self):
@@ -2298,10 +2321,11 @@ class TestFirma(_ConCarpeta):
                                              (389, alto - 703, 539, alto - 671),
                                              field_name="FIRMA")
         sin = remove_last_signature(firmado, "FIRMA")
-        self.assertEqual(sin, data)
+        # (r155) Se firma tras aplanar, así que la versión anterior ya no es `data`.
         campos = [w.field_name for p in fitz.open("pdf", sin) for w in p.widgets()
                   if w.field_type == fitz.PDF_WIDGET_TYPE_SIGNATURE]
         self.assertEqual(campos, ["FIRMA"])
+        self.assertEqual(doc_tools.signed_count(fitz.open("pdf", sin)), 0)
 
     def test_sello_visual_fondo_mosca(self):
         from signer_backend import PAdESSigner
