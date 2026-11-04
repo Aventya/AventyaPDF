@@ -437,6 +437,13 @@ class ContentEditor:
         if text is None:
             text = self.editor.toPlainText() if self.editor is not None else block.text
         caja = self._rect
+        # (r155) Al cambiar el tamaño de la letra el cuadro crece (o mengua) en
+        # proporción, para que el texto no se corte.
+        nuevo = estilo.get("size")
+        if caja is not None and nuevo and block.size and abs(nuevo - block.size) > 0.01:
+            recto = not self.viewer.pdf_page.rotation and abs(block.angle) < 0.01
+            caja = pdf_edit.scaled_box(caja, nuevo / block.size,
+                                       block.align if recto else "left")
         self.close_editor(commit=False)
         self._write(block, text, rect=caja, label=tr("Editar texto"), reopen=True, **estilo)
 

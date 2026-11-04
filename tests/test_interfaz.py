@@ -2096,6 +2096,24 @@ class TestVentanaPrincipal(unittest.TestCase):
                                 Qt.KeyboardModifier.NoModifier))
         self.app.processEvents()
 
+    def test_cambiar_el_tamano_agranda_la_caja_en_proporcion(self):
+        """(r155, pedido por Ricardo) Al cambiar el tamaño de la letra, la caja
+        crece (o mengua) en la misma proporción y el texto no se corta."""
+        w = self._abrir_editable()
+        c = w.viewer.content
+        self._clic(self._centro(self._linea("Importe")))
+        antes = fitz.Rect(c._rect)
+        tam = c._editing.size
+        c.apply_style(size=tam * 2)
+        self.app.processEvents()
+        despues = fitz.Rect(c._rect)
+        self.assertAlmostEqual(despues.width / antes.width, 2.0, delta=0.15)
+        self.assertAlmostEqual(despues.height / antes.height, 2.0, delta=0.15)
+        self.assertAlmostEqual(despues.x0, antes.x0, delta=0.5)
+        self.assertAlmostEqual(despues.y0, antes.y0, delta=0.5)
+        self.assertEqual(c._editing.size, tam * 2)
+        self.assertIsNone(c._overflow, "el texto debe caber en la caja agrandada")
+
     def test_editar_texto_nunca_cambia_la_fuente(self):
         """(r148, petición de Ricardo: «nunca puede cambiar la fuente») Si la
         fuente del documento no tiene lo que se ha escrito, se avisa en vivo y

@@ -1750,6 +1750,46 @@ class TestEdicionTexto(unittest.TestCase):
         self.assertLess(nueva.color[1], 0.1)
         self.assertTrue(nueva.bold)
 
+    def _pdf_con_nota_solapada(self):
+        d = fitz.open()
+        p = d.new_page()
+        p.insert_text((72, 100), "AAAAAAAAAA BBBBBBBBBB CCCCCCCCCC", fontname="helv", fontsize=14)
+        p.insert_text((72, 130), "DDDDDDDDDD EEEEEEEEEE FFFFFFFFFF", fontname="helv", fontsize=14)
+        p.insert_text((150, 101), "nota solapada entre medias", fontname="tiro",
+                      fontsize=9, color=(1, 0, 0))
+        return d.tobytes()
+
+    def test_editar_o_borrar_no_estropea_el_texto_que_se_solapa(self):
+        """(r155, pedido por Ricardo) Un texto de otro recuadro que se cruza con
+        el que se edita se sigue viendo entero, al reescribir y al borrar, y
+        también con la página girada."""
+        for giro in (0, 90):
+            for accion in ("editar", "borrar"):
+                with self.subTest(giro=giro, accion=accion):
+                    doc = fitz.open("pdf", self._pdf_con_nota_solapada())
+                    page = doc[0]
+                    page.set_rotation(giro)
+                    primero = [b for b in self.E.text_blocks(page) if b.text.startswith("AAA")][0]
+                    if accion == "editar":
+                        self.E.replace_block(page, primero, "QQQ nuevo")
+                    else:
+                        self.E.delete_block(page, primero)
+                    texto = page.get_text().replace("\xa0", " ")
+                    self.assertNotIn("AAAA", texto)
+                    self.assertIn("nota solapada entre medias", texto)
+                    self.assertIn("DDDDDDDDDD", texto)
+                    nota = [s for b in page.get_text("dict")["blocks"] if b["type"] == 0
+                            for l in b["lines"] for s in l["spans"] if "nota" in s["text"]][0]
+                    self.assertAlmostEqual(nota["size"], 9.0, places=1)
+                    self.assertEqual(nota["color"], 0xFF0000)
+
+    def test_caja_escalada_al_cambiar_el_tamano(self):
+        caja = fitz.Rect(100, 200, 300, 240)
+        self.assertEqual(self.E.scaled_box(caja, 2.0), fitz.Rect(100, 200, 500, 280))
+        self.assertEqual(self.E.scaled_box(caja, 0.5), fitz.Rect(100, 200, 200, 220))
+        self.assertEqual(self.E.scaled_box(caja, 2.0, "center"), fitz.Rect(0, 200, 400, 280))
+        self.assertEqual(self.E.scaled_box(caja, 2.0, "right"), fitz.Rect(-100, 200, 300, 280))
+
     def test_paginas_giradas(self):
         for giro in (90, 180, 270):
             with self.subTest(giro=giro):

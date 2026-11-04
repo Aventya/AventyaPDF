@@ -732,6 +732,96 @@ def _x_for(align: str, caja: fitz.Rect, ancho: float) -> float:
     return caja.x0
 
 
+def scaled_box(caja, factor: float, align: str = "left") -> fitz.Rect:
+    """(r155) El cuadro tras cambiar el tamaño de la letra por `factor`: crece o
+    mengua en proporción (ancho y alto), así el texto se reparte en las mismas
+    líneas y no se corta. Se queda fijo el borde de arriba y, según la
+    alineación, el izquierdo, el centro o el derecho."""
+    c = fitz.Rect(caja)
+    ancho, alto = c.width * factor, c.height * factor
+    if align == "center":
+        x0 = (c.x0 + c.x1) / 2 - ancho / 2
+    elif align == "right":
+        x0 = c.x1 - ancho
+    else:
+        x0 = c.x0
+    return fitz.Rect(x0, c.y0, x0 + ancho, c.y0 + alto)
+
+
+# ── Texto ajeno que se solapa con el que se edita ──────────────────────────── #
+
+def _caracteres(page: fitz.Page) -> list[dict]:
+    """Todas las letras de la página (sin girarla), con lo que hace falta para
+    volver a escribir una: posición, tramo y dirección de su línea."""
+    out = []
+    for b in page.get_text("rawdict")["blocks"]:
+        if b["type"] != 0:
+            continue
+        for l in b["lines"]:
+            for s in l["spans"]:
+                for c in s["chars"]:
+                    if c["c"].strip():
+                        out.append({"clave": (c["c"], round(c["bbox"][0], 1), round(c["bbox"][1], 1)),
+                                    "c": c["c"], "origin": c["origin"], "span": s,
+                                    "dir": l["dir"], "linea": l["bbox"]})
+    return out
+
+
+def _linea_de(linea, line_rects) -> bool:
+    return any(all(abs(a - b) < 0.05 for a, b in zip(linea, r)) for r in line_rects)
+
+
+def _restituir(page: fitz.Page, perdidas: list[dict]) -> None:
+    """Vuelve a escribir, donde estaban, las letras de OTROS textos que el
+    borrado se llevó por delante (MuPDF quita todo glifo que toque el
+    rectángulo, también el de otro párrafo que se solape). Con su misma fuente,
+    tamaño y color; si esa fuente no se puede usar, `FuenteNoDisponible`."""
+    grupos: dict[tuple, list[dict]] = {}
+    for ch in perdidas:
+        s = ch["span"]
+        grupos.setdefault((s["font"], s["flags"], round(s["size"], 2), s["color"],
+                           tuple(round(v, 3) for v in ch["dir"])), []).append(ch)
+    for (fuente, flags, size, color, dir_), chars in grupos.items():
+        le = letra(display_name(fuente), flags, doc=page.parent,
+                   texto="".join(c["c"] for c in chars))
+        modo = 2 if le.negrita else 0
+        angulo = math.degrees(math.atan2(-dir_[1], dir_[0]))
+        suelta = le.cursiva or abs(angulo) > 0.01
+        tw = fitz.TextWriter(page.rect)
+        for ch in chars:
+            punto = fitz.Point(ch["origin"])
+            if not suelta:
+                tw.append(punto, ch["c"], font=le.font, fontsize=size)
+                continue
+            giro = (punto, fitz.Matrix(-angulo)) if abs(angulo) > 0.01 else None
+            una = fitz.TextWriter(page.rect)
+            una.append(punto, ch["c"], font=le.font, fontsize=size)
+            if le.cursiva:
+                una.write_text(page, color=_rgb(color), overlay=True, render_mode=modo,
+                               matrix=_inclinada(una, punto, giro))
+            else:
+                una.write_text(page, color=_rgb(color), overlay=True, morph=giro,
+                               render_mode=modo)
+        if not suelta:
+            tw.write_text(page, color=_rgb(color), overlay=True, render_mode=modo)
+
+
+def _erase_block(page: fitz.Page, block: TextBlock) -> None:
+    """Quita del PDF el texto del párrafo **sin afectar a ningún otro**
+    (r155, petición de Ricardo: «el editar texto de un recuadro nunca debe
+    afectar a la visualización de otros textos de otros recuadros»). La
+    redacción de MuPDF decide por la tinta del glifo y se lleva también el de
+    otro texto que se solape: se compara la página antes y después y lo ajeno
+    que haya desaparecido se vuelve a escribir. La página debe estar sin girar."""
+    antes = _caracteres(page)
+    _erase(page, block.line_rects, images=fitz.PDF_REDACT_IMAGE_NONE)
+    quedan = {c["clave"] for c in _caracteres(page)}
+    perdidas = [c for c in antes if c["clave"] not in quedan
+                and not _linea_de(c["linea"], block.line_rects)]
+    if perdidas:
+        _restituir(page, perdidas)
+
+
 def delete_block(page: fitz.Page, block: TextBlock) -> None:
     """Borra el párrafo del PDF (no lo tapa: lo quita del flujo de contenido).
     Se borra línea a línea, no por la caja entera, para no llevarse por delante
@@ -740,7 +830,7 @@ def delete_block(page: fitz.Page, block: TextBlock) -> None:
     if rot:
         page.set_rotation(0)
     try:
-        _erase(page, block.line_rects, images=fitz.PDF_REDACT_IMAGE_NONE)
+        _erase_block(page, block)
     finally:
         if rot:
             page.set_rotation(rot)
@@ -801,7 +891,7 @@ def replace_block(page: fitz.Page, block: TextBlock, new_text: str, *,
     try:
         caja = fitz.Rect(rect) * derot if rect is not None else fitz.Rect(block.base_bbox)
         caja = clamp_box(caja, page.rect)
-        _erase(page, block.line_rects, images=fitz.PDF_REDACT_IMAGE_NONE)
+        _erase_block(page, block)
 
         lineas = wrap(new_text, font, size, caja.width) if new_text.strip() else []
         res = EditResult(room=caja.height)
