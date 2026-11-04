@@ -1,6 +1,6 @@
 ---
 titulo: AventyaPDF manual
-subtitulo: Viewer and PDF converter: view, comment on, organise, protect and sign documents
+subtitulo: PDF viewer and editor: view, comment on, organise, protect and sign documents
 version: Version {version}
 indice: Contents
 meses: January|February|March|April|May|June|July|August|September|October|November|December
@@ -38,7 +38,7 @@ explorador_opciones: Open|Open with|Share
 
 ## What AventyaPDF is
 
-AventyaPDF is the Windows viewer and PDF converter: it opens PDFs, images, Word documents, e-books, comics, XPS files and SVG drawings, and brings together in a single program everything you do every day with them. Anything that isn't a PDF can be opened and saved as a PDF. With PDFs you can read them, comment on them, fill in forms, change their text, organise their pages, combine them, protect them with a password, recognise the text of scans and sign them with a digital certificate.
+AventyaPDF is the Windows PDF viewer and editor: it opens PDFs, images, Word documents, e-books, comics, XPS files and SVG drawings, and brings together in a single program everything you do every day with them. Anything that isn't a PDF can be opened and saved as a PDF. With PDFs you can read them, comment on them, fill in forms, change their text, organise their pages, combine them, protect them with a password, recognise the text of scans and sign them with a digital certificate.
 
 It is freely distributed and its source code is published on GitHub. It doesn't send your documents anywhere: everything happens on your computer.
 
@@ -105,7 +105,7 @@ There are several ways to open documents:
 - **File › Open recent**, with the most recently used documents.
 - Double-click a file, if AventyaPDF is your default program for that type (see “Using it as your default viewer”).
 
-As well as PDFs, AventyaPDF opens images (PNG, JPG, BMP, GIF, TIFF, WebP, JPEG 2000, TGA, ICO and PNM; a multi-page TIFF opens with all its pages) and Word documents (.doc and .docx): each one is converted into a new, unsaved PDF in its own tab. The original isn't changed. To convert Word documents, Microsoft Word or LibreOffice must be installed. It also opens e-books (EPUB, MOBI and FB2), comics (CBZ), XPS and OXPS documents, SVG drawings and text files (.txt) without any other program: books and text are laid out on A4 pages and the book's table of contents becomes the bookmarks. When you save, AventyaPDF suggests the same name and folder as the original, with the .pdf extension: that way AventyaPDF works both as a viewer and as a PDF converter.
+As well as PDFs, AventyaPDF opens images (PNG, JPG, BMP, GIF, TIFF, WebP, JPEG 2000, TGA, ICO and PNM; a multi-page TIFF opens with all its pages) and Word documents (.doc and .docx): each one is converted into a new, unsaved PDF in its own tab. The original isn't changed. To convert Word documents, Microsoft Word or LibreOffice must be installed. It also opens e-books (EPUB, MOBI and FB2), comics (CBZ), XPS and OXPS documents, SVG drawings and text files (.txt) without any other program: books and text are laid out on A4 pages and the book's table of contents becomes the bookmarks. When you save, AventyaPDF suggests the same name and folder as the original, with the .pdf extension, so any document you open can be kept as a PDF.
 
 If the PDF is password-protected, AventyaPDF asks for the password before opening it.
 

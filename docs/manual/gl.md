@@ -1,6 +1,6 @@
 ---
 titulo: Manual de AventyaPDF
-subtitulo: Visor e conversor a PDF: ver, comentar, organizar, protexer e asinar documentos
+subtitulo: Visor e editor de PDF: ver, comentar, organizar, protexer e asinar documentos
 version: Versión {version}
 indice: Índice
 meses: xaneiro|febreiro|marzo|abril|maio|xuño|xullo|agosto|setembro|outubro|novembro|decembro
@@ -38,7 +38,7 @@ explorador_opciones: Abrir|Abrir con|Compartir
 
 ## Que é AventyaPDF
 
-AventyaPDF é o visor e conversor a PDF para Windows: abre PDF, imaxes, documentos de Word, libros electrónicos, cómics, XPS e SVG, e reúne nun só programa o que se fai a diario con eles. Todo o que non é PDF pódese abrir e gardar como PDF. Cos PDF podes lelos, comentalos, encher formularios, cambiar o seu texto, organizar as súas páxinas, combinalos, protexelos con contrasinal, recoñecer o texto das dixitalizacións e asinalos con certificado dixital.
+AventyaPDF é o visor e editor de PDF para Windows: abre PDF, imaxes, documentos de Word, libros electrónicos, cómics, XPS e SVG, e reúne nun só programa o que se fai a diario con eles. Todo o que non é PDF pódese abrir e gardar como PDF. Cos PDF podes lelos, comentalos, encher formularios, cambiar o seu texto, organizar as súas páxinas, combinalos, protexelos con contrasinal, recoñecer o texto das dixitalizacións e asinalos con certificado dixital.
 
 É de libre distribución e o seu código está publicado en GitHub. Non envía os teus documentos a ningures: todo se fai no teu equipo.
 
@@ -105,7 +105,7 @@ Hai varias formas de abrir documentos:
 - **Ficheiro › Abrir recente**, cos últimos documentos usados.
 - Facer dobre clic nun ficheiro, se AventyaPDF é o teu programa predeterminado para ese tipo (consulta «Usalo como visor predeterminado»).
 
-Ademais de PDF, AventyaPDF abre imaxes (PNG, JPG, BMP, GIF, TIFF, WebP, JPEG 2000, TGA, ICO e PNM; un TIFF de varias páxinas ábrese con todas as súas páxinas) e documentos de Word (.doc e .docx): cada un convértese nun PDF novo, sen gardar, na súa propia lapela. O orixinal non se toca. Para converter documentos de Word cómpre ter instalado Microsoft Word ou LibreOffice. Tamén abre libros electrónicos (EPUB, MOBI e FB2), cómics (CBZ), documentos XPS e OXPS, debuxos SVG e ficheiros de texto (.txt), sen ningún outro programa: os libros e o texto repártense en páxinas A4 e o índice do libro pasa aos marcadores. Ao gardar, AventyaPDF propón o mesmo nome e o mesmo cartafol que o orixinal, coa extensión .pdf: así AventyaPDF serve á vez de visor e de conversor a PDF.
+Ademais de PDF, AventyaPDF abre imaxes (PNG, JPG, BMP, GIF, TIFF, WebP, JPEG 2000, TGA, ICO e PNM; un TIFF de varias páxinas ábrese con todas as súas páxinas) e documentos de Word (.doc e .docx): cada un convértese nun PDF novo, sen gardar, na súa propia lapela. O orixinal non se toca. Para converter documentos de Word cómpre ter instalado Microsoft Word ou LibreOffice. Tamén abre libros electrónicos (EPUB, MOBI e FB2), cómics (CBZ), documentos XPS e OXPS, debuxos SVG e ficheiros de texto (.txt), sen ningún outro programa: os libros e o texto repártense en páxinas A4 e o índice do libro pasa aos marcadores. Ao gardar, AventyaPDF propón o mesmo nome e o mesmo cartafol que o orixinal, coa extensión .pdf, así que calquera documento que abras pódese deixar gardado como PDF.
 
 Se o PDF está protexido con contrasinal, AventyaPDF pídeo antes de abrilo.
 

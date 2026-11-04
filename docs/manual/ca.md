@@ -1,6 +1,6 @@
 ---
 titulo: Manual d'AventyaPDF
-subtitulo: Visualitzador i convertidor a PDF: visualitzar, comentar, organitzar, protegir i signar documents
+subtitulo: Visualitzador i editor de PDF: visualitzar, comentar, organitzar, protegir i signar documents
 version: Versió {version}
 indice: Índex
 meses: gener|febrer|març|abril|maig|juny|juliol|agost|setembre|octubre|novembre|desembre
@@ -38,7 +38,7 @@ explorador_opciones: Obre|Obre amb|Comparteix
 
 ## Què és AventyaPDF
 
-AventyaPDF és el visualitzador i convertidor a PDF per a Windows: obre PDF, imatges, documents de Word, llibres electrònics, còmics, XPS i SVG, i reuneix en un sol programa el que es fa cada dia amb aquests documents. Tot el que no és PDF es pot obrir i desar com a PDF. Amb els PDF podeu llegir-los, comentar-los, emplenar formularis, canviar-ne el text, organitzar-ne les pàgines, combinar-los, protegir-los amb contrasenya, reconèixer el text dels documents escanejats i signar-los amb certificat digital.
+AventyaPDF és el visualitzador i editor de PDF per a Windows: obre PDF, imatges, documents de Word, llibres electrònics, còmics, XPS i SVG, i reuneix en un sol programa el que es fa cada dia amb aquests documents. Tot el que no és PDF es pot obrir i desar com a PDF. Amb els PDF podeu llegir-los, comentar-los, emplenar formularis, canviar-ne el text, organitzar-ne les pàgines, combinar-los, protegir-los amb contrasenya, reconèixer el text dels documents escanejats i signar-los amb certificat digital.
 
 És de lliure distribució i el seu codi està publicat a GitHub. No envia els vostres documents enlloc: tot es fa al vostre ordinador.
 
@@ -105,7 +105,7 @@ Hi ha diverses maneres d'obrir documents:
 - **Fitxer › Obre un fitxer recent**, amb els últims documents utilitzats.
 - Fer doble clic en un fitxer, si AventyaPDF és el vostre programa predeterminat per a aquest tipus (vegeu «Usar-lo com a visualitzador predeterminat»).
 
-A més de PDF, AventyaPDF obre imatges (PNG, JPG, BMP, GIF, TIFF, WebP, JPEG 2000, TGA, ICO i PNM; un TIFF de diverses pàgines s'obre amb totes les pàgines) i documents de Word (.doc i .docx): cada un es converteix en un PDF nou, sense desar, a la seva pròpia pestanya. L'original no es modifica. Per convertir documents de Word cal tenir instal·lat Microsoft Word o LibreOffice. També obre llibres electrònics (EPUB, MOBI i FB2), còmics (CBZ), documents XPS i OXPS, dibuixos SVG i fitxers de text (.txt), sense cap altre programa: els llibres i el text es reparteixen en pàgines A4 i l'índex del llibre passa als marcadors. En desar, AventyaPDF proposa el mateix nom i la mateixa carpeta que l'original, amb l'extensió .pdf: així AventyaPDF fa alhora de visualitzador i de convertidor a PDF.
+A més de PDF, AventyaPDF obre imatges (PNG, JPG, BMP, GIF, TIFF, WebP, JPEG 2000, TGA, ICO i PNM; un TIFF de diverses pàgines s'obre amb totes les pàgines) i documents de Word (.doc i .docx): cada un es converteix en un PDF nou, sense desar, a la seva pròpia pestanya. L'original no es modifica. Per convertir documents de Word cal tenir instal·lat Microsoft Word o LibreOffice. També obre llibres electrònics (EPUB, MOBI i FB2), còmics (CBZ), documents XPS i OXPS, dibuixos SVG i fitxers de text (.txt), sense cap altre programa: els llibres i el text es reparteixen en pàgines A4 i l'índex del llibre passa als marcadors. En desar, AventyaPDF proposa el mateix nom i la mateixa carpeta que l'original, amb l'extensió .pdf, així que qualsevol document que obriu es pot deixar desat com a PDF.
 
 Si el PDF està protegit amb contrasenya, AventyaPDF la demana abans d'obrir-lo.
 
