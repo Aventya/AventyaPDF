@@ -836,6 +836,17 @@ def delete_block(page: fitz.Page, block: TextBlock) -> None:
             page.set_rotation(rot)
 
 
+def render_without(page: fitz.Page, block: TextBlock, matrix: fitz.Matrix) -> fitz.Pixmap:
+    """(r158) La página tal como se ve, pero sin el texto del párrafo, dibujada
+    en una copia: el documento no se toca. Mientras se edita un párrafo, el
+    editor es transparente y deja ver esto, así el texto de otros recuadros que
+    se solapen con él no queda tapado por un fondo blanco."""
+    with fitz.open() as copia:
+        copia.insert_pdf(page.parent, from_page=page.number, to_page=page.number)
+        delete_block(copia[0], block)
+        return copia[0].get_pixmap(matrix=matrix)
+
+
 def _inclinada(tw: fitz.TextWriter, punto: fitz.Point, giro) -> fitz.Matrix:
     """(r148) Matriz de `write_text` para la cursiva simulada: inclina la línea
     sobre su línea base y después aplica el giro del párrafo. Va en el espacio

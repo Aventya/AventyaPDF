@@ -24,7 +24,7 @@ import os
 
 import fitz
 from PyQt6.QtCore import QPoint, QRect, Qt
-from PyQt6.QtGui import QColor, QPen
+from PyQt6.QtGui import QColor, QImage, QPen, QPixmap
 from PyQt6.QtWidgets import QFileDialog, QMenu, QMessageBox
 
 import doc_tools
@@ -61,6 +61,7 @@ class ContentEditor:
         # (r158) Caja de la que se parte al estirar: la que se ve, que puede ser
         # mayor que la del texto si ya se agrandó antes.
         self._resize_from: fitz.Rect | None = None
+        self._pix_antes = None         # página con todo el texto, mientras se edita
 
     @property
     def mw(self):
@@ -92,6 +93,7 @@ class ContentEditor:
 
     def clear(self) -> None:
         self.close_editor(commit=True)
+        self._mostrar_texto()
         self.blocks, self.boxes = [], []
         self.hover = self.selected = None
         self._rect = self._overflow = None
@@ -365,7 +367,11 @@ class ContentEditor:
         self.selected = block
         if self._rect is None:
             self._rect = fitz.Rect(block.bbox)
-        editor = inplace_editor.InPlaceEditor(v, self._editor_rect())
+        # (r158) Editor transparente sobre una página dibujada sin este párrafo:
+        # con fondo blanco tapaba el texto de otros recuadros que se solapan.
+        editor = inplace_editor.InPlaceEditor(
+            v, self._editor_rect(),
+            background=None if self._ocultar_texto(block) else (1.0, 1.0, 1.0))
         editor.apply_style(family=pdf_edit.family_for(block.font, block.flags,
                                                       block.bold, block.italic, doc=self.mw.doc),
                            pixel_size=block.size * v.scale_factor,
@@ -384,6 +390,30 @@ class ContentEditor:
         self.mw._show_edit_opts(block)
         self._update_fit()
         v.update()
+
+    def _ocultar_texto(self, block) -> bool:
+        """Pone en el visor la página sin el texto de `block` (mientras se
+        edita). False si no se pudo: entonces el editor lleva fondo blanco."""
+        v = self.viewer
+        self._mostrar_texto()
+        try:
+            pix = pdf_edit.render_without(v.pdf_page, block,
+                                          fitz.Matrix(v.scale_factor, v.scale_factor))
+            img = QImage(pix.samples, pix.width, pix.height, pix.stride,
+                         QImage.Format.Format_RGB888)
+            nueva = QPixmap.fromImage(img)
+        except Exception as e:  # noqa: BLE001
+            print(f"[editar contenido] no se pudo dibujar la página sin el texto: {e}")
+            return False
+        self._pix_antes = v.pixmap()
+        v.setPixmap(nueva)
+        return True
+
+    def _mostrar_texto(self) -> None:
+        """Devuelve al visor la página tal cual estaba antes de ocultar el texto."""
+        if self._pix_antes is not None:
+            self.viewer.setPixmap(self._pix_antes)
+            self._pix_antes = None
 
     def _update_fit(self) -> None:
         """Dice en la barra secundaria cuántas líneas ocupa el texto y si cabe
@@ -411,6 +441,7 @@ class ContentEditor:
         self._busy = True
         editor, block, caja = self.editor, self._editing, self._rect
         self.editor = self._editing = None
+        self._mostrar_texto()
         texto = editor.toPlainText()
         editor.finish()
         hecho = True

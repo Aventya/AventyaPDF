@@ -2099,6 +2099,21 @@ class TestVentanaPrincipal(unittest.TestCase):
                                 Qt.KeyboardModifier.NoModifier))
         self.app.processEvents()
 
+    def test_editor_transparente_sobre_la_pagina_sin_el_parrafo(self):
+        """(r158) Mientras se edita, el editor no tapa con blanco lo de debajo:
+        es transparente y la página se ve sin el párrafo editado."""
+        w = self._abrir_editable()
+        c, v = w.viewer.content, w.viewer
+        antes = v.pixmap().toImage()
+        self._clic(self._centro(self._linea("Importe")))
+        self.assertIsNotNone(c.editor)
+        self.assertIn("transparent", c.editor.styleSheet())
+        self.assertNotEqual(v.pixmap().toImage(), antes, "la página debía ocultar el texto")
+        c.close_editor(commit=False)
+        self.app.processEvents()
+        self.assertEqual(v.pixmap().toImage(), antes, "al cerrar vuelve el texto")
+        w._modified = False
+
     def test_estirar_hacia_fuera_agranda_la_caja(self):
         """(r158, pedido por Ricardo) Estirar un tirador hacia FUERA agranda la
         caja igual que hacia dentro, y se puede volver a estirar después."""

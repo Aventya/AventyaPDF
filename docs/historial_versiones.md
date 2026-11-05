@@ -4,6 +4,22 @@
 
 Las publicadas como 1.0.0-1.3.0 se renumeraron 0.9.6-0.9.6.7 al publicarse la 0.9.7, y las 2.0.3-2.0.5 como 0.9.3-0.9.5 al publicarse la que fue 1.0.0: la **1.0.0** queda para el lanzamiento en la Microsoft Store.
 
+## 0.9.17 — 2026-11-04
+
+Commit `598c1b7`.
+
+AventyaPDF abre libros electrónicos, documentos XPS, dibujos SVG y archivos de texto para guardarlos como PDF; al editar el texto de un PDF la fuente del documento no cambia nunca; al firmar con certificado el PDF se aplana solo; y la caja de texto crece con el tamaño de la letra sin estropear los textos que se solapan.
+
+#### Novedades respecto a la 0.9.16
+- **Abrir más tipos de archivo y guardarlos como PDF**: EPUB, MOBI, FB2, CBZ, XPS, OXPS, SVG y .txt.
+- **Guardar como PDF propone el nombre del original**, y «Abrir con…» y arrastrar a la ventana admiten más formatos.
+- **Editar el texto de un PDF nunca cambia la fuente**: si no está instalada se usa la del propio PDF, y si le falta una letra se avisa sin cambiar nada.
+- **Al firmar con certificado, el PDF se aplana solo**, lo que evita los fallos ocasionales de firma.
+- **Al cambiar el tamaño de un texto, su caja crece o mengua en proporción**, y editar o borrar un texto ya no estropea los que se solapan con él.
+- Manual actualizado en los cinco idiomas.
+
+253 pruebas automáticas OK.
+
 ## 0.9.16 — 2026-10-29
 
 Commit `7c4a425`.

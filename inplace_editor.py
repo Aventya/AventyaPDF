@@ -55,7 +55,9 @@ class InPlaceEditor(QPlainTextEdit):
                  background=(1.0, 1.0, 1.0)):
         super().__init__(parent)
         self._done = False
-        self._border, self._background = _hex(border), _hex(background)
+        self._border = _hex(border)
+        # background=None: transparente (r158), para dejar ver la página.
+        self._background = "transparent" if background is None else _hex(background)
         self._color = "#201F1E"
         self._font_css = ""
         self.document().setDocumentMargin(MARGIN)
