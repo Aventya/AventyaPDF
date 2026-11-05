@@ -58,6 +58,9 @@ class ContentEditor:
         self._overflow: fitz.Rect | None = None
         self._drag_from: fitz.Point | None = None
         self._resizing: str | None = None
+        # (r158) Caja de la que se parte al estirar: la que se ve, que puede ser
+        # mayor que la del texto si ya se agrandó antes.
+        self._resize_from: fitz.Rect | None = None
 
     @property
     def mw(self):
@@ -92,7 +95,7 @@ class ContentEditor:
         self.blocks, self.boxes = [], []
         self.hover = self.selected = None
         self._rect = self._overflow = None
-        self._drag_from = self._resizing = None
+        self._drag_from = self._resizing = self._resize_from = None
 
     def _item_at(self, pdf_pt):
         """El párrafo o la imagen bajo el punto. El texto gana: suele estar
@@ -190,6 +193,7 @@ class ContentEditor:
         corner = self._corner_at(pos)
         if corner:
             self._resizing = corner
+            self._resize_from = fitz.Rect(self._rect)
             return
         self.close_editor(commit=True)
         item = self._item_at(pdf_pt)
@@ -204,7 +208,8 @@ class ContentEditor:
 
     def move(self, pos: QPoint, pdf_pt, left: bool) -> None:
         if left and self._resizing and self.selected is not None:
-            self._rect = self._resized(fitz.Rect(self.selected.bbox), pdf_pt)
+            self._rect = self._resized(self._resize_from or fitz.Rect(self.selected.bbox),
+                                       pdf_pt)
             if self.editor is not None:
                 self.editor.setGeometry(self._editor_rect())
                 self._update_fit()
@@ -245,11 +250,12 @@ class ContentEditor:
     def release(self, _pos: QPoint | None = None) -> None:
         redim, movida = self._resizing, self._drag_from is not None
         item, nuevo = self.selected, self._rect
-        self._drag_from = self._resizing = None
+        origen = self._resize_from
+        self._drag_from = self._resizing = self._resize_from = None
         if not (redim or movida) or item is None or nuevo is None:
             return
         # Un clic sin arrastrar no debe gastar un paso de deshacer.
-        viejo = fitz.Rect(item.bbox)
+        viejo = fitz.Rect(origen if redim and origen is not None else item.bbox)
         if (abs(nuevo.x0 - viejo.x0) < 1 and abs(nuevo.y0 - viejo.y0) < 1
                 and abs(nuevo.x1 - viejo.x1) < 1 and abs(nuevo.y1 - viejo.y1) < 1):
             self._rect = viejo

@@ -2071,9 +2071,10 @@ class TestVentanaPrincipal(unittest.TestCase):
     def _linea(self, trozo):
         return [b for b in self.w.viewer.content.blocks if trozo in b.text][0]
 
-    def _arrastrar_esquina(self, destino):
-        """Arrastra el tirador de la esquina inferior derecha de lo que esté
-        seleccionado hasta `destino` (coordenadas de página), como el usuario."""
+    def _arrastrar_esquina(self, destino, esquina="BR"):
+        """Arrastra el tirador de la esquina `esquina` (por defecto la inferior
+        derecha) de lo que esté seleccionado hasta `destino` (coordenadas de
+        página), como el usuario."""
         caja = self.w.viewer.content._rect
         self.assertIsNotNone(caja, "hay que seleccionar algo antes de estirarlo")
         from PyQt6.QtCore import QEvent, QPointF, Qt
@@ -2082,7 +2083,9 @@ class TestVentanaPrincipal(unittest.TestCase):
         esc = v.scale_factor
         r = fitz.Rect(caja)
         # El tirador va 6 px FUERA del cuadro (así no lo tapa el editor).
-        desde = QPointF(r.x1 * esc + 6, r.y1 * esc + 6)
+        x = r.x1 * esc + 6 if "R" in esquina else r.x0 * esc - 6
+        y = r.y1 * esc + 6 if "B" in esquina else r.y0 * esc - 6
+        desde = QPointF(x, y)
         hasta = QPointF(destino[0] * esc, destino[1] * esc)
         pasos = ((QEvent.Type.MouseButtonPress, desde, Qt.MouseButton.LeftButton,
                   v.mousePressEvent),
@@ -2095,6 +2098,45 @@ class TestVentanaPrincipal(unittest.TestCase):
                                 Qt.MouseButton.LeftButton, botones,
                                 Qt.KeyboardModifier.NoModifier))
         self.app.processEvents()
+
+    def test_estirar_hacia_fuera_agranda_la_caja(self):
+        """(r158, pedido por Ricardo) Estirar un tirador hacia FUERA agranda la
+        caja igual que hacia dentro, y se puede volver a estirar después."""
+        w = self._abrir_editable()
+        c = w.viewer.content
+        self._clic(self._centro(self._linea("Importe")))
+        antes = fitz.Rect(c._rect)
+        self._arrastrar_esquina((antes.x1 + 60, antes.y1 + 40))
+        primera = fitz.Rect(c._rect)
+        self.assertAlmostEqual(primera.x1, antes.x1 + 60, delta=1.5)
+        self.assertAlmostEqual(primera.y1, antes.y1 + 40, delta=1.5)
+        self.assertAlmostEqual(primera.x0, antes.x0, delta=0.5)
+        # Segundo estirón desde la caja ya agrandada.
+        self._arrastrar_esquina((primera.x1 + 30, primera.y1 + 20))
+        segunda = fitz.Rect(c._rect)
+        self.assertAlmostEqual(segunda.x1, primera.x1 + 30, delta=1.5)
+        self.assertAlmostEqual(segunda.y1, primera.y1 + 20, delta=1.5)
+        # Y desde las otras esquinas, también hacia fuera.
+        self._arrastrar_esquina((segunda.x0 - 25, segunda.y0 - 15), "TL")
+        tercera = fitz.Rect(c._rect)
+        self.assertAlmostEqual(tercera.x0, segunda.x0 - 25, delta=1.5)
+        self.assertAlmostEqual(tercera.y0, segunda.y0 - 15, delta=1.5)
+        self.assertAlmostEqual(tercera.x1, segunda.x1, delta=1.5)
+        self.assertAlmostEqual(tercera.y1, segunda.y1, delta=1.5)
+        self._arrastrar_esquina((tercera.x1 + 20, tercera.y0 - 10), "TR")
+        cuarta = fitz.Rect(c._rect)
+        self.assertAlmostEqual(cuarta.x1, tercera.x1 + 20, delta=1.5)
+        self.assertAlmostEqual(cuarta.y0, tercera.y0 - 10, delta=1.5)
+        self.assertAlmostEqual(cuarta.x0, tercera.x0, delta=1.5)
+        self.assertAlmostEqual(cuarta.y1, tercera.y1, delta=1.5)
+        izq = max(cuarta.x0 - 10, 2)
+        self._arrastrar_esquina((izq, cuarta.y1 + 10), "BL")
+        quinta = fitz.Rect(c._rect)
+        self.assertAlmostEqual(quinta.x0, izq, delta=1.5)
+        self.assertAlmostEqual(quinta.y1, cuarta.y1 + 10, delta=1.5)
+        self.assertAlmostEqual(quinta.x1, cuarta.x1, delta=1.5)
+        self.assertAlmostEqual(quinta.y0, cuarta.y0, delta=1.5)
+        w._modified = False
 
     def test_cambiar_el_tamano_agranda_la_caja_en_proporcion(self):
         """(r155, pedido por Ricardo) Al cambiar el tamaño de la letra, la caja
